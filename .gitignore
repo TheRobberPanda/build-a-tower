@@ -1,0 +1,9 @@
+.env
+.env.*
+Packages/
+DevPackages/
+ServerPackages/
+*.rbxl
+*.rbxlx
+*.lock
+sourcemap.json
