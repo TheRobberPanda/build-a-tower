@@ -6,6 +6,7 @@ export type PieceDef = {
 	size: { number }, -- {x, y, z} cells
 	props: { [string]: { number } }, -- key -> {min, max}
 	maxCount: number?,
+	hint: string?, -- one-line description shown when selected
 	decor: boolean?, -- decoration: no collision, outside the piece budget
 }
 

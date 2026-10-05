@@ -89,7 +89,7 @@ function LiveRaceController.init()
 	})
 	banner = Kit.panel({
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.fromScale(0.5, 0.8), -- above the hotbar, clear of the run timer
+		Position = UDim2.fromScale(0.5, 0.77), -- above the hotbar and piece hint, clear of the run timer
 		Size = UDim2.fromScale(0.5, 0.07),
 		Visible = false,
 		Parent = gui,

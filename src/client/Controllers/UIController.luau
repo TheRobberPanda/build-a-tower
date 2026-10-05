@@ -66,6 +66,7 @@ local buildLayer: Frame
 local runLayer: Frame
 local slots: { [number]: Frame } = {}
 local budgetLabel: TextLabel
+local pieceHint: TextLabel
 local levelLabel: TextLabel
 local bricksLabel: TextLabel
 local xpFill: Frame
@@ -261,6 +262,14 @@ local function buildHotbar()
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 0.86),
 		Size = UDim2.fromScale(0.3, 0.04),
+		Parent = buildLayer,
+	})
+	pieceHint = Kit.label("", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 0.815),
+		Size = UDim2.fromScale(0.4, 0.035),
+		TextColor3 = Theme.TextDim,
+		Font = Theme.BodyFont,
 		Parent = buildLayer,
 	})
 	-- First-time guidance, top centre; hidden once the tower has a Finish.
@@ -1103,6 +1112,11 @@ local function render()
 			count += 1
 		end
 	end
+	local selectedDef = PieceDefs.byId[State.selected]
+	pieceHint.Text = if State.deleting
+		then "Tap a piece to delete it"
+		elseif selectedDef and selectedDef.hint then selectedDef.hint
+		else ""
 	budgetLabel.Text = string.format("Pieces %d/%d", count, State.budget)
 	budgetLabel.TextColor3 = if count >= State.budget then Theme.Danger else Theme.Text
 	levelLabel.Text = string.format("Lv %d", State.level)
