@@ -32,6 +32,19 @@ local TowerService = {}
 local budgetFor: (Player, PlayerData) -> number
 
 local states: { [Player]: TowerCodec.PlaceState } = {}
+-- Undo history per tower owner: most recent last.
+type Action = { kind: "place" | "remove", piece: Types.Piece }
+local history: { [Player]: { Action } } = {}
+local HISTORY_MAX = 30
+
+local function remember(owner: Player, kind: "place" | "remove", piece: Types.Piece)
+	local list = history[owner] or {}
+	history[owner] = list
+	table.insert(list, { kind = kind, piece = piece })
+	if #list > HISTORY_MAX then
+		table.remove(list, 1)
+	end
+end
 local editLocked: { [Player]: boolean } = {} -- set by RunTimerService during runs
 local published: PublishedStore.PublishedStore
 
@@ -144,6 +157,7 @@ local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p
 	TowerCodec.add(state, piece)
 	table.insert(data.tower.pieces, piece)
 	data.verifiedHash = nil -- any edit resets verification
+	remember(owner, "place", piece)
 	pushTower(owner, data)
 	Analytics.step(player, "PlacedPiece")
 end
@@ -170,6 +184,7 @@ local function onRemove(player: Player, x: any, y: any, z: any)
 			TowerCodec.remove(state, piece)
 			table.remove(data.tower.pieces, i)
 			data.verifiedHash = nil
+			remember(owner, "remove", piece)
 			pushTower(owner, data)
 			return
 		end
@@ -475,9 +490,33 @@ local function onSwitchSlot(player: Player, index: any): boolean
 	data.towerName = if target then target.name else "Tower " .. key
 	data.verifiedHash = if target then target.verifiedHash else nil
 	states[player] = TowerCodec.buildState(data.tower, budgetFor(player, data))
+	history[player] = nil -- undo history belongs to the previous slot
 	pushTower(player, data)
 	ProgressionService.refresh(player)
 	return true
+end
+
+-- Reverts the last place/remove on the tower you are editing.
+local function onUndo(player: Player)
+	local owner, data = editable(player)
+	local state = owner and states[owner]
+	local list = owner and history[owner]
+	if not owner or not data or not state or not list or #list == 0 then
+		return
+	end
+	local action = table.remove(list) :: Action
+	if action.kind == "place" then
+		local i = table.find(data.tower.pieces, action.piece)
+		if i then
+			TowerCodec.remove(state, action.piece)
+			table.remove(data.tower.pieces, i)
+		end
+	elseif TowerCodec.canAdd(state, action.piece) then
+		TowerCodec.add(state, action.piece)
+		table.insert(data.tower.pieces, action.piece)
+	end
+	data.verifiedHash = nil
+	pushTower(owner, data)
 end
 
 local function canUseMaterial(player: Player, data: PlayerData, key: string): boolean
@@ -602,6 +641,7 @@ function TowerService.init()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		states[player] = nil
+		history[player] = nil
 		finished[player] = nil
 		buildTarget[player] = nil
 		for helper, owner in buildTarget do
@@ -618,6 +658,7 @@ function TowerService.init()
 
 	Remotes.event("PlacePiece").OnServerEvent:Connect(onPlace)
 	Remotes.event("RemovePiece").OnServerEvent:Connect(onRemove)
+	Remotes.event("Undo").OnServerEvent:Connect(onUndo)
 	Remotes.func("Publish").OnServerInvoke = onPublish
 	Remotes.func("Browse").OnServerInvoke = onBrowse
 	Remotes.func("Leaderboard").OnServerInvoke = onLeaderboard

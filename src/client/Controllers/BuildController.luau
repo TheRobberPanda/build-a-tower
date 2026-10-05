@@ -169,6 +169,8 @@ function BuildController.start()
 				State.set({ selected = piece, deleting = false })
 			elseif input.KeyCode == Enum.KeyCode.R then
 				State.set({ rotation = (State.rotation + 1) % 4 })
+			elseif input.KeyCode == Enum.KeyCode.Z then
+				Remotes.event("Undo"):FireServer()
 			elseif input.KeyCode == Enum.KeyCode.F then
 				BuildController.cycleSetting()
 			elseif input.KeyCode == Enum.KeyCode.X then

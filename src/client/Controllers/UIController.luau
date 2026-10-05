@@ -469,7 +469,7 @@ local function buildTools()
 	): TextButton
 		return Kit.button(text, color, fn, {
 			LayoutOrder = order,
-			Size = UDim2.fromScale(1, 0.18),
+			Size = UDim2.fromScale(1, 0.15),
 			Parent = parent,
 		})
 	end
@@ -480,7 +480,10 @@ local function buildTools()
 	deleteButton = tool(column, 3, "Delete", Theme.PanelLight, function()
 		State.set({ deleting = not State.deleting })
 	end)
-	testButton = tool(column, 4, "Test Run", Theme.Success, function()
+	tool(column, 4, "Undo", Theme.PanelLight, function()
+		Remotes.event("Undo"):FireServer()
+	end)
+	testButton = tool(column, 5, "Test Run", Theme.Success, function()
 		Remotes.event("StartRun"):FireServer(player.UserId)
 	end)
 
@@ -507,7 +510,7 @@ local function buildTools()
 			fn()
 		end)
 	end
-	tool(column, 5, "Menu", Theme.PanelLight, function()
+	tool(column, 6, "Menu", Theme.PanelLight, function()
 		menu.Visible = not menu.Visible
 	end)
 	publishButton = menuItem(1, "Publish", Theme.Primary, function()

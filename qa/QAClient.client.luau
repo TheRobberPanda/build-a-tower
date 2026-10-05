@@ -166,7 +166,7 @@ local originalSlot = 1
 step("profile loaded", function()
 	local ok = waitFor(function()
 		return tower ~= nil
-	end, 20)
+	end, 45) -- a stale session lock can delay the load
 	if progress then
 		originalSlot = progress.activeSlot or 1
 	end
@@ -229,6 +229,31 @@ step("delete a piece", function()
 		return count() == before - 1
 	end, 3)
 end)
+step("undo reverts a place and a delete", function()
+	local before = count()
+	place(1, 6, 0, 2)
+	Remotes.event("Undo"):FireServer()
+	local undidPlace = waitFor(function()
+		return count() == before
+	end, 3)
+	place(1, 6, 0, 2)
+	task.wait(0.2)
+	Remotes.event("RemovePiece"):FireServer(6, 0, 2)
+	waitFor(function()
+		return count() == before
+	end, 3)
+	Remotes.event("Undo"):FireServer()
+	local undidRemove = waitFor(function()
+		return count() == before + 1
+	end, 3)
+	Remotes.event("RemovePiece"):FireServer(6, 0, 2)
+	waitFor(function()
+		return count() == before
+	end, 3)
+	return undidPlace and undidRemove,
+		string.format("place undone=%s remove undone=%s", tostring(undidPlace), tostring(undidRemove))
+end)
+
 step("parts rendered on the plot", function()
 	place(2, 0, 0, 8)
 	task.wait(0.5)

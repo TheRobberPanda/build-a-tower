@@ -38,6 +38,13 @@ while not report and os.clock() - started < 240 do
 	task.wait(1)
 end
 
+-- EndTest stops the server without the normal leave/save path, so save and
+-- release every profile first (otherwise the lock stays and the last save is a
+-- mid-run autosave).
+local ServerScriptService = game:GetService("ServerScriptService")
+local DataService = require(ServerScriptService.Server.Services.DataService) :: any
+DataService.releaseAll()
+
 local result = {
 	client = report or "client report timed out",
 	serverLog = serverLog,

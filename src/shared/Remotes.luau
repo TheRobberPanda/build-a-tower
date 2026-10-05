@@ -9,6 +9,7 @@ local Remotes = {}
 Remotes.Events = table.freeze({
 	"PlacePiece", -- (typeId, x, y, z, r, props?)
 	"RemovePiece", -- (x, y, z)
+	"Undo", -- () revert the last place/remove
 	"StartRun", -- (ownerId) ownerId == own id means a verification run
 	"TowerChanged", -- server -> client (tower, verified)
 	"StopRun", -- () leave the current run

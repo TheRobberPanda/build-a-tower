@@ -73,6 +73,14 @@ local function release(player: Player)
 	end
 end
 
+-- Final save + lock release for everyone, now (shutdown paths that skip
+-- BindToClose, e.g. the Studio QA harness ending a test).
+function DataService.releaseAll()
+	for player in profiles do
+		release(player)
+	end
+end
+
 local function onPlayerAdded(player: Player)
 	local data, err = store:load(player.UserId)
 	if not data then
