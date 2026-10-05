@@ -11,6 +11,8 @@ Remotes.Events = table.freeze({
 	"RemovePiece", -- (x, y, z)
 	"StartRun", -- (ownerId) ownerId == own id means a verification run
 	"TowerChanged", -- server -> client (tower, verified)
+	"StopRun", -- () leave the current run
+	"RunStarted", -- server -> client (ownerId, towerName)
 	"RunResult", -- server -> client (ok, ms, improved)
 })
 

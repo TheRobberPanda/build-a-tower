@@ -84,12 +84,14 @@ local function onStartRun(player: Player, ownerId: any)
 	end
 
 	local hash: string
+	local towerName: string
 	if ownerId == player.UserId then
 		local data = DataService.get(player)
 		if not data or not TowerCodec.validate(data.tower) then
 			return -- needs a finish piece and a valid tower
 		end
 		hash = TowerCodec.hash(data.tower)
+		towerName = data.towerName
 		PlotService.render(player, data.tower.pieces)
 	else
 		local tower = TowerService.getPublished(ownerId)
@@ -97,6 +99,7 @@ local function onStartRun(player: Player, ownerId: any)
 			return
 		end
 		hash = tower.hash
+		towerName = tower.name
 		PlotService.render(player, tower.pieces)
 	end
 
@@ -115,11 +118,31 @@ local function onStartRun(player: Player, ownerId: any)
 		end
 	end
 
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.Died:Once(function()
+			if runs[player] == run then
+				endRun(player)
+				restoreOwnTower(player)
+				Remotes.event("RunResult"):FireClient(player, false, 0, false)
+			end
+		end)
+	end
+
 	local spawn = PlotService.spawnCFrame(player)
 	if spawn then
 		character:PivotTo(spawn)
 	end
 	run.startedAt = os.clock() -- start after the teleport
+	Remotes.event("RunStarted"):FireClient(player, ownerId, towerName)
+end
+
+local function onStopRun(player: Player)
+	if runs[player] and startLimiter:allow(player) then
+		endRun(player)
+		restoreOwnTower(player)
+		Remotes.event("RunResult"):FireClient(player, false, 0, false)
+	end
 end
 
 function RunTimerService.isRunning(player: Player): boolean
@@ -128,6 +151,7 @@ end
 
 function RunTimerService.init()
 	Remotes.event("StartRun").OnServerEvent:Connect(onStartRun)
+	Remotes.event("StopRun").OnServerEvent:Connect(onStopRun)
 	Players.PlayerRemoving:Connect(function(player)
 		endRun(player)
 		startLimiter:forget(player)

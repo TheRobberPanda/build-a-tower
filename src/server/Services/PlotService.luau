@@ -113,6 +113,7 @@ local function onPlayerAdded(player: Player)
 	local model = Instance.new("Model")
 	model.Name = "Plot_" .. player.UserId
 	model:SetAttribute("OwnerId", player.UserId)
+	model:SetAttribute("Origin", origin) -- clients convert world <-> grid with this
 	local base = Instance.new("Part")
 	base.Name = "Base"
 	base.Anchored = true
