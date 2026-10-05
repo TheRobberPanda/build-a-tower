@@ -5,11 +5,12 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 
 ## 1. Finish the game (Oct 5–9)
 - [x] Jump pad power / teleporter channel picker, restart button, unpaired-teleporter warning, personal best on results
-- [ ] First-time hints in build mode (empty plot, no Finish yet)
-- [ ] Lobby feel: lighting, skybox, simple ambient sound (free assets, CREDITS.md)
+- [x] First-time hints in build mode (empty plot, no Finish yet)
+- [x] Lighting: Future, atmosphere, bloom, colour correction (default.project.json)
+- [ ] Ambient sound (free assets, CREDITS.md)
 - [ ] Sounds: place, delete, jump pad, teleport, finish
-- [ ] Max players vs plot spacing: set MaxPlayers (8) and check every plot fits
-- [ ] Browse empty state ("No towers yet, be the first")
+- [ ] **(Paulo)** Server size 8 on the Creator Dashboard (plots are 200 studs apart, 8 fit fine)
+- [x] Browse empty state
 - [ ] **(Paulo)** Playtest checkpoint: one Studio session, ~15 min, I drive and screenshot
 
 ## 2. Private test (Oct 10–14)
