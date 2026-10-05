@@ -95,6 +95,7 @@ local function finish(player: Player, run: Run)
 		-- Only verify if the tower is still exactly the one that was climbed.
 		if data and TowerCodec.hash(data.tower) == run.hash then
 			data.verifiedHash = run.hash
+			data.verifiedMs = ms
 			Analytics.step(player, "Verified")
 			saveReplay(player, run, ms) -- the builder's run, watchable once published
 		end
@@ -159,6 +160,7 @@ local function finish(player: Player, run: Run)
 		foundPct = foundPct,
 		finishes = before.finishes,
 		splits = run.splits,
+		builderMs = (TowerService.getPublished(run.ownerId) or {} :: any).builderMs,
 	}
 	Remotes.event("RunResult"):FireClient(player, true, ms, improved, nil, previous, canLike, info)
 	restoreOwnTower(player)

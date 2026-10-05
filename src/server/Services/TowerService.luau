@@ -212,7 +212,7 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	if not okFilter then
 		return false, "filter unavailable"
 	end
-	local ok, result = published:publish(player.UserId, filtered, data.tower, data.material)
+	local ok, result = published:publish(player.UserId, filtered, data.tower, data.material, data.verifiedMs)
 	if not ok then
 		return false, result
 	end
@@ -292,6 +292,7 @@ local function card(tower: PublishedTower): { [string]: any }
 		pieces = #tower.pieces,
 		height = towerHeight(tower),
 		secrets = secretCount(tower),
+		builderMs = tower.builderMs,
 		difficulty = TowerStats.difficulty(st.starts, st.finishes),
 		likes = st.likes,
 		finishes = st.finishes,
@@ -481,6 +482,7 @@ local function onSwitchSlot(player: Player, index: any): boolean
 		tower = data.tower,
 		name = data.towerName,
 		verifiedHash = data.verifiedHash,
+		verifiedMs = data.verifiedMs,
 	}
 	local key = tostring(index)
 	local target = data.slots[key]
@@ -489,6 +491,7 @@ local function onSwitchSlot(player: Player, index: any): boolean
 	data.tower = if target then target.tower else TowerCodec.empty()
 	data.towerName = if target then target.name else "Tower " .. key
 	data.verifiedHash = if target then target.verifiedHash else nil
+	data.verifiedMs = if target then target.verifiedMs else nil
 	states[player] = TowerCodec.buildState(data.tower, budgetFor(player, data))
 	history[player] = nil -- undo history belongs to the previous slot
 	pushTower(player, data)

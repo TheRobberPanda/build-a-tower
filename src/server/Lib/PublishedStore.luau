@@ -62,7 +62,8 @@ function PublishedStore.publish(
 	ownerId: number,
 	name: string,
 	tower: Tower,
-	mat: string?
+	mat: string?,
+	builderMs: number?
 ): (boolean, string?)
 	local ok, err = TowerCodec.validate(tower)
 	if not ok then
@@ -76,6 +77,7 @@ function PublishedStore.publish(
 		pieces = tower.pieces,
 		publishedAt = self._deps.now(),
 		mat = mat,
+		builderMs = builderMs,
 	}
 	local deps = self._deps
 	local key = tostring(ownerId)
@@ -171,6 +173,7 @@ function PublishedStore.get(self: PublishedStore, ownerId: number): PublishedTow
 		pieces = tower.pieces,
 		publishedAt = if type(raw.publishedAt) == "number" then raw.publishedAt else 0,
 		mat = if type(raw.mat) == "string" and Cosmetics.byKey[raw.mat] then raw.mat else nil,
+		builderMs = if type(raw.builderMs) == "number" and raw.builderMs > 0 then raw.builderMs else nil,
 	}
 end
 

@@ -112,6 +112,9 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 	local hash = TowerCodec.hash(tower)
 	if raw.verifiedHash == hash then
 		data.verifiedHash = hash
+		if type(raw.verifiedMs) == "number" and raw.verifiedMs >= Config.MIN_RUN_MS then
+			data.verifiedMs = math.floor(raw.verifiedMs)
+		end
 	end
 	if type(raw.publishedHash) == "string" then
 		data.publishedHash = raw.publishedHash
@@ -147,6 +150,10 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 						then slot.name
 						else "Tower " .. key,
 					verifiedHash = if slot.verifiedHash == slotHash then slotHash else nil,
+					verifiedMs = if slot.verifiedHash == slotHash
+							and type(slot.verifiedMs) == "number"
+						then slot.verifiedMs
+						else nil,
 				}
 				dropped += slotDropped
 			end

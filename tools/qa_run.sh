@@ -2,10 +2,10 @@
 # Runs the QA playtest end to end and prints the report.
 S="$(dirname "$0")"
 sleep 2
-$S/mcp_call.sh execute_luau '{"code":"game.ServerStorage:SetAttribute(\"RunQA\", true)"}' >/dev/null
-$S/mcp_call.sh start_playtest '{"mode":"play"}'
-for i in $(seq 1 60); do r=$($S/mcp_call.sh get_playtest_output '{}'); echo "$r" | grep -q '"isRunning":false' && break; sleep 5; done
-$S/mcp_call.sh execute_luau '{"code":"game.ServerStorage:SetAttribute(\"RunQA\", nil)"}' >/dev/null
+"$S/mcp_call.sh" execute_luau '{"code":"game.ServerStorage:SetAttribute(\"RunQA\", true)"}' >/dev/null
+"$S/mcp_call.sh" start_playtest '{"mode":"play"}'
+for i in $(seq 1 60); do r=$("$S/mcp_call.sh" get_playtest_output '{}'); echo "$r" | grep -q '"isRunning":false' && break; sleep 5; done
+"$S/mcp_call.sh" execute_luau '{"code":"game.ServerStorage:SetAttribute(\"RunQA\", nil)"}' >/dev/null
 echo "$r" > /tmp/bat_qa.json
 python3 - <<PY
 import json
@@ -20,4 +20,4 @@ else:
   print('client log:'); [print('  ',l) for l in c['clientLog']]
 print('server log:'); [print('  ',l) for l in t['serverLog']]
 PY
-$S/mcp_call.sh execute_luau '{"code":"local v = game:GetService(\"DataStoreService\"):GetDataStore(\"Players_v1\"):GetAsync(\"u_757790113\")\nreturn \"saved data after QA: active=\" .. v.data.activeSlot .. \" tower=\" .. #v.data.tower.pieces .. \" lock=\" .. tostring(v.lock)"}'
+"$S/mcp_call.sh" execute_luau '{"code":"local v = game:GetService(\"DataStoreService\"):GetDataStore(\"Players_v1\"):GetAsync(\"u_757790113\")\nreturn \"saved data after QA: active=\" .. v.data.activeSlot .. \" tower=\" .. #v.data.tower.pieces .. \" lock=\" .. tostring(v.lock)"}'

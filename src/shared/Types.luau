@@ -25,13 +25,14 @@ export type Tower = {
 	pieces: { Piece },
 }
 
-export type SavedSlot = { tower: Tower, name: string, verifiedHash: string? }
+export type SavedSlot = { tower: Tower, name: string, verifiedHash: string?, verifiedMs: number? }
 
 -- Everything persisted per player (inside the session-locked record).
 export type PlayerData = {
 	tower: Tower,
 	towerName: string,
 	verifiedHash: string?, -- hash of the tower version the builder completed
+	verifiedMs: number?, -- the builder's time on that run (meaningful only with verifiedHash)
 	publishedHash: string?,
 	liked: { [string]: string }, -- ownerId -> tower hash liked (one like per version)
 	likedOrder: { string }, -- oldest first, capped at Config.LIKED_MAX
@@ -57,6 +58,7 @@ export type PublishedTower = {
 	pieces: { Piece },
 	publishedAt: number,
 	mat: string?, -- Cosmetics material key
+	builderMs: number?, -- the builder's verification time
 }
 
 return nil

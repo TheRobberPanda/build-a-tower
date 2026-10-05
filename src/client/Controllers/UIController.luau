@@ -928,9 +928,12 @@ function UIController.openBrowse(query: string?)
 			task.spawn(function()
 				info.Text = string.format("by %s · %s", userName(owner), stats)
 				local best, bestBy = tonumber(entry.best), tonumber(entry.bestBy)
-				record.Text = if best and bestBy
-					then string.format("Record %s by %s", Kit.formatMs(best), userName(bestBy))
-					else "No record yet"
+				local builderMs = tonumber(entry.builderMs)
+				record.Text = (
+					if best and bestBy
+						then string.format("Record %s by %s", Kit.formatMs(best), userName(bestBy))
+						else "No record yet"
+				) .. (if builderMs then " · Builder " .. Kit.formatMs(builderMs) else "")
 			end)
 			Kit.button("Times", Theme.Accent, function()
 				UIController.openLeaderboard(owner)
@@ -1093,6 +1096,13 @@ function UIController.raceHint(ms: number, info: { [string]: any }): string
 		return string.format("You found %s! Only %d%% of racers do.", SECRET_NAMES[rarest], rarestPct)
 	elseif rarest then
 		return string.format("You found %s!", SECRET_NAMES[rarest])
+	end
+	local builderMs = tonumber(info.builderMs)
+	if builderMs then
+		local diff = (ms - builderMs) / 1000
+		return if diff <= 0
+			then string.format("You beat the builder by %.1fs!", -diff)
+			else string.format("%.1fs behind the builder", diff)
 	end
 	local average = tonumber(info.average)
 	if average then
