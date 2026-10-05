@@ -453,7 +453,11 @@ end
 -- Switch to another tower slot. The current tower is kept as it is (including
 -- its verification) and the target slot becomes the editable tower.
 local function onSwitchSlot(player: Player, index: any): boolean
-	local data = editable(player)
+	-- Only your own towers: no slot switching while helping someone else build.
+	local owner, data = editable(player)
+	if owner ~= player then
+		return false
+	end
 	local slots = Progression.slots(MonetizationService.hasPass(player, "BuilderPass"))
 	if not data or not isInt(index, 1, slots) or index == data.activeSlot then
 		return false

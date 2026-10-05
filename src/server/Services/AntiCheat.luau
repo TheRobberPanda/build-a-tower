@@ -85,7 +85,8 @@ function AntiCheat.init()
 			for player, w in watched do
 				local root = rootOf(player)
 				local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-				if not root or not humanoid then
+				if not root or not humanoid or humanoid.Health <= 0 then
+					w.last = nil -- dead bodies ragdoll; resume from the respawn
 					continue
 				end
 				local pos = root.Position

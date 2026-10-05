@@ -24,6 +24,9 @@
       "StarterPlayerScripts": {
         "Client": {
           "$path": "src/client"
+        },
+        "QAClient": {
+          "$path": "qa/QAClient.client.luau"
         }
       }
     },
