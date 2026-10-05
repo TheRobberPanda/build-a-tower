@@ -106,11 +106,12 @@ local Config = {
 
 	-- Monetization (Creator Dashboard ids; 0 = not created yet, hidden in the shop)
 	GAME_PASSES = table.freeze({
-		BuilderPass = 0, -- +budget, +2 tower slots, exclusive materials
-		VIP = 0, -- plot themes
+		BuilderPass = 2006811632, -- +budget, +2 tower slots, exclusive materials (199 R$)
+		VIP = 2005953617, -- plot themes (149 R$)
 	}),
 	BRICK_PRODUCTS = table.freeze({ -- dev product id -> Bricks granted
-		-- [123456] = 500,
+		[3716745154] = 500, -- 49 R$
+		[3716745157] = 1500, -- 129 R$
 	}),
 	RECEIPTS_KEPT = 50, -- recent purchase ids remembered per player (dedupe)
 

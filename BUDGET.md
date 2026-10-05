@@ -9,5 +9,6 @@ Rule: paid calls pre-approved by Paulo (2026-10-05); log every charge, never exc
 | 2026-10-05 | Piece icon sprite sheet (1 image, 8 icons) → assets/ui/piece_icons.png | google/gemini-3.1-flash-image | $0.07 |
 | 2026-10-05 | Store icon variant A (tower) → marketing/raw/icon_a.png | google/gemini-3.1-flash-image | $0.07 |
 | 2026-10-05 | Store icon variant B (secret wall) → marketing/raw/icon_b.png | google/gemini-3.1-flash-image | $0.07 |
+| 2026-10-05 | Game pass + Bricks icons (3) → marketing/raw/pass_*.png, bricks.png | google/gemini-3.1-flash-image | $0.20 |
 
-**Spent: $0.25 · Remaining: $9.75**
+**Spent: $0.45 · Remaining: $9.55**
