@@ -44,6 +44,11 @@ local COLORS: { [string]: Color3 } = {
 	FakeWall = Color3.fromRGB(163, 162, 165), -- looks like a Block on purpose
 	InvisiblePlatform = Color3.fromRGB(255, 255, 255),
 	Finish = Color3.fromRGB(0, 200, 90),
+	Crumble = Color3.fromRGB(181, 140, 90),
+	Conveyor = Color3.fromRGB(60, 60, 70),
+	OneWay = Color3.fromRGB(163, 162, 165), -- looks like a wall
+	Button = Color3.fromRGB(230, 60, 60),
+	Door = Color3.fromRGB(150, 100, 60),
 }
 
 local TELEPORTER_COLORS: { Color3 } = {
@@ -90,7 +95,36 @@ local function makePart(piece: Piece, origin: Vector3): BasePart
 		part.Size = Vector3.new(part.Size.X, part.Size.Y * (0.25 + 0.15 * power), part.Size.Z) -- taller = stronger
 		part.Position -= Vector3.new(0, (Config.GRID_STUDS - part.Size.Y) / 2, 0)
 	end
-	if def.name == "JumpPad" or def.name == "Teleporter" then
+	if def.name == "Crumble" then
+		part.Material = Enum.Material.Slate
+	elseif def.name == "Conveyor" then
+		part.Material = Enum.Material.DiamondPlate
+		-- Anchored parts with velocity carry whatever stands on them. Direction follows rotation.
+		local dir = CFrame.Angles(0, piece.r * math.pi / 2, 0).LookVector
+		part.AssemblyLinearVelocity = dir * Config.CONVEYOR_SPEED
+		part:SetAttribute("Dir", dir)
+	elseif def.name == "OneWay" then
+		part:SetAttribute("Dir", CFrame.Angles(0, piece.r * math.pi / 2, 0).LookVector) -- direction you may pass
+	elseif def.name == "Button" then
+		part.Size = Vector3.new(part.Size.X * 0.6, part.Size.Y * 0.3, part.Size.Z * 0.6)
+		part.Position -= Vector3.new(0, (Config.GRID_STUDS - part.Size.Y) / 2, 0)
+		part.Material = Enum.Material.Neon
+	elseif def.name == "Door" then
+		part.Material = Enum.Material.WoodPlanks
+	end
+	if def.name == "Button" or def.name == "Door" then
+		local ch = piece.p and piece.p.ch or 1
+		part.Color = TELEPORTER_COLORS[ch] or part.Color -- button and its doors share a colour
+	end
+	if
+		def.name == "JumpPad"
+		or def.name == "Teleporter"
+		or def.name == "FakeWall"
+		or def.name == "InvisiblePlatform"
+		or def.name == "Crumble"
+		or def.name == "OneWay"
+		or def.name == "Button"
+	then
 		CollectionService:AddTag(part, def.name) -- MechanicsService / client controller pick these up
 	end
 	return part

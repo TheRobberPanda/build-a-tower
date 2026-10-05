@@ -35,6 +35,10 @@ local Config = {
 	-- Mechanics (shared so client launch and server allowance match)
 	JUMP_PAD_SPEED = table.freeze({ 70, 95, 120 }), -- by power 1..3, studs/s upward
 	TELEPORT_COOLDOWN = 1.5,
+	CONVEYOR_SPEED = 12, -- studs/s; walk 16 + 12 stays under the AntiCheat horizontal limit
+	CRUMBLE_DELAY = 0.6,
+	CRUMBLE_RESPAWN = 3,
+	DOOR_OPEN_SECONDS = 6,
 
 	-- AntiCheat (only checked during runs)
 	AC_SAMPLE_SECONDS = 0.2,
@@ -45,6 +49,27 @@ local Config = {
 	AC_FLAGS_TO_FAIL = 3,
 	AC_HOVER_SECONDS = 1.2, -- airborne without descending for longer than this = hover
 	AC_FLAG_DECAY_SECONDS = 10, -- one flag forgiven per this many clean seconds (lag spikes)
+
+	-- Badge asset ids from the Creator Dashboard; 0 = not created yet.
+	BADGES = table.freeze({
+		FirstPublish = 0,
+		FirstRace = 0,
+		WallWalker = 0, -- went through a fake wall in a race
+		GhostStep = 0, -- stood on an invisible platform
+		PortalHopper = 0, -- used a teleporter
+		Launched = 0, -- used a jump pad
+		Doorman = 0, -- opened a door with a button
+		SecretHunter = 0, -- 10 secrets found in total
+		RecordHolder = 0, -- best time on any tower
+	}),
+	SECRET_BADGES = table.freeze({
+		FakeWall = "WallWalker",
+		InvisiblePlatform = "GhostStep",
+		Teleporter = "PortalHopper",
+		JumpPad = "Launched",
+		Button = "Doorman",
+	}),
+	SECRET_HUNTER_COUNT = 10,
 
 	-- Runs
 	MAX_RUN_MS = 60 * 60 * 1000,

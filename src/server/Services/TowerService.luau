@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -14,6 +15,7 @@ local PublishedStore = require(script.Parent.Parent.Lib.PublishedStore)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
 local TowerStats = require(script.Parent.Parent.Lib.TowerStats)
 local Analytics = require(script.Parent.Analytics)
+local Badges = require(script.Parent.Badges)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
 
@@ -162,6 +164,7 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	towerCache[player.UserId] = nil
 	table.clear(browseCache)
 	Analytics.step(player, "Published")
+	Badges.award(player, "FirstPublish")
 	return true, nil
 end
 
@@ -176,6 +179,26 @@ local function towerHeight(tower: PublishedTower): number
 	return top
 end
 
+local SECRET_PIECES: { [string]: boolean } = {
+	FakeWall = true,
+	InvisiblePlatform = true,
+	Teleporter = true,
+	OneWay = true,
+	Button = true,
+}
+
+-- Number of secret pieces (shown as "N secrets hidden", never where).
+local function secretCount(tower: PublishedTower): number
+	local n = 0
+	for _, piece in tower.pieces do
+		local def = PieceDefs.byId[piece.t]
+		if def and SECRET_PIECES[def.name] then
+			n += 1
+		end
+	end
+	return n
+end
+
 -- Card data shown in browse lists.
 local function card(tower: PublishedTower): { [string]: any }
 	local st = stats:get(tower.owner, tower.hash)
@@ -184,6 +207,7 @@ local function card(tower: PublishedTower): { [string]: any }
 		name = tower.name,
 		pieces = #tower.pieces,
 		height = towerHeight(tower),
+		secrets = secretCount(tower),
 		difficulty = TowerStats.difficulty(st.starts, st.finishes),
 		likes = st.likes,
 		finishes = st.finishes,
@@ -300,12 +324,22 @@ function TowerService.recordStart(ownerId: number, hash: string)
 	stats:addStart(ownerId, hash)
 end
 
-function TowerService.recordFinish(player: Player, ownerId: number, hash: string, ms: number)
-	stats:addFinish(ownerId, hash, player.UserId, ms)
+function TowerService.recordFinish(
+	player: Player,
+	ownerId: number,
+	hash: string,
+	ms: number,
+	used: { string }
+)
+	stats:addFinish(ownerId, hash, player.UserId, ms, used)
 	local done = finished[player]
 	if done then
 		done[ownerId] = hash
 	end
+end
+
+function TowerService.stats(ownerId: number, hash: string): TowerStats.Stats
+	return stats:get(ownerId, hash)
 end
 
 function TowerService.hasLiked(player: Player, ownerId: number, hash: string): boolean
@@ -313,7 +347,7 @@ function TowerService.hasLiked(player: Player, ownerId: number, hash: string): b
 	return data ~= nil and data.liked[tostring(ownerId)] == hash
 end
 
-local function onLeaderboard(player: Player, ownerId: any): { any }
+local function onLeaderboard(player: Player, ownerId: any): ({ any }, { [string]: any }?)
 	if not queryLimiter:allow(player) or not isInt(ownerId, 1, 2 ^ 53) then
 		return {}
 	end
@@ -325,7 +359,22 @@ local function onLeaderboard(player: Player, ownerId: any): { any }
 	for _, e in published:topTimes(ownerId, tower.hash, 10) or {} do
 		table.insert(out, { userId = tonumber(e.key), ms = e.value })
 	end
-	return out
+	local st = stats:get(ownerId, tower.hash)
+	local summary: { [string]: any } = {
+		difficulty = TowerStats.difficulty(st.starts, st.finishes),
+		starts = st.starts,
+		finishes = st.finishes,
+		average = TowerStats.averageMs(st),
+	}
+	if ownerId == player.UserId then
+		-- Only the builder learns which of their secrets racers find.
+		local found = {}
+		for kind, n in st.found do
+			found[kind] = math.floor(n / math.max(st.finishes, 1) * 100 + 0.5)
+		end
+		summary.found = found
+	end
+	return out, summary
 end
 
 local function onReport(player: Player, ownerId: any): boolean

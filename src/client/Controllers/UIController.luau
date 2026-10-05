@@ -28,12 +28,26 @@ local PIECE_COLORS: { [string]: Color3 } = {
 	FakeWall = Color3.fromRGB(120, 120, 128),
 	InvisiblePlatform = Color3.fromRGB(220, 240, 255),
 	Finish = Color3.fromRGB(0, 200, 90),
+	Crumble = Color3.fromRGB(181, 140, 90),
+	Conveyor = Color3.fromRGB(60, 60, 70),
+	OneWay = Color3.fromRGB(140, 200, 255),
+	Button = Color3.fromRGB(230, 60, 60),
+	Door = Color3.fromRGB(150, 100, 60),
 }
 local SHORT_NAMES: { [string]: string } = {
 	InvisiblePlatform = "Invisible",
 	FakeWall = "Fake Wall",
 	JumpPad = "Jump Pad",
 	Teleporter = "Teleport",
+	OneWay = "One Way",
+}
+
+local SECRET_NAMES: { [string]: string } = {
+	FakeWall = "a fake wall",
+	InvisiblePlatform = "an invisible platform",
+	Teleporter = "a teleporter",
+	JumpPad = "a jump pad",
+	Button = "a hidden door",
 }
 
 local gui: ScreenGui
@@ -163,7 +177,7 @@ local function buildHotbar()
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 0.985),
-		Size = UDim2.fromScale(0.5, 0.11),
+		Size = UDim2.fromScale(0.8, 0.11),
 		Parent = buildLayer,
 	})
 	Kit.new("UIListLayout", {
@@ -177,7 +191,7 @@ local function buildHotbar()
 		local slot: TextButton = Kit.new("TextButton", {
 			Name = def.name,
 			LayoutOrder = def.id,
-			Size = UDim2.fromScale(0.115, 1),
+			Size = UDim2.fromScale(1 / 13.5, 1),
 			BackgroundColor3 = Theme.Panel,
 			AutoButtonColor = true,
 			Text = "",
@@ -194,7 +208,7 @@ local function buildHotbar()
 			Size = UDim2.fromScale(0.66, 0.66),
 			Parent = slot,
 		}
-		if Theme.PieceIconSheet ~= "" then
+		if Theme.PieceIconSheet ~= "" and def.id <= Theme.PieceIconCount then
 			local cell = Theme.PieceIconCell
 			local i = def.id - 1
 			tileProps.BackgroundTransparency = 1
@@ -485,6 +499,7 @@ local resultTime: TextLabel
 local resultNote: TextLabel
 local resultTimesButton: TextButton
 local resultLikeButton: TextButton
+local resultHint: TextLabel
 
 local function buildResults()
 	local body = makeModal("Results", "Finished!", 0.5)
@@ -494,6 +509,13 @@ local function buildResults()
 		Size = UDim2.fromScale(1, 0.2),
 		Font = Theme.BodyFont,
 		TextColor3 = Theme.TextDim,
+		Parent = body,
+	})
+	resultHint = Kit.label("", {
+		Position = UDim2.fromScale(0, 0.58),
+		Size = UDim2.fromScale(1, 0.12),
+		Font = Theme.BodyFont,
+		TextColor3 = Theme.Primary,
 		Parent = body,
 	})
 	resultTimesButton = Kit.button("Times", Theme.Accent, function()
@@ -596,11 +618,12 @@ function UIController.openBrowse(query: string?)
 				Parent = r,
 			})
 			local owner = tonumber(entry.owner) or 0
+			local secrets = tonumber(entry.secrets) or 0
 			local stats = string.format(
-				"%d high · %d pieces · %d likes",
+				"%d high · %d likes%s",
 				tonumber(entry.height) or 0,
-				tonumber(entry.pieces) or 0,
-				tonumber(entry.likes) or 0
+				tonumber(entry.likes) or 0,
+				if secrets > 0 then string.format(" · %d secrets hidden", secrets) else ""
 			)
 			info.Text = stats
 			task.spawn(function()
@@ -636,10 +659,42 @@ function UIController.openLeaderboard(ownerId: number)
 	reportButton.Visible = ownerId ~= player.UserId
 	leaderboardTitle.Text = "Loading..."
 	task.spawn(function()
-		local ok, list = pcall(function()
+		local ok, list, summary = pcall(function()
 			return Remotes.func("Leaderboard"):InvokeServer(ownerId)
 		end)
-		leaderboardTitle.Text = userName(ownerId) .. "'s tower"
+		local title = userName(ownerId) .. "'s tower"
+		if ok and type(summary) == "table" then
+			title ..= string.format(
+				" · %s · %d finishes",
+				tostring(summary.difficulty),
+				tonumber(summary.finishes) or 0
+			)
+			if tonumber(summary.average) then
+				title ..= " · avg " .. Kit.formatMs(tonumber(summary.average) :: number)
+			end
+			-- Builder only: how often racers find each kind of secret.
+			if type(summary.found) == "table" then
+				local order = 0
+				for kind, pct in summary.found do
+					order -= 1
+					Kit.label(
+						string.format(
+							"%s found by %d%% of racers",
+							SECRET_NAMES[kind] or kind,
+							tonumber(pct) or 0
+						),
+						{
+							Size = UDim2.new(1, -8, 0, 28),
+							LayoutOrder = order,
+							TextColor3 = Theme.Primary,
+							Font = Theme.BodyFont,
+							Parent = leaderboardList,
+						}
+					)
+				end
+			end
+		end
+		leaderboardTitle.Text = title
 		if not ok or type(list) ~= "table" or #list == 0 then
 			Kit.label("No times yet. Be the first!", {
 				Size = UDim2.new(1, 0, 0, 40),
@@ -686,14 +741,43 @@ local function setResultTitle(text: string)
 	end
 end
 
+-- One line comparing a race to everyone else's: the rarest secret found, else the average.
+function UIController.raceHint(ms: number, info: { [string]: any }): string
+	local finishes = tonumber(info.finishes) or 0
+	local rarest, rarestPct = nil, 101
+	if type(info.used) == "table" and type(info.foundPct) == "table" then
+		for _, kind in info.used do
+			local pct = if finishes > 0 then tonumber(info.foundPct[kind]) or 0 else 0
+			if SECRET_NAMES[kind] and pct < rarestPct then
+				rarest, rarestPct = kind, pct
+			end
+		end
+	end
+	if rarest and finishes >= 5 then
+		return string.format("You found %s! Only %d%% of racers do.", SECRET_NAMES[rarest], rarestPct)
+	elseif rarest then
+		return string.format("You found %s!", SECRET_NAMES[rarest])
+	end
+	local average = tonumber(info.average)
+	if average then
+		local diff = (ms - average) / 1000
+		return if diff <= 0
+			then string.format("%.1fs faster than average", -diff)
+			else string.format("%.1fs slower than average", diff)
+	end
+	return ""
+end
+
 local function showResult(
 	ok: boolean,
 	ms: number,
 	improved: boolean,
 	message: string?,
 	previous: number?,
-	canLike: boolean
+	canLike: boolean,
+	info: { [string]: any }?
 )
+	resultHint.Text = ""
 	if not ok then
 		if message then -- invalid run; a plain quit shows nothing
 			setResultTitle("Not this time")
@@ -719,6 +803,9 @@ local function showResult(
 		else "Not your best this time."
 	resultTimesButton.Visible = not own
 	resultLikeButton.Visible = not own and canLike
+	if info then
+		resultHint.Text = UIController.raceHint(ms, info)
+	end
 	openModal("Results")
 end
 
@@ -829,17 +916,19 @@ function UIController.start()
 		end
 		State.set({ mode = "run", runOwner = ownerId, runName = tostring(name), runStartedAt = os.clock() })
 	end)
-	Remotes.event("RunResult").OnClientEvent:Connect(function(ok, ms, improved, message, previous, canLike)
-		State.set({ mode = "build" })
-		showResult(
-			ok == true,
-			tonumber(ms) or 0,
-			improved == true,
-			if type(message) == "string" then message else nil,
-			if type(previous) == "number" then previous else nil,
-			canLike == true
-		)
-	end)
+	Remotes.event("RunResult").OnClientEvent
+		:Connect(function(ok, ms, improved, message, previous, canLike, info)
+			State.set({ mode = "build" })
+			showResult(
+				ok == true,
+				tonumber(ms) or 0,
+				improved == true,
+				if type(message) == "string" then message else nil,
+				if type(previous) == "number" then previous else nil,
+				canLike == true,
+				if type(info) == "table" then info else nil
+			)
+		end)
 
 	-- Display-only timer; the real time is measured on the server.
 	RunService.Heartbeat:Connect(function()

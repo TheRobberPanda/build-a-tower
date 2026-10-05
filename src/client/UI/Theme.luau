@@ -16,6 +16,7 @@ return table.freeze({
 	-- Empty = fall back to coloured tiles.
 	PieceIconSheet = "rbxassetid://94701657277096", -- decal 129283383469770
 	PieceIconCell = 256,
+	PieceIconCount = 8, -- pieces beyond this use coloured tiles
 
 	Font = Enum.Font.FredokaOne,
 	BodyFont = Enum.Font.BuilderSansBold,

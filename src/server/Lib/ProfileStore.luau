@@ -62,7 +62,13 @@ function ProfileStore.keyFor(userId: number): string
 end
 
 function ProfileStore.defaultData(): PlayerData
-	return { tower = TowerCodec.empty(), towerName = "My Tower", liked = {}, likedOrder = {} }
+	return {
+		tower = TowerCodec.empty(),
+		towerName = "My Tower",
+		liked = {},
+		likedOrder = {},
+		secretsFound = 0,
+	}
 end
 
 local function deepCopy<T>(value: T): T
@@ -98,6 +104,13 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 	end
 	if type(raw.publishedHash) == "string" then
 		data.publishedHash = raw.publishedHash
+	end
+	if
+		type(raw.secretsFound) == "number"
+		and raw.secretsFound == raw.secretsFound
+		and raw.secretsFound >= 0
+	then
+		data.secretsFound = math.floor(math.min(raw.secretsFound, 1e9))
 	end
 	if type(raw.likedOrder) == "table" and type(raw.liked) == "table" then
 		for _, key in raw.likedOrder do

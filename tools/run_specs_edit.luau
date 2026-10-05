@@ -1,6 +1,17 @@
 -- Runs every TestEZ spec in Edit mode with fresh module loads (Studio caches
 -- `require`, so plain require would test stale code). No playtest needed.
 -- Paste into the command bar, or send through the MCP execute_luau tool.
+-- Also compiles every script first (syntax check).
+local bad, n = {}, 0
+for _, root in { game.ServerScriptService, game.StarterPlayer, game.ReplicatedStorage.Shared } do
+	for _, d in root:GetDescendants() do
+		if d:IsA("LuaSourceContainer") then
+			n += 1
+			local fn, err = loadstring(d.Source, d:GetFullName())
+			if not fn then table.insert(bad, err) end
+		end
+	end
+end
 local cache = {}
 local freshRequire
 local function load(module)
@@ -34,5 +45,6 @@ local function walk(node)
 end
 walk(results)
 table.insert(lines, string.format("passed %d failed %d", results.successCount, results.failureCount))
-print(table.concat(lines, "\n"))
-return table.concat(lines, "\n")
+local report = n .. " scripts, compile errors: " .. table.concat(bad, "; ") .. "\n" .. table.concat(lines, "\n")
+print(report)
+return report

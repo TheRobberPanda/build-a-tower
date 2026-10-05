@@ -11,7 +11,7 @@ Each milestone is shippable on its own. Sizes: S ≈ 1 day, M ≈ 2–4 days, L 
 
 ---
 
-## M1. Discovery and difficulty (first month after launch)
+## M1. Discovery and difficulty — DONE (799b550)
 Goal: players find towers worth racing instead of scrolling a raw "newest" list.
 
 | Feature | Size | Notes |
@@ -23,7 +23,7 @@ Goal: players find towers worth racing instead of scrolling a raw "newest" list.
 | Tower card preview | M | Height, piece count, difficulty, best time, record holder. |
 | Play counts | S | Starts and finishes per tower, batched writes. |
 
-## M2. Secrets as a feature (month 2)
+## M2. Secrets as a feature — DONE
 Goal: make secrets the identity of the game.
 
 | Feature | Size | Notes |

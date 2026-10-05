@@ -3,7 +3,8 @@
 -- the Popular / Hardest ranked lists. Counts are batched in memory and flushed
 -- periodically so a busy server costs a few writes a minute, not one per run.
 --
--- stats   (DataStore)        key = ownerId -> { hash, starts, finishes, likes, best?, bestBy? }
+-- stats   (DataStore)        key = ownerId -> { hash, starts, finishes, likes, sumMs, found, best?, bestBy? }
+--                            found = secret kind -> finishes that used it
 --                            Counters reset when the tower version (hash) changes.
 -- popular (OrderedDataStore) key = ownerId -> likes * 5 + finishes
 -- hardest (OrderedDataStore) key = ownerId -> difficulty score (0 = not enough data)
@@ -18,6 +19,8 @@ export type Stats = {
 	starts: number,
 	finishes: number,
 	likes: number,
+	sumMs: number, -- total finish time, for the average
+	found: { [string]: number },
 	best: number?, -- record ms
 	bestBy: number?, -- record holder userId
 }
@@ -31,8 +34,35 @@ export type Deps = {
 	log: ((string) -> ())?,
 }
 
-type Pending =
-	{ hash: string, starts: number, finishes: number, likes: number, best: number?, bestBy: number? }
+type Pending = {
+	hash: string,
+	starts: number,
+	finishes: number,
+	likes: number,
+	sumMs: number,
+	found: { [string]: number },
+	best: number?,
+	bestBy: number?,
+}
+
+local function newPending(hash: string): Pending
+	return { hash = hash, starts = 0, finishes = 0, likes = 0, sumMs = 0, found = {} }
+end
+
+-- Adds b's counts into a (same hash).
+local function merge(a: any, b: Pending)
+	a.starts += b.starts
+	a.finishes += b.finishes
+	a.likes += b.likes
+	a.sumMs += b.sumMs
+	for kind, n in b.found do
+		a.found[kind] = (a.found[kind] or 0) + n
+	end
+	if b.best and (not a.best or b.best < a.best) then
+		a.best = b.best
+		a.bestBy = b.bestBy
+	end
+end
 
 local TowerStats = {}
 TowerStats.__index = TowerStats
@@ -81,6 +111,11 @@ function TowerStats.hardScore(starts: number, finishes: number): number
 	return math.floor((1 - finishes / starts) * 1000) + 1
 end
 
+-- Average finish time in ms, nil without finishes.
+function TowerStats.averageMs(s: Stats): number?
+	return if s.finishes > 0 then math.floor(s.sumMs / s.finishes) else nil
+end
+
 function TowerStats.popularScore(s: Stats): number
 	return s.likes * 5 + s.finishes
 end
@@ -88,7 +123,7 @@ end
 local function pendingFor(self: TowerStats, ownerId: number, hash: string): Pending
 	local p = self._pending[ownerId]
 	if not p or p.hash ~= hash then
-		p = { hash = hash, starts = 0, finishes = 0, likes = 0 }
+		p = newPending(hash)
 		self._pending[ownerId] = p
 	end
 	return p
@@ -99,9 +134,21 @@ function TowerStats.addStart(self: TowerStats, ownerId: number, hash: string)
 	p.starts += 1
 end
 
-function TowerStats.addFinish(self: TowerStats, ownerId: number, hash: string, racerId: number, ms: number)
+-- `used` lists the secret kinds this racer used on the way up.
+function TowerStats.addFinish(
+	self: TowerStats,
+	ownerId: number,
+	hash: string,
+	racerId: number,
+	ms: number,
+	used: { string }?
+)
 	local p = pendingFor(self, ownerId, hash)
 	p.finishes += 1
+	p.sumMs += ms
+	for _, kind in used or {} do
+		p.found[kind] = (p.found[kind] or 0) + 1
+	end
 	if not p.best or ms < p.best then
 		p.best = ms
 		p.bestBy = racerId
@@ -119,16 +166,26 @@ local function clean(raw: any, hash: string): Stats
 		local function n(v: any): number
 			return if type(v) == "number" and v == v and v >= 0 then math.floor(v) else 0
 		end
+		local found: { [string]: number } = {}
+		if type(raw.found) == "table" then
+			for kind, v in raw.found do
+				if type(kind) == "string" and #kind <= 24 then
+					found[kind] = n(v)
+				end
+			end
+		end
 		return {
 			hash = hash,
 			starts = n(raw.starts),
 			finishes = n(raw.finishes),
 			likes = n(raw.likes),
+			sumMs = n(raw.sumMs),
+			found = found,
 			best = if type(raw.best) == "number" then raw.best else nil,
 			bestBy = if type(raw.bestBy) == "number" then raw.bestBy else nil,
 		}
 	end
-	return { hash = hash, starts = 0, finishes = 0, likes = 0 }
+	return { hash = hash, starts = 0, finishes = 0, likes = 0, sumMs = 0, found = {} }
 end
 
 -- Writes all pending counters. Failed towers stay pending for the next flush.
@@ -142,13 +199,7 @@ function TowerStats.flush(self: TowerStats)
 		local ok = Retry.call(self._retry, function()
 			return deps.stats:UpdateAsync(key, function(old: any)
 				local s = clean(old, p.hash)
-				s.starts += p.starts
-				s.finishes += p.finishes
-				s.likes += p.likes
-				if p.best and (not s.best or p.best < s.best) then
-					s.best = p.best
-					s.bestBy = p.bestBy
-				end
+				merge(s, p)
 				result = s
 				return s
 			end)
@@ -158,14 +209,8 @@ function TowerStats.flush(self: TowerStats)
 			-- Merge back so nothing is lost (newer pending for the same hash adds up).
 			local cur = self._pending[ownerId]
 			if not cur or cur.hash == p.hash then
-				local merged = cur or { hash = p.hash, starts = 0, finishes = 0, likes = 0 }
-				merged.starts += p.starts
-				merged.finishes += p.finishes
-				merged.likes += p.likes
-				if p.best and (not merged.best or p.best < merged.best) then
-					merged.best = p.best
-					merged.bestBy = p.bestBy
-				end
+				local merged = cur or newPending(p.hash)
+				merge(merged, p)
 				self._pending[ownerId] = merged
 			end
 			continue

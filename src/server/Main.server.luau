@@ -9,6 +9,7 @@ local Services = script.Parent.Services
 for _, name in
 	{
 		"Analytics",
+		"Badges",
 		"PlotService",
 		"DataService",
 		"TowerService",

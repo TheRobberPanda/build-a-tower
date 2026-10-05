@@ -31,6 +31,7 @@ export type PlayerData = {
 	publishedHash: string?,
 	liked: { [string]: string }, -- ownerId -> tower hash liked (one like per version)
 	likedOrder: { string }, -- oldest first, capped at Config.LIKED_MAX
+	secretsFound: number, -- secret kinds used per finished race, summed
 }
 
 export type PublishedTower = {

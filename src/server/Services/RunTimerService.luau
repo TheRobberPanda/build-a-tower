@@ -13,13 +13,21 @@ local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
 local Analytics = require(script.Parent.Analytics)
 local AntiCheat = require(script.Parent.AntiCheat)
+local Badges = require(script.Parent.Badges)
+local MechanicsService = require(script.Parent.MechanicsService)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
 local TowerService = require(script.Parent.TowerService)
 
 local RunTimerService = {}
 
-type Run = { ownerId: number, hash: string, startedAt: number, conn: RBXScriptConnection? }
+type Run = {
+	ownerId: number,
+	hash: string,
+	startedAt: number,
+	conn: RBXScriptConnection?,
+	used: { [string]: boolean }, -- secret kinds used this run
+}
 local runs: { [Player]: Run } = {}
 local startLimiter = RateLimiter.new(2, 1 / 3)
 
@@ -59,11 +67,43 @@ local function finish(player: Player, run: Run)
 			:FireClient(player, data and data.tower, data and data.verifiedHash ~= nil)
 	else
 		Analytics.event(player, "RaceFinished", ms / 1000)
-		TowerService.recordFinish(player, run.ownerId, run.hash, ms)
+		local usedList: { string } = {}
+		for kind in run.used do
+			table.insert(usedList, kind)
+			local badge = Config.SECRET_BADGES[kind]
+			if badge then
+				Badges.award(player, badge)
+			end
+		end
+		Badges.award(player, "FirstRace")
+		local data = DataService.get(player)
+		if data then
+			data.secretsFound += #usedList
+			if data.secretsFound >= Config.SECRET_HUNTER_COUNT then
+				Badges.award(player, "SecretHunter")
+			end
+		end
+		-- Compare against stats before this finish is counted.
+		local before = TowerService.stats(run.ownerId, run.hash)
+		if not before.best or ms < before.best then
+			Badges.award(player, "RecordHolder")
+		end
+		TowerService.recordFinish(player, run.ownerId, run.hash, ms, usedList)
 		local improved, previous = TowerService.published()
 			:submitTime(run.ownerId, run.hash, player.UserId, ms)
 		local canLike = not TowerService.hasLiked(player, run.ownerId, run.hash)
-		Remotes.event("RunResult"):FireClient(player, true, ms, improved, nil, previous, canLike)
+		-- How the racer compares: average time and how often each secret is found.
+		local foundPct: { [string]: number } = {}
+		for kind, n in before.found do
+			foundPct[kind] = math.floor(n / math.max(before.finishes, 1) * 100 + 0.5)
+		end
+		local info = {
+			average = if before.finishes > 0 then math.floor(before.sumMs / before.finishes) else nil,
+			used = usedList,
+			foundPct = foundPct,
+			finishes = before.finishes,
+		}
+		Remotes.event("RunResult"):FireClient(player, true, ms, improved, nil, previous, canLike, info)
 		restoreOwnTower(player)
 	end
 end
@@ -117,7 +157,7 @@ local function onStartRun(player: Player, ownerId: any)
 		PlotService.render(player, tower.pieces)
 	end
 
-	local run: Run = { ownerId = ownerId, hash = hash, startedAt = os.clock() }
+	local run: Run = { ownerId = ownerId, hash = hash, startedAt = os.clock(), used = {} }
 	runs[player] = run
 	TowerService.setEditLocked(player, true)
 
@@ -180,6 +220,12 @@ end
 function RunTimerService.init()
 	Remotes.event("StartRun").OnServerEvent:Connect(onStartRun)
 	Remotes.event("StopRun").OnServerEvent:Connect(onStopRun)
+	MechanicsService.SecretUsed:Connect(function(player: Player, kind: string)
+		local run = runs[player]
+		if run then
+			run.used[kind] = true
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		endRun(player)
 		startLimiter:forget(player)

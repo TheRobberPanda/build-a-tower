@@ -128,6 +128,8 @@ local KEY_TO_PIECE: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Six] = 6,
 	[Enum.KeyCode.Seven] = 7,
 	[Enum.KeyCode.Eight] = 8,
+	[Enum.KeyCode.Nine] = 9,
+	[Enum.KeyCode.Zero] = 10,
 }
 
 -- Steps the selected piece's setting (jump pad power, teleporter channel).

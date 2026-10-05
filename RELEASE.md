@@ -32,6 +32,8 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 - [ ] **(Paulo)** Maturity questionnaire, set public settings, devices: phone/tablet/PC/console off
 - [ ] **(Paulo)** Build and publish 3–5 seed towers so browse isn't empty
 
+- [ ] **(Paulo)** Create badges on the Creator Dashboard and paste their ids into `Config.BADGES`: FirstPublish, FirstRace, WallWalker, GhostStep, PortalHopper, Launched, Doorman, SecretHunter, RecordHolder
+
 ## 4. Soft launch (Oct 19–20)
 - [ ] **(Paulo)** Make public, share with friends only
 - [ ] Watch Creator Dashboard error reports and DataStore errors; hotfix

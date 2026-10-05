@@ -34,7 +34,43 @@ local function onJumpPad(part: BasePart)
 	end)
 end
 
+-- One-way walls: you may pass along Dir only. Character physics runs on the
+-- client, so a local CanCollide change is all it takes.
+local oneWays: { [BasePart]: boolean } = {}
+
+local function updateOneWays()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return
+	end
+	for part in oneWays do
+		if not part.Parent then
+			oneWays[part] = nil
+			continue
+		end
+		local dir = part:GetAttribute("Dir")
+		if typeof(dir) == "Vector3" then
+			-- Passable from behind (entry side) and while inside; solid once you are
+			-- fully on the exit side, so nobody can come back the other way.
+			local along = (root.Position - part.Position):Dot(dir)
+			part.CanCollide = along > Config.GRID_STUDS / 2
+		end
+	end
+end
+
 function MechanicsController.start()
+	local function addOneWay(inst: Instance)
+		if inst:IsA("BasePart") then
+			oneWays[inst] = true
+		end
+	end
+	for _, inst in CollectionService:GetTagged("OneWay") do
+		addOneWay(inst)
+	end
+	CollectionService:GetInstanceAddedSignal("OneWay"):Connect(addOneWay)
+	game:GetService("RunService").Heartbeat:Connect(updateOneWays)
+
 	for _, part in CollectionService:GetTagged("JumpPad") do
 		if part:IsA("BasePart") then
 			onJumpPad(part)
