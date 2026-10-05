@@ -8,3 +8,4 @@
 | SFX: JumpPad (phaseJump1), Teleport (zapThreeToneUp) | Kenney "Digital Audio" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 121431627776116 / 130698977470767 |
 | SFX: Finish (jingles_STEEL07) | Kenney "Music Jingles" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 86004459095908 |
 | Ambient: "Aroma calm ritual" (Ambient Flow Sounds) | Creator Store, DistrokidOfficial (verified) | Roblox licensed, free | Sounds.luau, Roblox audio 140662085604483 |
+| Store icons A and B | Generated (google/gemini-3.1-flash-image via OpenRouter) | Generated for this project | marketing/final/icon_a_512.png, icon_b_512.png |

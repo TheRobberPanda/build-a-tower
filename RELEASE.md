@@ -26,7 +26,8 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 - [ ] Fix everything found
 
 ## 3. Store page (Oct 15–18)
-- [ ] Icon (512) and 3 thumbnails (1920x1080), within BUDGET.md
+- [x] Icon: 2 variants in marketing/final (A tower, B secret wall) for A/B
+- [ ] 3 thumbnails from in-game captures (tools/stage_thumbnail.luau + tools/compose_thumbnail.py), needs a Studio session
 - [ ] Title, description, genre (Obby), tags
 - [ ] **(Paulo)** Maturity questionnaire, set public settings, devices: phone/tablet/PC/console off
 - [ ] **(Paulo)** Build and publish 3–5 seed towers so browse isn't empty
