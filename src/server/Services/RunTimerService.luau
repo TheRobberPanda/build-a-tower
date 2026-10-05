@@ -132,8 +132,7 @@ local function onStartRun(player: Player, ownerId: any)
 			if runs[player] == run then
 				endRun(player)
 				restoreOwnTower(player)
-				Remotes.event("RunResult")
-					:FireClient(player, false, 0, false, "You died. Restart to try again")
+				Remotes.event("RunResult"):FireClient(player, false, 0, false, "You died, run over")
 			end
 		end)
 	end
