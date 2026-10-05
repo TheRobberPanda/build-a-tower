@@ -54,7 +54,7 @@ Goal: reasons to keep building.
 | Multiple tower slots | M | Keep 3 towers, publish one at a time per slot. Data schema v2 with migration. |
 | Decorations | M | Non-collidable props (plants, lights, signs) that don't count toward the budget. Signs are text-filtered. |
 
-## M5. Social and live play (month 4–5)
+## M5. Social and live play — DONE
 | Feature | Size | Notes |
 |---|---|---|
 | Visit plot | S | Teleport to anyone's plot in the server and watch them build. |

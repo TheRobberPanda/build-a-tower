@@ -65,6 +65,7 @@ local Config = {
 		Doorman = 0, -- opened a door with a button
 		SecretHunter = 0, -- 10 secrets found in total
 		RecordHolder = 0, -- best time on any tower
+		FeaturedPodium = 0, -- top 3 on the weekly featured tower
 	}),
 	SECRET_BADGES = table.freeze({
 		FakeWall = "WallWalker",
@@ -89,6 +90,8 @@ local Config = {
 	LIVE_RACE_LOBBY_SECONDS = 20,
 	LIVE_RACE_MAX = 8,
 	FEATURED_PREFIX = "Featured_v1_w", -- + week number: weekly likes per tower
+	FEATURED_SETTLE_STORE = "FeaturedSettled_v1", -- week -> settled flag (prizes given once)
+	FEATURED_PODIUM_BRICKS = 200,
 
 	-- Replays
 	REPLAYS_STORE = "Replays_v1",

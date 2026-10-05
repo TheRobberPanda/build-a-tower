@@ -18,6 +18,8 @@ for _, name in
 		"AntiCheat",
 		"MechanicsService",
 		"RunTimerService",
+		"LiveRaceService",
+		"FeaturedService",
 	}
 do
 	(require(Services:FindFirstChild(name) :: ModuleScript) :: any).init()

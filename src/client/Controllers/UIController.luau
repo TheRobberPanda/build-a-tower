@@ -16,6 +16,7 @@ local BuildController = require(script.Parent.BuildController)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local GhostController = require(script.Parent.GhostController)
 local SocialController = require(script.Parent.SocialController)
+local LiveRaceController = require(script.Parent.LiveRaceController)
 
 local UIController = {}
 
@@ -565,12 +566,17 @@ local browseList: ScrollingFrame
 local leaderboardList: ScrollingFrame
 local leaderboardTitle: TextLabel
 
-local browseTab = "new"
+local browseTab = "featured"
 local browseTabButtons: { [string]: TextButton } = {}
 local browseSearch: TextBox
 
-local BROWSE_TABS =
-	{ { "new", "New" }, { "popular", "Popular" }, { "hard", "Hardest" }, { "friends", "Friends" } }
+local BROWSE_TABS = {
+	{ "featured", "Featured" },
+	{ "new", "New" },
+	{ "popular", "Popular" },
+	{ "hard", "Hardest" },
+	{ "friends", "Friends" },
+}
 
 local function buildBrowse()
 	local body = makeModal("Browse", "Towers", 0.8)
@@ -586,7 +592,7 @@ local function buildBrowse()
 		browseTabButtons[t[1]] = Kit.button(t[2], Theme.PanelLight, function()
 			browseTab = t[1]
 			UIController.openBrowse()
-		end, { LayoutOrder = i, Size = UDim2.fromScale(0.24, 1), Parent = tabs })
+		end, { LayoutOrder = i, Size = UDim2.fromScale(0.19, 1), Parent = tabs })
 	end
 	browseSearch = Kit.new("TextBox", {
 		Position = UDim2.fromScale(0, 0.12),
@@ -733,6 +739,7 @@ function UIController.openBrowse(query: string?)
 				then "Could not load"
 				elseif query then "No tower by that builder"
 				elseif browseTab == "friends" then "No friends' towers yet"
+				elseif browseTab == "featured" then "No featured tower yet. Like towers to pick next week's!"
 				else "No towers here yet. Be the first!"
 			Kit.label(empty, { Size = UDim2.new(1, 0, 0, 40), Font = Theme.BodyFont, Parent = browseList })
 			return
@@ -790,18 +797,29 @@ function UIController.openBrowse(query: string?)
 			Kit.button("Times", Theme.Accent, function()
 				UIController.openLeaderboard(owner)
 			end, {
-				Position = UDim2.fromScale(0.56, 0.14),
-				Size = UDim2.fromScale(0.2, 0.72),
+				Position = UDim2.fromScale(0.55, 0.14),
+				Size = UDim2.fromScale(0.14, 0.72),
 				Parent = r,
 			})
 			Kit.button("Race", Theme.Success, function()
 				openModal(nil)
 				Remotes.event("StartRun"):FireServer(owner)
 			end, {
-				Position = UDim2.fromScale(0.78, 0.14),
-				Size = UDim2.fromScale(0.2, 0.72),
+				Position = UDim2.fromScale(0.70, 0.14),
+				Size = UDim2.fromScale(0.14, 0.72),
 				Parent = r,
 			})
+			-- Host a live race (not on your own tower).
+			if owner ~= player.UserId then
+				Kit.button("Live", Theme.Primary, function()
+					openModal(nil)
+					LiveRaceController.host(owner)
+				end, {
+					Position = UDim2.fromScale(0.85, 0.14),
+					Size = UDim2.fromScale(0.13, 0.72),
+					Parent = r,
+				})
+			end
 		end
 	end)
 end

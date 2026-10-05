@@ -29,6 +29,10 @@ local TowerService = require(script.Parent.TowerService)
 
 local RunTimerService = {}
 
+-- (player, ownerId, finished: boolean, ms) whenever a run ends for any reason.
+local runEnded = Instance.new("BindableEvent")
+RunTimerService.Ended = runEnded.Event
+
 type Run = {
 	ownerId: number,
 	hash: string,
@@ -80,6 +84,7 @@ end
 local function finish(player: Player, run: Run)
 	local ms = math.floor((os.clock() - run.startedAt) * 1000)
 	endRun(player)
+	runEnded:Fire(player, run.ownerId, ms >= Config.MIN_RUN_MS and ms <= Config.MAX_RUN_MS, ms)
 	if ms < Config.MIN_RUN_MS or ms > Config.MAX_RUN_MS then
 		Remotes.event("RunResult"):FireClient(player, false, ms, false)
 		return
@@ -160,6 +165,7 @@ end
 local function fail(player: Player, run: Run, message: string?)
 	if runs[player] == run then
 		endRun(player)
+		runEnded:Fire(player, run.ownerId, false, 0)
 		restoreOwnTower(player)
 		Remotes.event("RunResult"):FireClient(player, false, 0, false, message)
 	end
@@ -245,10 +251,7 @@ local function stopWatching(player: Player)
 	end
 end
 
-local function onStartRun(player: Player, ownerId: any)
-	if not startLimiter:allow(player) or not isId(ownerId) or ownerId < 1 then
-		return
-	end
+local function startRun(player: Player, ownerId: number)
 	local character = player.Character
 	local plot = PlotService.get(player)
 	if not character or not plot then
@@ -323,8 +326,43 @@ local function onStartRun(player: Player, ownerId: any)
 	Remotes.event("RunStarted"):FireClient(player, ownerId, towerName)
 end
 
+local function onStartRun(player: Player, ownerId: any)
+	if not startLimiter:allow(player) or not isId(ownerId) or ownerId < 1 then
+		return
+	end
+	if RunTimerService.isLocked(player) then
+		return -- in a live race: the race controls starts
+	end
+	startRun(player, ownerId)
+end
+
+-- Server-initiated start (live races). Returns true if the run started.
+function RunTimerService.startRun(player: Player, ownerId: number): boolean
+	startRun(player, ownerId)
+	return runs[player] ~= nil
+end
+
+-- Plot-relative position from the latest path sample.
+function RunTimerService.lastPosition(player: Player): Vector3?
+	local run = runs[player]
+	return run and run.path[#run.path]
+end
+
+-- Set by LiveRaceService while a player is in a race lobby or race.
+local lockCheck: (Player) -> boolean = function(_player: Player)
+	return false
+end
+function RunTimerService.setLockCheck(fn: (Player) -> boolean)
+	lockCheck = fn
+end
+function RunTimerService.isLocked(player: Player): boolean
+	return lockCheck(player)
+end
+
 local function onStopRun(player: Player)
-	if runs[player] and startLimiter:allow(player) then
+	local run = runs[player]
+	if run and startLimiter:allow(player) then
+		runEnded:Fire(player, run.ownerId, false, 0)
 		endRun(player)
 		restoreOwnTower(player)
 		Remotes.event("RunResult"):FireClient(player, false, 0, false)

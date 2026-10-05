@@ -42,4 +42,20 @@ return function()
 		cs:add(7, 0, 5)
 		expect(select(2, cs:claim(7))).to.equal(5)
 	end)
+
+	it("delivers queued prizes once, outside the daily cap", function()
+		local cs = CreditStore.new({
+			store = FakeDataStore.new(),
+			now = function()
+				return 0
+			end,
+			wait = function() end,
+		})
+		cs:add(8, 0, Config.BRICKS_DAILY_CAP)
+		cs:addPrize(8, "FeaturedPodium", 200)
+		local _, bricks, badges = cs:claim(8)
+		expect(bricks).to.equal(Config.BRICKS_DAILY_CAP + 200)
+		expect(badges[1]).to.equal("FeaturedPodium")
+		expect(#select(3, cs:claim(8))).to.equal(0)
+	end)
 end

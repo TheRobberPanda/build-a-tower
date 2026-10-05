@@ -12,6 +12,7 @@ local Progression = require(ReplicatedStorage.Shared.Progression)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local CreditStore = require(script.Parent.Parent.Lib.CreditStore)
+local Badges = require(script.Parent.Badges)
 local DataService = require(script.Parent.DataService)
 
 type PlayerData = Types.PlayerData
@@ -40,7 +41,10 @@ local function push(player: Player, data: PlayerData)
 end
 
 local function claim(player: Player)
-	local xp, bricks = credits:claim(player.UserId)
+	local xp, bricks, badges = credits:claim(player.UserId)
+	for _, badge in badges do
+		Badges.award(player, badge)
+	end
 	local data = DataService.get(player)
 	if not data or (xp == 0 and bricks == 0) then
 		-- Rewards claimed for a player whose profile vanished are lost; that only
@@ -61,6 +65,13 @@ function ProgressionService.credit(ownerId: number, finishes: number, likes: num
 	local bricks = finishes * Config.BRICKS_PER_FINISH + likes * Config.BRICKS_PER_LIKE
 	if not credits:add(ownerId, xp, bricks) then
 		warn(string.format("[Progression] could not credit %d", ownerId))
+	end
+end
+
+-- Week-end prizes (featured tower podium), delivered on next claim.
+function ProgressionService.prize(userId: number, badge: string, bricks: number)
+	if not credits:addPrize(userId, badge, bricks) then
+		warn(string.format("[Progression] could not queue prize for %d", userId))
 	end
 end
 

@@ -20,11 +20,16 @@ Remotes.Events = table.freeze({
 	"Inbox", -- server -> client { { t, text } }
 	"BuildInvite", -- server -> client (fromUserId, fromName)
 	"BuildTarget", -- server -> client (ownerId; 0 = your own plot)
+	"LiveRaceLobby", -- server -> all { id, host, tower, count, seconds } or { id, closed = true }
+	"LiveRaceStarted", -- server -> client (raceId)
+	"LiveRacePositions", -- server -> client { { id, name, pos (plot-relative) } }
+	"LiveRaceStandings", -- server -> client ({ { place, name, ms? } }, final)
+	"LeaveLiveRace", -- () leave a lobby
 })
 
 Remotes.Functions = table.freeze({
 	"Publish", -- (name) -> (ok, err)
-	"Browse", -- (tab: "new"|"popular"|"hard"|"friends", query?) -> cards
+	"Browse", -- (tab: "featured"|"new"|"popular"|"hard"|"friends", query?) -> cards
 	"Leaderboard", -- (ownerId) -> list
 	"ReportTower", -- (ownerId) -> ok
 	"LikeTower", -- (ownerId) -> ok; only after finishing that version
@@ -36,6 +41,8 @@ Remotes.Functions = table.freeze({
 	"VisitPlot", -- (userId) -> ok
 	"InviteBuilder", -- (userId) -> ok
 	"JoinBuild", -- (ownerId; 0 = back to own plot) -> ok
+	"HostLiveRace", -- (ownerId) -> ok
+	"JoinLiveRace", -- (raceId) -> ok
 })
 
 function Remotes.setup(): Folder

@@ -35,7 +35,7 @@ local function plotOrigin(): Vector3?
 	return if typeof(origin) == "Vector3" then origin else nil
 end
 
-local function makeGhost(): Model
+local function makeGhost(color: Color3?): Model
 	local model = Instance.new("Model")
 	model.Name = "Ghost"
 	local function part(name: string, size: Vector3, shape: Enum.PartType?): Part
@@ -49,7 +49,7 @@ local function makeGhost(): Model
 		p.CanTouch = false
 		p.CastShadow = false
 		p.Material = Enum.Material.ForceField
-		p.Color = Color3.fromRGB(120, 220, 255)
+		p.Color = color or Color3.fromRGB(120, 220, 255)
 		p.Parent = model
 		return p
 	end
@@ -151,6 +151,11 @@ local function showSplit(index: number, ms: number)
 			splitLabel.Visible = false
 		end
 	end)
+end
+
+-- A translucent ghost model (also used for live race opponents).
+function GhostController.newGhost(color: Color3?): Model
+	return makeGhost(color)
 end
 
 -- Called from the leaderboard: watch a saved run (racerId 0 = record).

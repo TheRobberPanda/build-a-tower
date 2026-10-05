@@ -206,7 +206,18 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	return true, nil
 end
 
-local TABS = table.freeze({ new = true, popular = true, hard = true, friends = true })
+local TABS = table.freeze({ new = true, popular = true, hard = true, friends = true, featured = true })
+
+-- (ownerId, likes) after likes are flushed; FeaturedService counts them per week.
+local liked = Instance.new("BindableEvent")
+TowerService.Liked = liked.Event
+
+local featuredSource: () -> { string } = function()
+	return {}
+end
+function TowerService.setFeaturedSource(fn: () -> { string })
+	featuredSource = fn
+end
 
 local function towerHeight(tower: PublishedTower): number
 	local top = 0
@@ -322,8 +333,9 @@ local function onBrowse(player: Player, tab: any, query: any): { any }
 	if cached and os.clock() - cached.at < CACHE_SECONDS then
 		return cached.list
 	end
-	local keys = if name == "popular"
-		then keysOf(stats:popularPage(25))
+	local keys = if name == "featured"
+		then featuredSource()
+		elseif name == "popular" then keysOf(stats:popularPage(25))
 		elseif name == "hard" then keysOf(stats:hardestPage(25))
 		else keysOf(published:browsePage(25))
 	local list = cardsFor(keys, 25)
@@ -527,7 +539,12 @@ function TowerService.init()
 		log = function(msg)
 			warn("[TowerStats] " .. msg)
 		end,
-		onFlushed = ProgressionService.credit,
+		onFlushed = function(ownerId: number, finishes: number, likes: number)
+			ProgressionService.credit(ownerId, finishes, likes)
+			if likes > 0 then
+				liked:Fire(ownerId, likes)
+			end
+		end,
 	})
 	-- Level-ups raise the piece budget immediately.
 	ProgressionService.Changed:Connect(function(player: Player, data: PlayerData)
