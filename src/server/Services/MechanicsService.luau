@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local AntiCheat = require(script.Parent.AntiCheat)
 
 local MechanicsService = {}
@@ -81,6 +82,7 @@ local function onTeleporter(part: BasePart)
 		local target = dest.Position + Vector3.new(0, dest.Size.Y / 2 + 3, 0)
 		AntiCheat.expectTeleport(player, target)
 		character:PivotTo(CFrame.new(target))
+		Sounds.play("Teleport", dest)
 	end)
 end
 

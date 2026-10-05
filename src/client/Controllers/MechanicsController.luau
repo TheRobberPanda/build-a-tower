@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Sounds = require(ReplicatedStorage.Shared.Sounds)
 
 local MechanicsController = {}
 
@@ -29,6 +30,7 @@ local function onJumpPad(part: BasePart)
 			or Config.JUMP_PAD_SPEED[1]
 		local v = root.AssemblyLinearVelocity
 		root.AssemblyLinearVelocity = Vector3.new(v.X, speed, v.Z)
+		Sounds.play("JumpPad")
 	end)
 end
 
