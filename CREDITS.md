@@ -9,3 +9,6 @@
 | SFX: Finish (jingles_STEEL07) | Kenney "Music Jingles" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 86004459095908 |
 | Ambient: "Aroma calm ritual" (Ambient Flow Sounds) | Creator Store, DistrokidOfficial (verified) | Roblox licensed, free | Sounds.luau, Roblox audio 140662085604483 |
 | Store icons A and B | Generated (google/gemini-3.1-flash-image via OpenRouter) | Generated for this project | marketing/final/icon_a_512.png, icon_b_512.png |
+| SFX: Checkpoint (confirmation_002), Door (open_002) | Kenney "Interface Sounds" | CC0 | Roblox audio 138773923531137 / 131464703611095 |
+| SFX: LevelUp (jingles_PIZZI07) | Kenney "Music Jingles" | CC0 | Roblox audio 132886095093109 |
+| SFX: Crumble (impactWood_heavy_002) | Kenney "Impact Sounds" | CC0 | Roblox audio 109580080804011 |

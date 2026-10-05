@@ -78,6 +78,7 @@ function ProfileStore.defaultData(): PlayerData
 		theme = Cosmetics.DEFAULT_THEME,
 		receipts = {},
 		contestVotes = {},
+		tutorialDone = false,
 	}
 end
 
@@ -157,6 +158,7 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 	if type(raw.theme) == "string" and Cosmetics.themeByKey[raw.theme] then
 		data.theme = raw.theme
 	end
+	data.tutorialDone = raw.tutorialDone == true
 	if type(raw.contestVotes) == "table" then
 		for _, contest in Config.CONTESTS do
 			local votes = raw.contestVotes[contest.id]

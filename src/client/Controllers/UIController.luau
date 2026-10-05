@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Kit = require(script.Parent.Parent.UI.Kit)
 local Theme = require(script.Parent.Parent.UI.Theme)
 local State = require(script.Parent.Parent.State)
@@ -1256,8 +1257,18 @@ end
 function UIController.start()
 	State.Changed:Connect(render)
 
+	local knownLevel: number? = nil
 	Remotes.event("Progress").OnClientEvent:Connect(function(p)
 		if type(p) == "table" then
+			if type(p.level) == "number" then
+				if knownLevel and p.level > knownLevel then
+					Sounds.play("LevelUp")
+					SocialController.toast(
+						string.format("Level %d! Piece budget is now %d", p.level, tonumber(p.budget) or 0)
+					)
+				end
+				knownLevel = p.level
+			end
 			local patch = {}
 			for _, k in { "xp", "bricks", "level", "budget", "levelXp", "nextXp", "activeSlot", "slots" } do
 				if type(p[k]) == "number" then

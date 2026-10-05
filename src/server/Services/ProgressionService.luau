@@ -51,6 +51,7 @@ local function push(player: Player, data: PlayerData)
 		material = data.material,
 		unlocked = data.unlocked,
 		activeSlot = data.activeSlot,
+		tutorialDone = data.tutorialDone,
 	})
 	changed:Fire(player, data)
 end
@@ -121,6 +122,12 @@ function ProgressionService.init()
 			warn("[Credits] " .. msg)
 		end,
 	})
+	Remotes.event("TutorialDone").OnServerEvent:Connect(function(player: Player)
+		local data = DataService.get(player)
+		if data then
+			data.tutorialDone = true
+		end
+	end)
 	DataService.Loaded:Connect(function(player: Player, data: PlayerData)
 		push(player, data)
 		task.spawn(claim, player)

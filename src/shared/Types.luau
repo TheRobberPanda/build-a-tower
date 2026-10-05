@@ -46,6 +46,7 @@ export type PlayerData = {
 	theme: string, -- VIP plot theme key
 	receipts: { string }, -- recent dev product purchase ids (dedupe), oldest first
 	contestVotes: { [string]: { number } }, -- contest id -> owner ids voted for
+	tutorialDone: boolean,
 }
 
 export type PublishedTower = {

@@ -26,6 +26,7 @@ Remotes.Events = table.freeze({
 	"LiveRaceStandings", -- server -> client ({ { place, name, ms? } }, final)
 	"LeaveLiveRace", -- () leave a lobby
 	"Passes", -- server -> client { [passName]: owned }
+	"TutorialDone", -- () the first-time tutorial was closed
 })
 
 Remotes.Functions = table.freeze({

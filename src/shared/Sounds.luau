@@ -13,7 +13,11 @@ Sounds.Ids = table.freeze({
 	Teleport = "rbxassetid://130698977470767",
 	Finish = "rbxassetid://86004459095908",
 	Fail = "rbxassetid://99974427251680",
-	Ambient = "rbxassetid://140662085604483", -- looped quietly on the client
+	Ambient = "rbxassetid://140662085604483",
+	Checkpoint = "rbxassetid://138773923531137",
+	LevelUp = "rbxassetid://132886095093109",
+	Crumble = "rbxassetid://109580080804011",
+	Door = "rbxassetid://131464703611095", -- looped quietly on the client
 })
 
 local VOLUME: { [string]: number } = {
@@ -24,6 +28,10 @@ local VOLUME: { [string]: number } = {
 	Finish = 0.8,
 	Fail = 0.6,
 	Ambient = 0.2,
+	Checkpoint = 0.6,
+	LevelUp = 0.8,
+	Crumble = 0.6,
+	Door = 0.6,
 }
 
 -- Plays a one-shot. With `at`, the sound is positional (heard by everyone nearby);

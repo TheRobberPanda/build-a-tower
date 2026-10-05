@@ -446,6 +446,11 @@ step("decorations don't count toward the budget", function()
 	return ok and plant ~= nil and plant.CanCollide == false, "budget " .. tostring(before)
 end)
 
+step("progress carries the tutorial flag", function()
+	return progress ~= nil and type(progress.tutorialDone) == "boolean",
+		tostring(progress and progress.tutorialDone)
+end)
+
 step("browse tabs and search answer", function()
 	local details = {}
 	local all = true

@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local PathCodec = require(ReplicatedStorage.Shared.PathCodec)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Kit = require(script.Parent.Parent.UI.Kit)
 local Theme = require(script.Parent.Parent.UI.Theme)
 
@@ -133,6 +134,7 @@ local function step()
 end
 
 local function showSplit(index: number, ms: number)
+	Sounds.play("Checkpoint")
 	local text = string.format("Checkpoint %d  %s", index, Kit.formatMs(ms))
 	local pb = playback
 	local ref = pb and pb.splits[index]

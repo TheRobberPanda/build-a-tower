@@ -125,6 +125,7 @@ local function onCrumble(part: BasePart)
 			end
 			part.Transparency = 0.85
 			part.CanCollide = false
+			Sounds.play("Crumble", part)
 			task.delay(Config.CRUMBLE_RESPAWN, function()
 				if part.Parent then
 					part.Transparency = 0
@@ -156,6 +157,9 @@ local function onButton(part: BasePart)
 		used(playerFromHit(hit) :: Player, "Button")
 		local ch = part:GetAttribute("ch")
 		local untilTime = os.clock() + Config.DOOR_OPEN_SECONDS
+		if not openUntil[part] then
+			Sounds.play("Door", part) -- only when the doors actually open
+		end
 		openUntil[part] = untilTime
 		setDoors(folder, ch, true)
 		task.delay(Config.DOOR_OPEN_SECONDS, function()
