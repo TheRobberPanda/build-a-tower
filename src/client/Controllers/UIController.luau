@@ -15,6 +15,7 @@ local State = require(script.Parent.Parent.State)
 local BuildController = require(script.Parent.BuildController)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local GhostController = require(script.Parent.GhostController)
+local SocialController = require(script.Parent.SocialController)
 
 local UIController = {}
 
@@ -424,7 +425,7 @@ local function buildTools()
 	local function tool(order: number, text: string, color: Color3, fn: () -> ()): TextButton
 		return Kit.button(text, color, fn, {
 			LayoutOrder = order,
-			Size = UDim2.fromScale(1, 0.125),
+			Size = UDim2.fromScale(1, 0.11),
 			Parent = column,
 		})
 	end
@@ -443,6 +444,9 @@ local function buildTools()
 	end)
 	tool(6, "Browse", Theme.Accent, function()
 		UIController.openBrowse()
+	end)
+	tool(8, "Players", Theme.PanelLight, function()
+		SocialController.openPlayers()
 	end)
 	tool(7, "Tower", Theme.PanelLight, function()
 		openModal("TowerMenu")

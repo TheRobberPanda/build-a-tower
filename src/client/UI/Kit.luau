@@ -4,6 +4,7 @@
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
+local Format = require(game:GetService("ReplicatedStorage").Shared.Format)
 local Theme = require(script.Parent.Theme)
 
 local Kit = {}
@@ -143,10 +144,6 @@ function Kit.show(panel: GuiObject, visible: boolean)
 	end
 end
 
-function Kit.formatMs(ms: number): string
-	local minutes = ms // 60000
-	local seconds = (ms % 60000) / 1000
-	return string.format("%d:%06.3f", minutes, seconds)
-end
+Kit.formatMs = Format.ms
 
 return Kit

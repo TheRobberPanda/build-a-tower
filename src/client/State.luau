@@ -31,6 +31,7 @@ local State = {
 	material = "plastic",
 	unlocked = {} :: { [string]: boolean },
 	activeSlot = 1,
+	buildOwner = 0, -- userId whose plot you are building on; 0 = your own
 	Changed = changed.Event,
 }
 

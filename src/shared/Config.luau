@@ -83,6 +83,13 @@ local Config = {
 	BRICKS_PER_LIKE = 10,
 	BRICKS_DAILY_CAP = 500, -- per builder per UTC day, against alt-account farming
 
+	-- Social
+	INBOX_STORE = "Inbox_v1",
+	INBOX_MAX = 20,
+	LIVE_RACE_LOBBY_SECONDS = 20,
+	LIVE_RACE_MAX = 8,
+	FEATURED_PREFIX = "Featured_v1_w", -- + week number: weekly likes per tower
+
 	-- Replays
 	REPLAYS_STORE = "Replays_v1",
 	PATH_SAMPLE_SECONDS = 0.1,

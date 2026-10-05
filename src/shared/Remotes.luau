@@ -17,6 +17,9 @@ Remotes.Events = table.freeze({
 	"Split", -- server -> client (checkpointIndex, ms)
 	"StopWatch", -- () stop watching a replay
 	"Progress", -- server -> client { xp, bricks, level, budget, levelXp, nextXp, material, unlocked }
+	"Inbox", -- server -> client { { t, text } }
+	"BuildInvite", -- server -> client (fromUserId, fromName)
+	"BuildTarget", -- server -> client (ownerId; 0 = your own plot)
 })
 
 Remotes.Functions = table.freeze({
@@ -30,6 +33,9 @@ Remotes.Functions = table.freeze({
 	"SetMaterial", -- (key) -> (ok, err)
 	"BuyMaterial", -- (key) -> (ok, err); spends Bricks
 	"SwitchSlot", -- (index) -> ok
+	"VisitPlot", -- (userId) -> ok
+	"InviteBuilder", -- (userId) -> ok
+	"JoinBuild", -- (ownerId; 0 = back to own plot) -> ok
 })
 
 function Remotes.setup(): Folder

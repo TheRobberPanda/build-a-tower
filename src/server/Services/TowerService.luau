@@ -47,9 +47,13 @@ local function isInt(n: any, lo: number, hi: number): boolean
 	return type(n) == "number" and n == n and n % 1 == 0 and n >= lo and n <= hi
 end
 
+local buildersOf: (Player) -> { Player }
+
 local function pushTower(player: Player, data: PlayerData)
 	PlotService.render(player, data.tower.pieces, data.material)
-	Remotes.event("TowerChanged"):FireClient(player, data.tower, data.verifiedHash ~= nil)
+	for _, builder in buildersOf(player) do
+		Remotes.event("TowerChanged"):FireClient(builder, data.tower, data.verifiedHash ~= nil)
+	end
 end
 
 function TowerService.setEditLocked(player: Player, locked: boolean)
@@ -71,17 +75,48 @@ function TowerService.getPublished(ownerId: number): PublishedTower?
 	return tower
 end
 
-local function editable(player: Player): PlayerData?
-	if editLocked[player] or not editLimiter:allow(player) then
-		return nil
+-- Co-building: a helper's edits go to the owner's tower (the owner keeps
+-- publish rights; runs and publishing always use your own tower).
+local buildTarget: { [Player]: Player } = {}
+
+-- The tower this player is editing right now: (owner, owner's data), or nil.
+local function editable(player: Player): (Player?, PlayerData?)
+	local owner = buildTarget[player] or player
+	if owner.Parent == nil or editLocked[owner] or editLocked[player] or not editLimiter:allow(player) then
+		return nil, nil
 	end
-	return DataService.get(player)
+	return owner, DataService.get(owner)
+end
+
+-- Everyone currently building on owner's plot (owner first).
+function buildersOf(owner: Player): { Player }
+	local list = { owner }
+	for helper, target in buildTarget do
+		if target == owner then
+			table.insert(list, helper)
+		end
+	end
+	return list
+end
+
+function TowerService.setBuildTarget(player: Player, owner: Player?)
+	buildTarget[player] = if owner and owner ~= player then owner else nil
+	Remotes.event("BuildTarget")
+		:FireClient(player, if buildTarget[player] then (owner :: Player).UserId else 0)
+	local data = DataService.get(owner or player)
+	if data then
+		Remotes.event("TowerChanged"):FireClient(player, data.tower, data.verifiedHash ~= nil)
+	end
+end
+
+function TowerService.buildTargetOf(player: Player): Player?
+	return buildTarget[player]
 end
 
 local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p: any)
-	local data = editable(player)
-	local state = states[player]
-	if not data or not state then
+	local owner, data = editable(player)
+	local state = owner and states[owner]
+	if not owner or not data or not state then
 		return
 	end
 	if
@@ -105,14 +140,14 @@ local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p
 	TowerCodec.add(state, piece)
 	table.insert(data.tower.pieces, piece)
 	data.verifiedHash = nil -- any edit resets verification
-	pushTower(player, data)
+	pushTower(owner, data)
 	Analytics.step(player, "PlacedPiece")
 end
 
 local function onRemove(player: Player, x: any, y: any, z: any)
-	local data = editable(player)
-	local state = states[player]
-	if not data or not state then
+	local owner, data = editable(player)
+	local state = owner and states[owner]
+	if not owner or not data or not state then
 		return
 	end
 	if not (isInt(x, 0, 255) and isInt(y, 0, 255) and isInt(z, 0, 255)) then
@@ -131,7 +166,7 @@ local function onRemove(player: Player, x: any, y: any, z: any)
 			TowerCodec.remove(state, piece)
 			table.remove(data.tower.pieces, i)
 			data.verifiedHash = nil
-			pushTower(player, data)
+			pushTower(owner, data)
 			return
 		end
 	end
@@ -519,6 +554,12 @@ function TowerService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		states[player] = nil
 		finished[player] = nil
+		buildTarget[player] = nil
+		for helper, owner in buildTarget do
+			if owner == player then
+				TowerService.setBuildTarget(helper, nil) -- owner left: helpers go back to their own tower
+			end
+		end
 		editLocked[player] = nil
 		editLimiter:forget(player)
 		publishLimiter:forget(player)

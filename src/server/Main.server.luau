@@ -14,6 +14,7 @@ for _, name in
 		"DataService",
 		"ProgressionService",
 		"TowerService",
+		"SocialService",
 		"AntiCheat",
 		"MechanicsService",
 		"RunTimerService",

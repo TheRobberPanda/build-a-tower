@@ -26,7 +26,8 @@ type Target = { cell: Vector3, removeCell: Vector3?, valid: boolean }
 
 local function myPlot(): Model?
 	local plots = workspace:FindFirstChild("Plots")
-	local plot = plots and plots:FindFirstChild("Plot_" .. player.UserId)
+	local owner = if State.buildOwner ~= 0 then State.buildOwner else player.UserId
+	local plot = plots and plots:FindFirstChild("Plot_" .. owner)
 	return if plot and plot:IsA("Model") then plot else nil
 end
 

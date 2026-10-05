@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local PathCodec = require(ReplicatedStorage.Shared.PathCodec)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -23,6 +24,7 @@ local Badges = require(script.Parent.Badges)
 local MechanicsService = require(script.Parent.MechanicsService)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
+local SocialService = require(script.Parent.SocialService)
 local TowerService = require(script.Parent.TowerService)
 
 local RunTimerService = {}
@@ -119,9 +121,24 @@ local function finish(player: Player, run: Run)
 		Badges.award(player, "RecordHolder")
 	end
 	TowerService.recordFinish(player, run.ownerId, run.hash, ms, usedList)
+	local top = TowerService.published():topTimes(run.ownerId, run.hash, 1)
+	local holder = top and top[1]
 	local improved, previous = TowerService.published():submitTime(run.ownerId, run.hash, player.UserId, ms)
 	if improved then
 		saveReplay(player, run, ms)
+	end
+	local holderId = holder and tonumber(holder.key)
+	if holder and holderId and holderId ~= player.UserId and ms < holder.value then
+		local tower = TowerService.getPublished(run.ownerId)
+		SocialService.notify(
+			holderId,
+			string.format(
+				"%s beat your record on %s (%s)",
+				player.DisplayName,
+				if tower then tower.name else "a tower",
+				Format.ms(ms)
+			)
+		)
 	end
 	local canLike = not TowerService.hasLiked(player, run.ownerId, run.hash)
 	-- How the racer compares: average time and how often each secret is found.
@@ -371,6 +388,7 @@ function RunTimerService.init()
 			warn("[Replays] " .. msg)
 		end,
 	})
+	SocialService.setRunCheck(RunTimerService.isRunning)
 	Remotes.event("StartRun").OnServerEvent:Connect(onStartRun)
 	Remotes.event("StopRun").OnServerEvent:Connect(onStopRun)
 	Remotes.event("StopWatch").OnServerEvent:Connect(stopWatching)
