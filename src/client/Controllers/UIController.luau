@@ -602,10 +602,29 @@ local function render()
 	deleteButton.BackgroundColor3 = if State.deleting then Theme.Danger else Theme.PanelLight
 	Kit.setEnabled(publishButton, State.verified, Theme.Primary)
 	Kit.setEnabled(publishConfirm, State.verified, Theme.Primary)
-	verifiedLabel.Text = if State.verified
-		then "Verified: ready to publish"
-		else "Climb your tower to verify it"
-	verifiedLabel.TextColor3 = if State.verified then Theme.Success else Theme.TextDim
+	-- A teleporter alone on its channel goes nowhere; tell the builder.
+	local perChannel: { [number]: number } = {}
+	for _, piece in if State.tower then State.tower.pieces else {} do
+		if PieceDefs.byId[piece.t] and PieceDefs.byId[piece.t].name == "Teleporter" then
+			local ch = piece.p and piece.p.ch or 1
+			perChannel[ch] = (perChannel[ch] or 0) + 1
+		end
+	end
+	local lonely: number? = nil
+	for ch, n in perChannel do
+		if n == 1 and (lonely == nil or ch < lonely) then
+			lonely = ch
+		end
+	end
+	if lonely then
+		verifiedLabel.Text = string.format("Teleporter channel %d needs a partner", lonely)
+		verifiedLabel.TextColor3 = Theme.Danger
+	else
+		verifiedLabel.Text = if State.verified
+			then "Verified: ready to publish"
+			else "Climb your tower to verify it"
+		verifiedLabel.TextColor3 = if State.verified then Theme.Success else Theme.TextDim
+	end
 	testButton.Visible = isBuild
 	runNameLabel.Text = State.runName
 end
