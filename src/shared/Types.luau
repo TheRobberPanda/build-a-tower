@@ -29,6 +29,8 @@ export type PlayerData = {
 	towerName: string,
 	verifiedHash: string?, -- hash of the tower version the builder completed
 	publishedHash: string?,
+	liked: { [string]: string }, -- ownerId -> tower hash liked (one like per version)
+	likedOrder: { string }, -- oldest first, capped at Config.LIKED_MAX
 }
 
 export type PublishedTower = {

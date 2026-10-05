@@ -13,14 +13,15 @@ Remotes.Events = table.freeze({
 	"TowerChanged", -- server -> client (tower, verified)
 	"StopRun", -- () leave the current run
 	"RunStarted", -- server -> client (ownerId, towerName)
-	"RunResult", -- server -> client (ok, ms, improved, message?, previousBestMs?)
+	"RunResult", -- server -> client (ok, ms, improved, message?, previousBestMs?, canLike?)
 })
 
 Remotes.Functions = table.freeze({
 	"Publish", -- (name) -> (ok, err)
-	"Browse", -- () -> list
+	"Browse", -- (tab: "new"|"popular"|"hard"|"friends", query?) -> cards
 	"Leaderboard", -- (ownerId) -> list
 	"ReportTower", -- (ownerId) -> ok
+	"LikeTower", -- (ownerId) -> ok; only after finishing that version
 })
 
 function Remotes.setup(): Folder

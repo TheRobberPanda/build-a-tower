@@ -139,7 +139,7 @@ function PlotService.render(player: Player, pieces: { Piece })
 		folder.Name = "Pieces"
 		folder.Parent = plot.model
 	end
-	assert(folder)
+	assert(folder, "Pieces folder")
 	local wanted: { [string]: Piece } = {}
 	for _, piece in pieces do
 		wanted[pieceKey(piece)] = piece

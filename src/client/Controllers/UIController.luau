@@ -397,8 +397,53 @@ local browseList: ScrollingFrame
 local leaderboardList: ScrollingFrame
 local leaderboardTitle: TextLabel
 
+local browseTab = "new"
+local browseTabButtons: { [string]: TextButton } = {}
+local browseSearch: TextBox
+
+local BROWSE_TABS =
+	{ { "new", "New" }, { "popular", "Popular" }, { "hard", "Hardest" }, { "friends", "Friends" } }
+
 local function buildBrowse()
-	browseList = listFrame(makeModal("Browse", "Towers", 0.75))
+	local body = makeModal("Browse", "Towers", 0.8)
+	local tabs =
+		Kit.new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0.1), Parent = body })
+	Kit.new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0.01, 0),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = tabs,
+	})
+	for i, t in BROWSE_TABS do
+		browseTabButtons[t[1]] = Kit.button(t[2], Theme.PanelLight, function()
+			browseTab = t[1]
+			UIController.openBrowse()
+		end, { LayoutOrder = i, Size = UDim2.fromScale(0.24, 1), Parent = tabs })
+	end
+	browseSearch = Kit.new("TextBox", {
+		Position = UDim2.fromScale(0, 0.12),
+		Size = UDim2.fromScale(1, 0.08),
+		BackgroundColor3 = Theme.PanelLight,
+		Font = Theme.BodyFont,
+		PlaceholderText = "Search builder name",
+		Text = "",
+		TextColor3 = Theme.Text,
+		TextScaled = true,
+		ClearTextOnFocus = false,
+		Parent = body,
+	}, { Kit.corner(0.2) })
+	browseSearch.FocusLost:Connect(function(enter)
+		if enter then
+			UIController.openBrowse(browseSearch.Text)
+		end
+	end)
+	local holder = Kit.new("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromScale(0, 0.22),
+		Size = UDim2.fromScale(1, 0.78),
+		Parent = body,
+	})
+	browseList = listFrame(holder)
 end
 
 local reportButton: TextButton
@@ -439,6 +484,7 @@ end
 local resultTime: TextLabel
 local resultNote: TextLabel
 local resultTimesButton: TextButton
+local resultLikeButton: TextButton
 
 local function buildResults()
 	local body = makeModal("Results", "Finished!", 0.5)
@@ -455,7 +501,21 @@ local function buildResults()
 	end, {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.fromScale(0.05, 1),
-		Size = UDim2.fromScale(0.42, 0.28),
+		Size = UDim2.fromScale(0.3, 0.28),
+		Parent = body,
+	})
+	resultLikeButton = Kit.button("Like", Theme.Primary, function()
+		local ownerId = State.runOwner
+		resultLikeButton.Visible = false
+		task.spawn(function()
+			pcall(function()
+				Remotes.func("LikeTower"):InvokeServer(ownerId)
+			end)
+		end)
+	end, {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.fromScale(0.26, 0.28),
 		Parent = body,
 	})
 	Kit.button("OK", Theme.Success, function()
@@ -463,63 +523,106 @@ local function buildResults()
 	end, {
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.fromScale(0.95, 1),
-		Size = UDim2.fromScale(0.42, 0.28),
+		Size = UDim2.fromScale(0.3, 0.28),
 		Parent = body,
 	})
 end
 
 ---------------------------------------------------------------- data-driven screens
 
-function UIController.openBrowse()
+local DIFFICULTY_COLORS: { [string]: Color3 } = {
+	New = Color3.fromRGB(160, 160, 170),
+	Easy = Color3.fromRGB(80, 200, 120),
+	Medium = Color3.fromRGB(240, 200, 60),
+	Hard = Color3.fromRGB(240, 120, 50),
+	Insane = Color3.fromRGB(220, 60, 90),
+}
+
+-- query: builder name to search instead of the current tab.
+function UIController.openBrowse(query: string?)
 	openModal("Browse")
+	for key, button in browseTabButtons do
+		button.BackgroundColor3 = if key == browseTab and not query then Theme.Primary else Theme.PanelLight
+	end
 	clearList(browseList)
 	Kit.label("Loading...", { Size = UDim2.new(1, 0, 0, 40), Font = Theme.BodyFont, Parent = browseList })
 	task.spawn(function()
 		local ok, list = pcall(function()
-			return Remotes.func("Browse"):InvokeServer()
+			return Remotes.func("Browse")
+				:InvokeServer(browseTab, if query and query ~= "" then query else nil)
 		end)
 		clearList(browseList)
 		if not ok or type(list) ~= "table" or #list == 0 then
-			Kit.label(if ok then "No towers published yet" else "Could not load", {
-				Size = UDim2.new(1, 0, 0, 40),
-				Font = Theme.BodyFont,
-				Parent = browseList,
-			})
+			local empty = if not ok
+				then "Could not load"
+				elseif query then "No tower by that builder"
+				elseif browseTab == "friends" then "No friends' towers yet"
+				else "No towers here yet. Be the first!"
+			Kit.label(empty, { Size = UDim2.new(1, 0, 0, 40), Font = Theme.BodyFont, Parent = browseList })
 			return
 		end
 		for i, entry in list do
 			local r = row(browseList, i)
+			r.Size = UDim2.new(1, -8, 0, 64)
+			local difficulty = tostring(entry.difficulty or "New")
 			Kit.label(tostring(entry.name), {
-				Position = UDim2.fromScale(0.03, 0.05),
-				Size = UDim2.fromScale(0.5, 0.55),
+				Position = UDim2.fromScale(0.03, 0.04),
+				Size = UDim2.fromScale(0.5, 0.42),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Parent = r,
 			})
-			local by = Kit.label(string.format("%d pieces", tonumber(entry.pieces) or 0), {
-				Position = UDim2.fromScale(0.03, 0.6),
-				Size = UDim2.fromScale(0.5, 0.35),
+			Kit.label(difficulty, {
+				Position = UDim2.fromScale(0.03, 0.48),
+				Size = UDim2.fromScale(0.13, 0.24),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextColor3 = DIFFICULTY_COLORS[difficulty] or Theme.TextDim,
+				Font = Theme.BodyFont,
+				Parent = r,
+			})
+			local info = Kit.label("", {
+				Position = UDim2.fromScale(0.17, 0.48),
+				Size = UDim2.fromScale(0.37, 0.24),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextColor3 = Theme.TextDim,
+				Font = Theme.BodyFont,
+				Parent = r,
+			})
+			local record = Kit.label("", {
+				Position = UDim2.fromScale(0.03, 0.74),
+				Size = UDim2.fromScale(0.51, 0.22),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextColor3 = Theme.TextDim,
 				Font = Theme.BodyFont,
 				Parent = r,
 			})
 			local owner = tonumber(entry.owner) or 0
+			local stats = string.format(
+				"%d high · %d pieces · %d likes",
+				tonumber(entry.height) or 0,
+				tonumber(entry.pieces) or 0,
+				tonumber(entry.likes) or 0
+			)
+			info.Text = stats
 			task.spawn(function()
-				by.Text = string.format("by %s · %d pieces", userName(owner), tonumber(entry.pieces) or 0)
+				info.Text = string.format("by %s · %s", userName(owner), stats)
+				local best, bestBy = tonumber(entry.best), tonumber(entry.bestBy)
+				record.Text = if best and bestBy
+					then string.format("Record %s by %s", Kit.formatMs(best), userName(bestBy))
+					else "No record yet"
 			end)
 			Kit.button("Times", Theme.Accent, function()
 				UIController.openLeaderboard(owner)
 			end, {
-				Position = UDim2.fromScale(0.56, 0.12),
-				Size = UDim2.fromScale(0.2, 0.76),
+				Position = UDim2.fromScale(0.56, 0.14),
+				Size = UDim2.fromScale(0.2, 0.72),
 				Parent = r,
 			})
 			Kit.button("Race", Theme.Success, function()
 				openModal(nil)
 				Remotes.event("StartRun"):FireServer(owner)
 			end, {
-				Position = UDim2.fromScale(0.78, 0.12),
-				Size = UDim2.fromScale(0.2, 0.76),
+				Position = UDim2.fromScale(0.78, 0.14),
+				Size = UDim2.fromScale(0.2, 0.72),
 				Parent = r,
 			})
 		end
@@ -583,13 +686,21 @@ local function setResultTitle(text: string)
 	end
 end
 
-local function showResult(ok: boolean, ms: number, improved: boolean, message: string?, previous: number?)
+local function showResult(
+	ok: boolean,
+	ms: number,
+	improved: boolean,
+	message: string?,
+	previous: number?,
+	canLike: boolean
+)
 	if not ok then
 		if message then -- invalid run; a plain quit shows nothing
 			setResultTitle("Not this time")
 			resultTime.Text = "No time"
 			resultNote.Text = message
 			resultTimesButton.Visible = false
+			resultLikeButton.Visible = false
 			openModal("Results")
 		end
 		return
@@ -607,6 +718,7 @@ local function showResult(ok: boolean, ms: number, improved: boolean, message: s
 		elseif previous then string.format("Your best: %s", Kit.formatMs(previous))
 		else "Not your best this time."
 	resultTimesButton.Visible = not own
+	resultLikeButton.Visible = not own and canLike
 	openModal("Results")
 end
 
@@ -717,14 +829,15 @@ function UIController.start()
 		end
 		State.set({ mode = "run", runOwner = ownerId, runName = tostring(name), runStartedAt = os.clock() })
 	end)
-	Remotes.event("RunResult").OnClientEvent:Connect(function(ok, ms, improved, message, previous)
+	Remotes.event("RunResult").OnClientEvent:Connect(function(ok, ms, improved, message, previous, canLike)
 		State.set({ mode = "build" })
 		showResult(
 			ok == true,
 			tonumber(ms) or 0,
 			improved == true,
 			if type(message) == "string" then message else nil,
-			if type(previous) == "number" then previous else nil
+			if type(previous) == "number" then previous else nil,
+			canLike == true
 		)
 	end)
 

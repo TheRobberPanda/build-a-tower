@@ -62,7 +62,7 @@ function ProfileStore.keyFor(userId: number): string
 end
 
 function ProfileStore.defaultData(): PlayerData
-	return { tower = TowerCodec.empty(), towerName = "My Tower" }
+	return { tower = TowerCodec.empty(), towerName = "My Tower", liked = {}, likedOrder = {} }
 end
 
 local function deepCopy<T>(value: T): T
@@ -98,6 +98,18 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 	end
 	if type(raw.publishedHash) == "string" then
 		data.publishedHash = raw.publishedHash
+	end
+	if type(raw.likedOrder) == "table" and type(raw.liked) == "table" then
+		for _, key in raw.likedOrder do
+			local likedHash = raw.liked[key]
+			if type(key) == "string" and type(likedHash) == "string" and not data.liked[key] then
+				data.liked[key] = likedHash
+				table.insert(data.likedOrder, key)
+			end
+		end
+		while #data.likedOrder > Config.LIKED_MAX do
+			data.liked[table.remove(data.likedOrder, 1) :: string] = nil
+		end
 	end
 	return data, dropped > 0
 end

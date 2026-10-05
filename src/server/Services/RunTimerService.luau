@@ -59,9 +59,11 @@ local function finish(player: Player, run: Run)
 			:FireClient(player, data and data.tower, data and data.verifiedHash ~= nil)
 	else
 		Analytics.event(player, "RaceFinished", ms / 1000)
+		TowerService.recordFinish(player, run.ownerId, run.hash, ms)
 		local improved, previous = TowerService.published()
 			:submitTime(run.ownerId, run.hash, player.UserId, ms)
-		Remotes.event("RunResult"):FireClient(player, true, ms, improved, nil, previous)
+		local canLike = not TowerService.hasLiked(player, run.ownerId, run.hash)
+		Remotes.event("RunResult"):FireClient(player, true, ms, improved, nil, previous, canLike)
 		restoreOwnTower(player)
 	end
 end
@@ -158,6 +160,7 @@ local function onStartRun(player: Player, ownerId: any)
 		Analytics.step(player, "StartedTestRun")
 	else
 		Analytics.event(player, "RaceStarted")
+		TowerService.recordStart(ownerId, hash)
 	end
 	Remotes.event("RunStarted"):FireClient(player, ownerId, towerName)
 end

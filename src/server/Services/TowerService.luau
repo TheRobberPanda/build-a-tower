@@ -12,6 +12,7 @@ local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
 local PublishedStore = require(script.Parent.Parent.Lib.PublishedStore)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
+local TowerStats = require(script.Parent.Parent.Lib.TowerStats)
 local Analytics = require(script.Parent.Analytics)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
@@ -32,7 +33,10 @@ local reportLimiter = RateLimiter.new(3, 1 / 60)
 
 local CACHE_SECONDS = 30
 local towerCache: { [number]: { at: number, tower: PublishedTower? } } = {}
-local browseCache: { at: number, list: { any } }? = nil
+local browseCache: { [string]: { at: number, list: { any } } } = {}
+local hidden: { [number]: boolean } = {} -- hidden after reports, this server
+local finished: { [Player]: { [number]: string } } = {} -- ownerId -> hash finished this session
+local stats: TowerStats.TowerStats
 
 local function isInt(n: any, lo: number, hi: number): boolean
 	return type(n) == "number" and n == n and n % 1 == 0 and n >= lo and n <= hi
@@ -156,29 +160,157 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	data.towerName = filtered
 	data.publishedHash = hash
 	towerCache[player.UserId] = nil
-	browseCache = nil
+	table.clear(browseCache)
 	Analytics.step(player, "Published")
 	return true, nil
 end
 
-local function onBrowse(player: Player): { any }
+local TABS = table.freeze({ new = true, popular = true, hard = true, friends = true })
+
+local function towerHeight(tower: PublishedTower): number
+	local top = 0
+	for _, piece in tower.pieces do
+		local _, sy = TowerCodec.extent(piece)
+		top = math.max(top, piece.y + sy)
+	end
+	return top
+end
+
+-- Card data shown in browse lists.
+local function card(tower: PublishedTower): { [string]: any }
+	local st = stats:get(tower.owner, tower.hash)
+	return {
+		owner = tower.owner,
+		name = tower.name,
+		pieces = #tower.pieces,
+		height = towerHeight(tower),
+		difficulty = TowerStats.difficulty(st.starts, st.finishes),
+		likes = st.likes,
+		finishes = st.finishes,
+		best = st.best,
+		bestBy = st.bestBy,
+	}
+end
+
+local function cardsFor(keys: { string }, limit: number): { any }
+	local list = {}
+	for _, key in keys do
+		local ownerId = tonumber(key)
+		local tower = ownerId and TowerService.getPublished(ownerId)
+		if tower and not hidden[tower.owner] then
+			table.insert(list, card(tower))
+			if #list >= limit then
+				break
+			end
+		end
+	end
+	return list
+end
+
+local function keysOf(page: { { key: string, value: number } }?): { string }
+	local keys = {}
+	for _, entry in page or {} do
+		table.insert(keys, entry.key)
+	end
+	return keys
+end
+
+local function friendKeys(player: Player): { string }
+	local friends: { [number]: boolean } = {}
+	local ok, pages = pcall(function()
+		return Players:GetFriendsAsync(player.UserId)
+	end)
+	if ok and pages then
+		for _ = 1, 3 do -- up to ~150 friends
+			for _, f in pages:GetCurrentPage() do
+				friends[f.Id] = true
+			end
+			if pages.IsFinished or not pcall(function()
+				pages:AdvanceToNextPageAsync()
+			end) then
+				break
+			end
+		end
+	end
+	local keys = {}
+	for _, key in keysOf(published:browsePage(100)) do
+		if friends[tonumber(key) or 0] then
+			table.insert(keys, key)
+		end
+	end
+	return keys
+end
+
+-- tab: "new" | "popular" | "hard" | "friends". query: optional builder name to search.
+local function onBrowse(player: Player, tab: any, query: any): { any }
 	if not queryLimiter:allow(player) then
 		return {}
 	end
-	if browseCache and os.clock() - browseCache.at < CACHE_SECONDS then
-		return browseCache.list
+	if type(query) == "string" and #query >= 3 and #query <= 20 and query:match("^[%w_]+$") then
+		local ok, userId = pcall(function()
+			return Players:GetUserIdFromNameAsync(query)
+		end)
+		return if ok and type(userId) == "number" then cardsFor({ tostring(userId) }, 1) else {}
 	end
-	local page = published:browsePage(25) or {}
-	local list = {}
-	for _, entry in page do
-		local ownerId = tonumber(entry.key)
-		local tower = ownerId and TowerService.getPublished(ownerId)
-		if tower then
-			table.insert(list, { owner = tower.owner, name = tower.name, pieces = #tower.pieces })
+	local name = if type(tab) == "string" and TABS[tab] then tab else "new"
+	if name == "friends" then
+		return cardsFor(friendKeys(player), 25) -- per player, not cached
+	end
+	local cached = browseCache[name]
+	if cached and os.clock() - cached.at < CACHE_SECONDS then
+		return cached.list
+	end
+	local keys = if name == "popular"
+		then keysOf(stats:popularPage(25))
+		elseif name == "hard" then keysOf(stats:hardestPage(25))
+		else keysOf(published:browsePage(25))
+	local list = cardsFor(keys, 25)
+	browseCache[name] = { at = os.clock(), list = list }
+	return list
+end
+
+-- One like per player per tower version, only after finishing that version.
+local function onLike(player: Player, ownerId: any): boolean
+	if not isInt(ownerId, 1, 2 ^ 53) or ownerId == player.UserId or not queryLimiter:allow(player) then
+		return false
+	end
+	local data = DataService.get(player)
+	local tower = TowerService.getPublished(ownerId)
+	local done = finished[player]
+	if not data or not tower or not done or done[ownerId] ~= tower.hash then
+		return false
+	end
+	local key = tostring(ownerId)
+	if data.liked[key] == tower.hash then
+		return false
+	end
+	if not data.liked[key] then
+		table.insert(data.likedOrder, key)
+		if #data.likedOrder > Config.LIKED_MAX then
+			data.liked[table.remove(data.likedOrder, 1) :: string] = nil
 		end
 	end
-	browseCache = { at = os.clock(), list = list }
-	return list
+	data.liked[key] = tower.hash
+	stats:addLike(ownerId, tower.hash)
+	return true
+end
+
+-- Called by RunTimerService.
+function TowerService.recordStart(ownerId: number, hash: string)
+	stats:addStart(ownerId, hash)
+end
+
+function TowerService.recordFinish(player: Player, ownerId: number, hash: string, ms: number)
+	stats:addFinish(ownerId, hash, player.UserId, ms)
+	local done = finished[player]
+	if done then
+		done[ownerId] = hash
+	end
+end
+
+function TowerService.hasLiked(player: Player, ownerId: number, hash: string): boolean
+	local data = DataService.get(player)
+	return data ~= nil and data.liked[tostring(ownerId)] == hash
 end
 
 local function onLeaderboard(player: Player, ownerId: any): { any }
@@ -206,7 +338,9 @@ local function onReport(player: Player, ownerId: any): boolean
 	end
 	if published:report(ownerId, tower.hash, player.UserId) then
 		warn(string.format("[TowerService] tower %d (%s) hidden after reports", ownerId, tower.hash))
-		browseCache = nil
+		hidden[ownerId] = true
+		stats:unlist(ownerId)
+		table.clear(browseCache)
 	end
 	return true
 end
@@ -226,12 +360,33 @@ function TowerService.init()
 		end,
 	})
 
+	stats = TowerStats.new({
+		stats = DataStoreService:GetDataStore(Config.STATS_STORE),
+		popular = DataStoreService:GetOrderedDataStore(Config.POPULAR_STORE),
+		hardest = DataStoreService:GetOrderedDataStore(Config.HARDEST_STORE),
+		wait = task.wait,
+		log = function(msg)
+			warn("[TowerStats] " .. msg)
+		end,
+	})
+	task.spawn(function()
+		while true do
+			task.wait(Config.STATS_FLUSH_SECONDS)
+			stats:flush()
+		end
+	end)
+	game:BindToClose(function()
+		stats:flush()
+	end)
+
 	DataService.Loaded:Connect(function(player: Player, data: PlayerData)
+		finished[player] = {}
 		states[player] = TowerCodec.buildState(data.tower)
 		pushTower(player, data)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		states[player] = nil
+		finished[player] = nil
 		editLocked[player] = nil
 		editLimiter:forget(player)
 		publishLimiter:forget(player)
@@ -245,6 +400,7 @@ function TowerService.init()
 	Remotes.func("Browse").OnServerInvoke = onBrowse
 	Remotes.func("Leaderboard").OnServerInvoke = onLeaderboard
 	Remotes.func("ReportTower").OnServerInvoke = onReport
+	Remotes.func("LikeTower").OnServerInvoke = onLike
 end
 
 return TowerService
