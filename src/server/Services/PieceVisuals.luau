@@ -12,10 +12,19 @@ local TILE = "rbxassetid://139861751774533" -- assets/ui/grid_cell.png (white ce
 
 -- Structural colour shifts with height so a tower reads as a colourful climb.
 -- Fake walls and one-way walls use the same colour as blocks at that height.
+local BANDS = {
+	Color3.fromRGB(40, 120, 255), -- blue
+	Color3.fromRGB(255, 140, 30), -- orange
+	Color3.fromRGB(255, 205, 40), -- yellow
+	Color3.fromRGB(60, 200, 90), -- green
+	Color3.fromRGB(235, 60, 75), -- red
+	Color3.fromRGB(150, 80, 240), -- purple
+}
+PieceVisuals.BANDS = BANDS
+
 function PieceVisuals.heightColor(y: number): Color3
-	-- Full rainbow every 24 rows, starting warm at the ground.
-	local hue = (0.02 + y / 24) % 1
-	return Color3.fromHSV(hue, 0.62, 0.96)
+	-- Vivid colour bands, a new colour every 4 rows (matches the core's rings).
+	return BANDS[(y // 4) % #BANDS + 1]
 end
 
 local function deco(

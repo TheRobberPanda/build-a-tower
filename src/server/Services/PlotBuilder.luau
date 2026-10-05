@@ -7,6 +7,15 @@ local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 
 local PlotBuilder = {}
 
+local BAND_COLORS = {
+	Color3.fromRGB(40, 120, 255),
+	Color3.fromRGB(255, 140, 30),
+	Color3.fromRGB(255, 205, 40),
+	Color3.fromRGB(60, 200, 90),
+	Color3.fromRGB(235, 60, 75),
+	Color3.fromRGB(150, 80, 240),
+}
+
 local GRID_TEXTURE = "rbxassetid://139861751774533" -- assets/ui/grid_cell.png
 
 local G = Config.GRID_STUDS
@@ -106,15 +115,15 @@ local function core(model: Model, origin: Vector3)
 	local folder = Instance.new("Folder")
 	folder.Name = "Core"
 	local inset = 0.5
-	local wall = Color3.fromRGB(222, 196, 150)
-	local trim = Color3.fromRGB(150, 120, 92)
+	local wall = Color3.fromRGB(70, 78, 96) -- dark panels
+	local trim = Color3.fromRGB(196, 200, 210) -- steel
 	local body = part(
 		folder,
 		"CoreBody",
 		Vector3.new(w - inset * 2, h - 0.6, d - inset * 2),
 		CFrame.new(origin + Vector3.new(cx, (h - 0.6) / 2, cz)),
 		wall,
-		Enum.Material.Brick
+		Enum.Material.SmoothPlastic
 	)
 	body:SetAttribute("Core", true)
 	-- Corner pillars, full height, flush with the footprint (solid, so raycasts
@@ -129,7 +138,7 @@ local function core(model: Model, origin: Vector3)
 					origin + Vector3.new(cx + sx * (w / 2 - 0.7), (h - 0.6) / 2, cz + sz * (d / 2 - 0.7))
 				),
 				trim,
-				Enum.Material.Cobblestone
+				Enum.Material.Metal
 			)
 		end
 	end
@@ -141,8 +150,8 @@ local function core(model: Model, origin: Vector3)
 			"CoreBand",
 			Vector3.new(w - 0.16, 1, d - 0.16), -- a hair inside the pillars: no shared faces
 			CFrame.new(origin + Vector3.new(cx, bandY, cz)),
-			trim,
-			Enum.Material.Cobblestone
+			BAND_COLORS[(y // 4) % #BAND_COLORS + 1], -- same colour bands as the pieces
+			Enum.Material.SmoothPlastic
 		)
 	end
 	-- Dark window slits set into the recessed walls, two per side every other band.
@@ -172,8 +181,8 @@ local function core(model: Model, origin: Vector3)
 		"CoreRoof",
 		Vector3.new(w, 0.6, d),
 		CFrame.new(origin + Vector3.new(cx, h - 0.3, cz)),
-		Color3.fromRGB(200, 70, 60),
-		Enum.Material.SmoothPlastic
+		Color3.fromRGB(255, 205, 40),
+		Enum.Material.Neon
 	)
 	folder.Parent = model
 end
