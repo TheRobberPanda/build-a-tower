@@ -554,7 +554,7 @@ local function setResultTitle(text: string)
 	end
 end
 
-local function showResult(ok: boolean, ms: number, improved: boolean, message: string?)
+local function showResult(ok: boolean, ms: number, improved: boolean, message: string?, previous: number?)
 	if not ok then
 		if message then -- invalid run; a plain quit shows nothing
 			setResultTitle("Not this time")
@@ -570,7 +570,12 @@ local function showResult(ok: boolean, ms: number, improved: boolean, message: s
 	resultTime.Text = Kit.formatMs(ms)
 	resultNote.Text = if own
 		then "Tower verified! You can publish it now."
+		elseif improved and previous then string.format(
+			"New personal best! (was %s)",
+			Kit.formatMs(previous)
+		)
 		elseif improved then "New personal best!"
+		elseif previous then string.format("Your best: %s", Kit.formatMs(previous))
 		else "Not your best this time."
 	resultTimesButton.Visible = not own
 	openModal("Results")
@@ -671,13 +676,14 @@ function UIController.start()
 		end
 		State.set({ mode = "run", runOwner = ownerId, runName = tostring(name), runStartedAt = os.clock() })
 	end)
-	Remotes.event("RunResult").OnClientEvent:Connect(function(ok, ms, improved, message)
+	Remotes.event("RunResult").OnClientEvent:Connect(function(ok, ms, improved, message, previous)
 		State.set({ mode = "build" })
 		showResult(
 			ok == true,
 			tonumber(ms) or 0,
 			improved == true,
-			if type(message) == "string" then message else nil
+			if type(message) == "string" then message else nil,
+			if type(previous) == "number" then previous else nil
 		)
 	end)
 

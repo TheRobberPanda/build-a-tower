@@ -143,21 +143,23 @@ function PublishedStore.topTimes(
 	return readPage(self, self._deps.leaderboard(PublishedStore.leaderboardName(ownerId, hash)), true, count)
 end
 
--- Records ms only if it beats the racer's stored best. Returns true if it improved.
+-- Records ms only if it beats the racer's stored best. Returns (improved, previous best ms?).
 function PublishedStore.submitTime(
 	self: PublishedStore,
 	ownerId: number,
 	hash: string,
 	racerId: number,
 	ms: number
-): boolean
+): (boolean, number?)
 	if ms % 1 ~= 0 or ms < Config.MIN_RUN_MS or ms > Config.MAX_RUN_MS then
 		return false
 	end
 	local store = self._deps.leaderboard(PublishedStore.leaderboardName(ownerId, hash))
 	local improved = false
+	local previous: number? = nil
 	local ok = Retry.call(self._retry, function()
 		return store:UpdateAsync(tostring(racerId), function(old: any)
+			previous = if type(old) == "number" then old else nil
 			if type(old) == "number" and old <= ms then
 				improved = false
 				return nil
@@ -166,7 +168,7 @@ function PublishedStore.submitTime(
 			return ms
 		end)
 	end)
-	return ok and improved
+	return ok and improved, previous
 end
 
 return PublishedStore

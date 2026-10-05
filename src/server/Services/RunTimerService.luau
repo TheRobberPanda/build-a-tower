@@ -56,8 +56,9 @@ local function finish(player: Player, run: Run)
 		Remotes.event("TowerChanged")
 			:FireClient(player, data and data.tower, data and data.verifiedHash ~= nil)
 	else
-		local improved = TowerService.published():submitTime(run.ownerId, run.hash, player.UserId, ms)
-		Remotes.event("RunResult"):FireClient(player, true, ms, improved)
+		local improved, previous = TowerService.published()
+			:submitTime(run.ownerId, run.hash, player.UserId, ms)
+		Remotes.event("RunResult"):FireClient(player, true, ms, improved, nil, previous)
 		restoreOwnTower(player)
 	end
 end
