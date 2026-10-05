@@ -183,14 +183,27 @@ local function buildHotbar()
 			Kit.corner(0.18),
 			Kit.new("UIStroke", { Name = "Select", Thickness = 3, Color = Theme.Stroke }),
 		})
-		Kit.new("Frame", {
+		local tileProps: { [string]: any } = {
 			Name = "Tile",
-			BackgroundColor3 = PIECE_COLORS[def.name],
 			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.fromScale(0.5, 0.1),
-			Size = UDim2.fromScale(0.55, 0.55),
+			Position = UDim2.fromScale(0.5, 0.04),
+			Size = UDim2.fromScale(0.66, 0.66),
 			Parent = slot,
-		}, { Kit.corner(0.15), Kit.stroke(1.5) })
+		}
+		if Theme.PieceIconSheet ~= "" then
+			local cell = Theme.PieceIconCell
+			local i = def.id - 1
+			tileProps.BackgroundTransparency = 1
+			tileProps.Image = Theme.PieceIconSheet
+			tileProps.ImageRectSize = Vector2.new(cell, cell)
+			tileProps.ImageRectOffset = Vector2.new((i % 4) * cell, (i // 4) * cell)
+			Kit.new("ImageLabel", tileProps)
+		else
+			tileProps.BackgroundColor3 = PIECE_COLORS[def.name]
+			tileProps.Size = UDim2.fromScale(0.55, 0.55)
+			tileProps.Position = UDim2.fromScale(0.5, 0.1)
+			Kit.new("Frame", tileProps, { Kit.corner(0.15), Kit.stroke(1.5) })
+		end
 		Kit.label(SHORT_NAMES[def.name] or def.name, {
 			Size = UDim2.fromScale(0.94, 0.26),
 			Position = UDim2.fromScale(0.03, 0.7),

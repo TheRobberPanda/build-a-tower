@@ -41,7 +41,7 @@ Mobile first: Scale sizing, UIAspectRatioConstraint, safe insets, keep thumbstic
 ## Assets and money
 - Free assets only: Creator Store, Roblox audio, CC0 (Kenney, Quaternius, Poly Haven, ambientCG). No NC licences. Strip scripts from free models. Log in CREDITS.md.
 - OpenRouter key in `.env` (gitignored). Never print or commit it.
-- $10 budget, tracked in BUDGET.md. ALWAYS ask Paulo before any paid call (model, count, cost).
+- $10 hard budget, tracked in BUDGET.md. Paid calls are pre-approved (2026-10-05) but log every charge and never exceed the budget.
 
 ## Working with Paulo
 Direct, short messages. Numbered steps for Studio actions. Commit after each working step. Use the roblox-dev skills when relevant.

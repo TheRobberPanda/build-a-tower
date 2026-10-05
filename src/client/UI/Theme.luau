@@ -12,6 +12,11 @@ return table.freeze({
 	TextDim = Color3.fromRGB(175, 180, 200),
 	Stroke = Color3.fromRGB(10, 10, 18),
 
+	-- 1024x512 sheet, 4x2 cells of 256px, in PieceDefs id order (assets/ui/piece_icons.png).
+	-- Empty = fall back to coloured tiles.
+	PieceIconSheet = "",
+	PieceIconCell = 256,
+
 	Font = Enum.Font.FredokaOne,
 	BodyFont = Enum.Font.BuilderSansBold,
 
