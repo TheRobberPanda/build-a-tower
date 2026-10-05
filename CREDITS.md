@@ -12,3 +12,4 @@
 | SFX: Checkpoint (confirmation_002), Door (open_002) | Kenney "Interface Sounds" | CC0 | Roblox audio 138773923531137 / 131464703611095 |
 | SFX: LevelUp (jingles_PIZZI07) | Kenney "Music Jingles" | CC0 | Roblox audio 132886095093109 |
 | SFX: Crumble (impactWood_heavy_002) | Kenney "Impact Sounds" | CC0 | Roblox audio 109580080804011 |
+| Game pass and Bricks icons | Generated (google/gemini-3.1-flash-image via OpenRouter) | Generated for this project | marketing/raw/pass_builder.png, pass_vip.png, bricks.png |
