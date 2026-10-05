@@ -13,7 +13,7 @@ Sounds.Ids = table.freeze({
 	Teleport = "rbxassetid://130698977470767",
 	Finish = "rbxassetid://86004459095908",
 	Fail = "rbxassetid://99974427251680",
-	Ambient = "rbxassetid://98203373046550", -- looped quietly on the client
+	Ambient = "rbxassetid://140662085604483", -- looped quietly on the client
 })
 
 local VOLUME: { [string]: number } = {

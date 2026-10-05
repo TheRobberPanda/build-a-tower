@@ -7,4 +7,4 @@
 | SFX: Place (drop_002), Delete (close_002), Fail (error_004) | Kenney "Interface Sounds" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 76820444954643 / 138546948480498 / 99974427251680 |
 | SFX: JumpPad (phaseJump1), Teleport (zapThreeToneUp) | Kenney "Digital Audio" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 121431627776116 / 130698977470767 |
 | SFX: Finish (jingles_STEEL07) | Kenney "Music Jingles" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 86004459095908 |
-| Ambient loop | lobby_music_test.mp3 with fades | Generated for this project | Sounds.luau, Roblox audio 98203373046550 |
+| Ambient: "Aroma calm ritual" (Ambient Flow Sounds) | Creator Store, DistrokidOfficial (verified) | Roblox licensed, free | Sounds.luau, Roblox audio 140662085604483 |
