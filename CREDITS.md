@@ -4,3 +4,7 @@
 |---|---|---|---|
 | Lobby music test clip | Generated (google/lyria-3-clip-preview via OpenRouter) | Generated for this project | assets/audio/lobby_music_test.mp3 |
 | Piece icon sheet | Generated (google/gemini-3.1-flash-image via OpenRouter) | Generated for this project | assets/ui/piece_icons.png (hotbar), Roblox image 94701657277096 |
+| SFX: Place (drop_002), Delete (close_002), Fail (error_004) | Kenney "Interface Sounds" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 76820444954643 / 138546948480498 / 99974427251680 |
+| SFX: JumpPad (phaseJump1), Teleport (zapThreeToneUp) | Kenney "Digital Audio" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 121431627776116 / 130698977470767 |
+| SFX: Finish (jingles_STEEL07) | Kenney "Music Jingles" (kenney.nl) | CC0 | Sounds.luau, Roblox audio 86004459095908 |
+| Ambient loop | lobby_music_test.mp3 with fades | Generated for this project | Sounds.luau, Roblox audio 98203373046550 |

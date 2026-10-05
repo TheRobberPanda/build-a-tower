@@ -7,9 +7,9 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 - [x] Jump pad power / teleporter channel picker, restart button, unpaired-teleporter warning, personal best on results
 - [x] First-time hints in build mode (empty plot, no Finish yet)
 - [x] Lighting: Future, atmosphere, bloom, colour correction (default.project.json)
-- [ ] Ambient sound (free assets, CREDITS.md)
+- [x] Ambient sound
 - [x] Sound hooks: place, delete, jump pad, teleport, finish, fail, ambient (src/shared/Sounds.luau)
-- [ ] Fill in sound ids (needs audio source, see below)
+- [x] Sound ids: Kenney CC0 SFX + generated ambient loop (CREDITS.md)
 - [ ] **(Paulo)** Server size 8 on the Creator Dashboard (plots are 200 studs apart, 8 fit fine)
 - [x] Browse empty state
 - [ ] **(Paulo)** Playtest checkpoint: one Studio session, ~15 min, I drive and screenshot

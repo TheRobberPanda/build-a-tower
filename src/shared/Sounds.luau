@@ -7,13 +7,13 @@ local SoundService = game:GetService("SoundService")
 local Sounds = {}
 
 Sounds.Ids = table.freeze({
-	Place = "",
-	Delete = "",
-	JumpPad = "",
-	Teleport = "",
-	Finish = "",
-	Fail = "",
-	Ambient = "", -- looped quietly on the client
+	Place = "rbxassetid://76820444954643",
+	Delete = "rbxassetid://138546948480498",
+	JumpPad = "rbxassetid://121431627776116",
+	Teleport = "rbxassetid://130698977470767",
+	Finish = "rbxassetid://86004459095908",
+	Fail = "rbxassetid://99974427251680",
+	Ambient = "rbxassetid://98203373046550", -- looped quietly on the client
 })
 
 local VOLUME: { [string]: number } = {
