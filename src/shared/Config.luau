@@ -61,11 +61,11 @@ local Config = {
 
 	-- Badge asset ids from the Creator Dashboard; 0 = not created yet.
 	BADGES = table.freeze({
-		FirstPublish = 0,
-		FirstRace = 0,
-		WallWalker = 0, -- went through a fake wall in a race
-		GhostStep = 0, -- stood on an invisible platform
-		PortalHopper = 0, -- used a teleporter
+		FirstPublish = 2148506926772295,
+		FirstRace = 1564852800504017,
+		WallWalker = 4295287596393535, -- went through a fake wall in a race
+		GhostStep = 3145026699510500, -- stood on an invisible platform
+		PortalHopper = 4196301637642163, -- used a teleporter
 		Launched = 0, -- used a jump pad
 		Doorman = 0, -- opened a door with a button
 		SecretHunter = 0, -- 10 secrets found in total

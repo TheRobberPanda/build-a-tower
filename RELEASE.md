@@ -32,7 +32,8 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 - [ ] **(Paulo)** Maturity questionnaire, set public settings, devices: phone/tablet/PC/console off
 - [ ] **(Paulo)** Build and publish 3–5 seed towers so browse isn't empty
 
-- [ ] **(Paulo)** Create badges on the Creator Dashboard and paste their ids into `Config.BADGES`: FirstPublish, FirstRace, WallWalker, GhostStep, PortalHopper, Launched, Doorman, SecretHunter, RecordHolder
+- [x] Badges 1-5 created via Open Cloud (FirstPublish, FirstRace, WallWalker, GhostStep, PortalHopper); icons in marketing/final/badges
+- [ ] Badges 6-11 (Launched, Doorman, SecretHunter, RecordHolder, FeaturedPodium, ContestWinner): free quota is 5/day, create tomorrow with expectedCost 0
 - [x] Game passes (Builder Pass 199, VIP 149) and Bricks packs (500 = 49, 1500 = 129) created with icons; ids in Config
 
 ## 4. Soft launch (Oct 19–20)
