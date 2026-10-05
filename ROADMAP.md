@@ -33,7 +33,7 @@ Goal: make secrets the identity of the game.
 | Builder hints vs average | M | After a race: "You were 12 s slower than average on this tower" and a per-secret "found by 18% of racers". |
 | New secret pieces | L | Crumbling platform, conveyor, one-way wall, timed door, hidden button that opens a door. New ids 9+, never reuse. Each needs an AntiCheat allowance. |
 
-## M3. Replays and ghosts (month 3)
+## M3. Replays and ghosts — DONE
 Goal: mastery loop. Learn routes from better players.
 
 | Feature | Size | Notes |

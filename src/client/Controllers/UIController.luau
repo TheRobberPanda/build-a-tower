@@ -13,6 +13,7 @@ local Kit = require(script.Parent.Parent.UI.Kit)
 local Theme = require(script.Parent.Parent.UI.Theme)
 local State = require(script.Parent.Parent.State)
 local BuildController = require(script.Parent.BuildController)
+local GhostController = require(script.Parent.GhostController)
 
 local UIController = {}
 
@@ -33,6 +34,7 @@ local PIECE_COLORS: { [string]: Color3 } = {
 	OneWay = Color3.fromRGB(140, 200, 255),
 	Button = Color3.fromRGB(230, 60, 60),
 	Door = Color3.fromRGB(150, 100, 60),
+	Checkpoint = Color3.fromRGB(0, 190, 200),
 }
 local SHORT_NAMES: { [string]: string } = {
 	InvisiblePlatform = "Invisible",
@@ -191,7 +193,7 @@ local function buildHotbar()
 		local slot: TextButton = Kit.new("TextButton", {
 			Name = def.name,
 			LayoutOrder = def.id,
-			Size = UDim2.fromScale(1 / 13.5, 1),
+			Size = UDim2.fromScale(1 / 14.5, 1),
 			BackgroundColor3 = Theme.Panel,
 			AutoButtonColor = true,
 			Text = "",
@@ -715,16 +717,25 @@ function UIController.openLeaderboard(ownerId: number)
 				Parent = r,
 			})
 			local nameLabel = Kit.label("...", {
-				Position = UDim2.fromScale(0.17, 0.15),
-				Size = UDim2.fromScale(0.5, 0.7),
+				Position = UDim2.fromScale(0.15, 0.15),
+				Size = UDim2.fromScale(0.36, 0.7),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				Font = Theme.BodyFont,
 				Parent = r,
 			})
 			Kit.label(Kit.formatMs(tonumber(entry.ms) or 0), {
-				Position = UDim2.fromScale(0.68, 0.15),
-				Size = UDim2.fromScale(0.29, 0.7),
+				Position = UDim2.fromScale(0.52, 0.15),
+				Size = UDim2.fromScale(0.26, 0.7),
 				TextXAlignment = Enum.TextXAlignment.Right,
+				Parent = r,
+			})
+			local racer = tonumber(entry.userId) or 0
+			Kit.button("Watch", Theme.Accent, function()
+				openModal(nil)
+				GhostController.watch(ownerId, racer)
+			end, {
+				Position = UDim2.fromScale(0.8, 0.12),
+				Size = UDim2.fromScale(0.18, 0.76),
 				Parent = r,
 			})
 			task.spawn(function()

@@ -22,6 +22,8 @@ local list: { PieceDef } = {
 	{ id = 11, name = "OneWay", size = { 1, 2, 1 }, props = {} }, -- pass through from the front only
 	{ id = 12, name = "Button", size = { 1, 1, 1 }, props = { ch = { 1, 4 } } }, -- opens doors on its channel
 	{ id = 13, name = "Door", size = { 1, 2, 1 }, props = { ch = { 1, 4 } } },
+	-- M3
+	{ id = 14, name = "Checkpoint", size = { 1, 1, 1 }, props = {}, maxCount = 16 }, -- respawn point + split time
 }
 
 local byId: { [number]: PieceDef } = {}

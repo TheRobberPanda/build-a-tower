@@ -71,6 +71,11 @@ local Config = {
 	}),
 	SECRET_HUNTER_COUNT = 10,
 
+	-- Replays
+	REPLAYS_STORE = "Replays_v1",
+	PATH_SAMPLE_SECONDS = 0.1,
+	PATH_MAX_SAMPLES = 6000, -- 10 minutes; longer runs keep only the first 10 minutes
+
 	-- Runs
 	MAX_RUN_MS = 60 * 60 * 1000,
 	MIN_RUN_MS = 1000,

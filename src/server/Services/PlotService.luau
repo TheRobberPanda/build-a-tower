@@ -49,6 +49,7 @@ local COLORS: { [string]: Color3 } = {
 	OneWay = Color3.fromRGB(163, 162, 165), -- looks like a wall
 	Button = Color3.fromRGB(230, 60, 60),
 	Door = Color3.fromRGB(150, 100, 60),
+	Checkpoint = Color3.fromRGB(0, 190, 200),
 }
 
 local TELEPORTER_COLORS: { Color3 } = {
@@ -111,6 +112,10 @@ local function makePart(piece: Piece, origin: Vector3): BasePart
 		part.Material = Enum.Material.Neon
 	elseif def.name == "Door" then
 		part.Material = Enum.Material.WoodPlanks
+	elseif def.name == "Checkpoint" then
+		part.Size = Vector3.new(part.Size.X, part.Size.Y * 0.25, part.Size.Z)
+		part.Position -= Vector3.new(0, (Config.GRID_STUDS - part.Size.Y) / 2, 0)
+		part.Material = Enum.Material.Neon
 	end
 	if def.name == "Button" or def.name == "Door" then
 		local ch = piece.p and piece.p.ch or 1
@@ -128,6 +133,16 @@ local function makePart(piece: Piece, origin: Vector3): BasePart
 		CollectionService:AddTag(part, def.name) -- MechanicsService / client controller pick these up
 	end
 	return part
+end
+
+-- During a run, respawn here instead of the plot spawn (nil = plot spawn).
+local respawnAt: { [Player]: CFrame } = {}
+function PlotService.setRespawn(player: Player, cf: CFrame?)
+	respawnAt[player] = cf
+end
+
+function PlotService.respawnFor(player: Player): CFrame?
+	return respawnAt[player]
 end
 
 function PlotService.get(player: Player): Plot?
@@ -229,10 +244,10 @@ local function onPlayerAdded(player: Player)
 	model.Parent = plotsFolder
 	plots[player] = { slot = slot, origin = origin, model = model }
 
-	-- Everyone spawns at their own plot.
+	-- Everyone spawns at their own plot (or their run checkpoint).
 	local function onCharacter(character: Model)
 		task.defer(function()
-			local cf = PlotService.spawnCFrame(player)
+			local cf = respawnAt[player] or PlotService.spawnCFrame(player)
 			if cf and character.Parent then
 				character:PivotTo(cf)
 			end
@@ -245,6 +260,7 @@ local function onPlayerAdded(player: Player)
 end
 
 local function onPlayerRemoving(player: Player)
+	respawnAt[player] = nil
 	local plot = plots[player]
 	if plot then
 		plot.model:Destroy()
