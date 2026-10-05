@@ -14,7 +14,7 @@ return table.freeze({
 
 	-- 1024x512 sheet, 4x2 cells of 256px, in PieceDefs id order (assets/ui/piece_icons.png).
 	-- Empty = fall back to coloured tiles.
-	PieceIconSheet = "",
+	PieceIconSheet = "rbxassetid://94701657277096", -- decal 129283383469770
 	PieceIconCell = 256,
 
 	Font = Enum.Font.FredokaOne,

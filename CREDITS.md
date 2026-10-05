@@ -3,4 +3,4 @@
 | Asset | Source | Licence | Used in |
 |---|---|---|---|
 | Lobby music test clip | Generated (google/lyria-3-clip-preview via OpenRouter) | Generated for this project | assets/audio/lobby_music_test.mp3 |
-| Piece icon sheet | Generated (google/gemini-3.1-flash-image via OpenRouter) | Generated for this project | assets/ui/piece_icons.png (hotbar) |
+| Piece icon sheet | Generated (google/gemini-3.1-flash-image via OpenRouter) | Generated for this project | assets/ui/piece_icons.png (hotbar), Roblox image 94701657277096 |
