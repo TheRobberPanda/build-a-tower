@@ -105,9 +105,9 @@ export type PlaceState = {
 	budget: number,
 }
 
--- budget defaults to the maximum any level allows (used when loading stored towers).
+-- budget defaults to the largest any player can have (used when loading stored towers).
 function TowerCodec.newPlaceState(budget: number?): PlaceState
-	return { occupied = {}, counts = {}, total = 0, decor = 0, budget = budget or Config.PIECE_BUDGET_MAX }
+	return { occupied = {}, counts = {}, total = 0, decor = 0, budget = budget or Config.PIECE_BUDGET_STORED }
 end
 
 -- Checks budget, per-type limits and overlap against the current state.

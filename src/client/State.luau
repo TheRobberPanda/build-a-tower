@@ -31,6 +31,9 @@ local State = {
 	material = "plastic",
 	unlocked = {} :: { [string]: boolean },
 	activeSlot = 1,
+	slots = 3,
+	trail = nil :: string?,
+	theme = "grass",
 	buildOwner = 0, -- userId whose plot you are building on; 0 = your own
 	Changed = changed.Event,
 }

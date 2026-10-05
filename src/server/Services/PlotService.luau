@@ -167,6 +167,16 @@ function PlotService.setRespawn(player: Player, cf: CFrame?)
 	respawnAt[player] = cf
 end
 
+-- VIP plot theme: recolours the plot base.
+function PlotService.setTheme(player: Player, color: Color3, material: Enum.Material)
+	local plot = plots[player]
+	local base = plot and plot.model:FindFirstChild("Base")
+	if base and base:IsA("BasePart") then
+		base.Color = color
+		base.Material = material
+	end
+end
+
 function PlotService.respawnFor(player: Player): CFrame?
 	return respawnAt[player]
 end

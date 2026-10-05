@@ -75,6 +75,8 @@ function ProfileStore.defaultData(): PlayerData
 		unlocked = {},
 		activeSlot = 1,
 		slots = {},
+		theme = Cosmetics.DEFAULT_THEME,
+		receipts = {},
 	}
 end
 
@@ -123,12 +125,12 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 		type(raw.activeSlot) == "number"
 		and raw.activeSlot % 1 == 0
 		and raw.activeSlot >= 1
-		and raw.activeSlot <= Config.TOWER_SLOTS
+		and raw.activeSlot <= Config.MAX_TOWER_SLOTS
 	then
 		data.activeSlot = raw.activeSlot
 	end
 	if type(raw.slots) == "table" then
-		for i = 1, Config.TOWER_SLOTS do
+		for i = 1, Config.MAX_TOWER_SLOTS do
 			local key = tostring(i)
 			local slot = raw.slots[key]
 			if i ~= data.activeSlot and type(slot) == "table" then
@@ -148,12 +150,29 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 			end
 		end
 	end
+	if type(raw.trail) == "string" and Cosmetics.trailByKey[raw.trail] then
+		data.trail = raw.trail
+	end
+	if type(raw.theme) == "string" and Cosmetics.themeByKey[raw.theme] then
+		data.theme = raw.theme
+	end
+	if type(raw.receipts) == "table" then
+		for _, id in raw.receipts do
+			if type(id) == "string" and #id <= 64 and #data.receipts < Config.RECEIPTS_KEPT then
+				table.insert(data.receipts, id)
+			end
+		end
+	end
 	if type(raw.material) == "string" and Cosmetics.byKey[raw.material] then
 		data.material = raw.material
 	end
 	if type(raw.unlocked) == "table" then
 		for key, v in raw.unlocked do
-			if v == true and type(key) == "string" and Cosmetics.byKey[key] then
+			if
+				v == true
+				and type(key) == "string"
+				and (Cosmetics.byKey[key] or Cosmetics.trailByKey[key])
+			then
 				data.unlocked[key] = true
 			end
 		end

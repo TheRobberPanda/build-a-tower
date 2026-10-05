@@ -44,6 +44,16 @@ local function write(player: Player, data: PlayerData, final: boolean)
 	end
 end
 
+-- Immediate save (purchases). True only if the record was written.
+function DataService.saveNow(player: Player): boolean
+	local data = profiles[player]
+	if not data or noSave[player] then
+		return false
+	end
+	local ok = store:save(player.UserId, data, false)
+	return ok == true
+end
+
 local function autosave(player: Player)
 	local data = profiles[player]
 	if data and not noSave[player] then

@@ -17,6 +17,7 @@ local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local GhostController = require(script.Parent.GhostController)
 local SocialController = require(script.Parent.SocialController)
 local LiveRaceController = require(script.Parent.LiveRaceController)
+local ShopController = require(script.Parent.ShopController)
 
 local UIController = {}
 
@@ -306,6 +307,12 @@ local function buildProfileBadge()
 		BackgroundColor3 = Theme.Success,
 		Parent = bar,
 	}, { Kit.corner(0.5) })
+	-- Just under the level badge.
+	Kit.button("Shop", Theme.Primary, ShopController.toggle, {
+		Position = UDim2.fromScale(0.015, 0.235),
+		Size = UDim2.fromScale(0.09, 0.055),
+		Parent = gui,
+	})
 end
 
 ---------------------------------------------------------------- tower menu (slots + materials)
@@ -317,6 +324,7 @@ local towerMenuStatus: TextLabel
 local function renderTowerMenu()
 	for i, button in slotButtons do
 		button.BackgroundColor3 = if i == State.activeSlot then Theme.Primary else Theme.PanelLight
+		button.Visible = i <= State.slots
 	end
 	if not materialList then
 		return
@@ -374,15 +382,15 @@ local function buildTowerMenu()
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = slotsRow,
 	})
-	for i = 1, Config.TOWER_SLOTS do
-		slotButtons[i] = Kit.button("Tower " .. i, Theme.PanelLight, function()
+	for i = 1, Config.MAX_TOWER_SLOTS do
+		slotButtons[i] = Kit.button(tostring(i), Theme.PanelLight, function()
 			task.spawn(function()
 				local ok, switched = pcall(function()
 					return Remotes.func("SwitchSlot"):InvokeServer(i)
 				end)
 				towerMenuStatus.Text = if ok and switched then "Switched to tower " .. i else ""
 			end)
-		end, { LayoutOrder = i, Size = UDim2.fromScale(0.31, 1), Parent = slotsRow })
+		end, { LayoutOrder = i, Size = UDim2.fromScale(0.18, 1), Parent = slotsRow })
 	end
 	towerMenuStatus = Kit.label("", {
 		Position = UDim2.fromScale(0, 0.13),
@@ -1103,7 +1111,7 @@ function UIController.start()
 	Remotes.event("Progress").OnClientEvent:Connect(function(p)
 		if type(p) == "table" then
 			local patch = {}
-			for _, k in { "xp", "bricks", "level", "budget", "levelXp", "nextXp", "activeSlot" } do
+			for _, k in { "xp", "bricks", "level", "budget", "levelXp", "nextXp", "activeSlot", "slots" } do
 				if type(p[k]) == "number" then
 					patch[k] = p[k]
 				end
@@ -1114,6 +1122,10 @@ function UIController.start()
 			if type(p.unlocked) == "table" then
 				patch.unlocked = p.unlocked
 			end
+			if type(p.theme) == "string" then
+				patch.theme = p.theme
+			end
+			State.trail = if type(p.trail) == "string" then p.trail else nil
 			State.set(patch)
 			if openModalName == "TowerMenu" then
 				renderTowerMenu()

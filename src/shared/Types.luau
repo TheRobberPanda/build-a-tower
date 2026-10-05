@@ -40,7 +40,10 @@ export type PlayerData = {
 	material: string, -- Cosmetics key for the tower
 	activeSlot: number, -- 1..Config.TOWER_SLOTS; tower/towerName/verifiedHash belong to it
 	slots: { [string]: SavedSlot }, -- the inactive slots, keyed "1".."3"
-	unlocked: { [string]: boolean }, -- materials bought with Bricks
+	unlocked: { [string]: boolean }, -- materials and trails bought with Bricks
+	trail: string?, -- equipped Cosmetics trail key
+	theme: string, -- VIP plot theme key
+	receipts: { string }, -- recent dev product purchase ids (dedupe), oldest first
 }
 
 export type PublishedTower = {

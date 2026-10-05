@@ -33,6 +33,7 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 - [ ] **(Paulo)** Build and publish 3–5 seed towers so browse isn't empty
 
 - [ ] **(Paulo)** Create badges on the Creator Dashboard and paste their ids into `Config.BADGES`: FirstPublish, FirstRace, WallWalker, GhostStep, PortalHopper, Launched, Doorman, SecretHunter, RecordHolder
+- [ ] **(Paulo)** Create game passes (Builder Pass, VIP) and Bricks dev products; paste ids into `Config.GAME_PASSES` / `Config.BRICK_PRODUCTS` (items with id 0 stay hidden)
 
 ## 4. Soft launch (Oct 19–20)
 - [ ] **(Paulo)** Make public, share with friends only

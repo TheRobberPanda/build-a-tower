@@ -27,8 +27,14 @@ function Progression.xpFor(level: number): number
 end
 
 -- Piece budget grows with level: 150 at level 1, +15 per level, capped.
-function Progression.budget(level: number): number
-	return math.min(Config.PIECE_BUDGET + (level - 1) * 15, Config.PIECE_BUDGET_MAX)
+-- The Builder Pass adds a flat bonus on top (and may exceed the level cap).
+function Progression.budget(level: number, hasPass: boolean?): number
+	local base = math.min(Config.PIECE_BUDGET + (level - 1) * 15, Config.PIECE_BUDGET_MAX)
+	return base + (if hasPass then Config.PASS_EXTRA_BUDGET else 0)
+end
+
+function Progression.slots(hasPass: boolean?): number
+	return Config.TOWER_SLOTS + (if hasPass then Config.PASS_EXTRA_SLOTS else 0)
 end
 
 return table.freeze(Progression)

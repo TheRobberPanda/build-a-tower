@@ -13,6 +13,7 @@ for _, name in
 		"PlotService",
 		"DataService",
 		"ProgressionService",
+		"MonetizationService",
 		"TowerService",
 		"SocialService",
 		"AntiCheat",

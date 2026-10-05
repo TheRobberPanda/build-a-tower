@@ -23,6 +23,18 @@ local changed = Instance.new("BindableEvent")
 ProgressionService.Changed = changed.Event -- (player, data) after xp/bricks change
 
 local credits: CreditStore.CreditStore
+local hasPass: (Player) -> boolean = function(_player: Player)
+	return false
+end
+
+-- MonetizationService registers the Builder Pass check (it requires us).
+function ProgressionService.setPassCheck(fn: (Player) -> boolean)
+	hasPass = fn
+end
+
+function ProgressionService.hasBuilderPass(player: Player): boolean
+	return hasPass(player)
+end
 
 local function push(player: Player, data: PlayerData)
 	local level = Progression.level(data.xp)
@@ -30,7 +42,10 @@ local function push(player: Player, data: PlayerData)
 		xp = data.xp,
 		bricks = data.bricks,
 		level = level,
-		budget = Progression.budget(level),
+		budget = Progression.budget(level, hasPass(player)),
+		slots = Progression.slots(hasPass(player)),
+		trail = data.trail,
+		theme = data.theme,
 		levelXp = Progression.xpFor(level),
 		nextXp = Progression.xpFor(level + 1),
 		material = data.material,

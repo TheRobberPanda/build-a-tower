@@ -10,8 +10,12 @@ local Config = {
 	PLOT_CELLS_Y = 64, -- valid y: 0..PLOT_CELLS_Y-1
 	PIECE_BUDGET = 150, -- at level 1; grows with level (Progression.budget)
 	PIECE_BUDGET_MAX = 300,
+	PIECE_BUDGET_STORED = 400, -- largest tower any player can have (level cap + Builder Pass)
 	DECOR_MAX = 60,
-	TOWER_SLOTS = 3,
+	TOWER_SLOTS = 3, -- free slots; Builder Pass adds PASS_EXTRA_SLOTS
+	PASS_EXTRA_SLOTS = 2,
+	PASS_EXTRA_BUDGET = 100,
+	MAX_TOWER_SLOTS = 5,
 	MAX_LEVEL = 50,
 	TOWER_NAME_MAX = 24,
 
@@ -97,6 +101,16 @@ local Config = {
 	REPLAYS_STORE = "Replays_v1",
 	PATH_SAMPLE_SECONDS = 0.1,
 	PATH_MAX_SAMPLES = 6000, -- 10 minutes; longer runs keep only the first 10 minutes
+
+	-- Monetization (Creator Dashboard ids; 0 = not created yet, hidden in the shop)
+	GAME_PASSES = table.freeze({
+		BuilderPass = 0, -- +budget, +2 tower slots, exclusive materials
+		VIP = 0, -- plot themes
+	}),
+	BRICK_PRODUCTS = table.freeze({ -- dev product id -> Bricks granted
+		-- [123456] = 500,
+	}),
+	RECEIPTS_KEPT = 50, -- recent purchase ids remembered per player (dedupe)
 
 	-- Runs
 	MAX_RUN_MS = 60 * 60 * 1000,

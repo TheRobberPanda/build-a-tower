@@ -121,7 +121,7 @@ function LiveRaceController.init()
 	end, { Position = UDim2.fromScale(0.77, 0.12), Size = UDim2.fromScale(0.21, 0.76), Parent = banner })
 
 	standingsPanel = Kit.panel({
-		Position = UDim2.fromScale(0.015, 0.24),
+		Position = UDim2.fromScale(0.015, 0.31), -- below the level badge and Shop button
 		Size = UDim2.fromScale(0.18, 0.3),
 		Visible = false,
 		Parent = gui,

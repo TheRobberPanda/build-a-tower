@@ -25,6 +25,7 @@ Remotes.Events = table.freeze({
 	"LiveRacePositions", -- server -> client { { id, name, pos (plot-relative) } }
 	"LiveRaceStandings", -- server -> client ({ { place, name, ms? } }, final)
 	"LeaveLiveRace", -- () leave a lobby
+	"Passes", -- server -> client { [passName]: owned }
 })
 
 Remotes.Functions = table.freeze({
@@ -43,6 +44,9 @@ Remotes.Functions = table.freeze({
 	"JoinBuild", -- (ownerId; 0 = back to own plot) -> ok
 	"HostLiveRace", -- (ownerId) -> ok
 	"JoinLiveRace", -- (raceId) -> ok
+	"BuyTrail", -- (key) -> (ok, err); buys with Bricks if needed and equips
+	"EquipTrail", -- (key or "") -> ok
+	"SetTheme", -- (key) -> ok; VIP only
 })
 
 function Remotes.setup(): Folder

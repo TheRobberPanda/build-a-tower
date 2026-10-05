@@ -63,7 +63,7 @@ Goal: reasons to keep building.
 | Co-building | L | Invite a friend to build on your plot. Owner keeps publish rights. |
 | Friend notifications | S | "Your record on X was beaten" via in-game inbox. |
 
-## M6. Monetization (only after retention is proven)
+## M6. Monetization — DONE (ids stay 0 until passes/products exist)
 No pay to win: times and leaderboards are never for sale.
 
 | Item | Type | Notes |

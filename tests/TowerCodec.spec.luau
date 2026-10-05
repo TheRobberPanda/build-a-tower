@@ -74,11 +74,11 @@ return function()
 		end)
 		it("trims towers over budget", function()
 			local pieces = {}
-			for i = 0, Config.PIECE_BUDGET_MAX + 9 do
+			for i = 0, Config.PIECE_BUDGET_STORED + 9 do
 				table.insert(pieces, p(1, i % 16, i // 256, (i // 16) % 16))
 			end
 			local tower, dropped = TowerCodec.sanitize({ v = 1, pieces = pieces })
-			expect(tower and #tower.pieces).to.equal(Config.PIECE_BUDGET_MAX)
+			expect(tower and #tower.pieces).to.equal(Config.PIECE_BUDGET_STORED)
 			expect(dropped).to.equal(10)
 		end)
 		it("refuses data from a newer schema", function()

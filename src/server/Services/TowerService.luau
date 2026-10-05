@@ -19,6 +19,7 @@ local TowerStats = require(script.Parent.Parent.Lib.TowerStats)
 local Analytics = require(script.Parent.Analytics)
 local Badges = require(script.Parent.Badges)
 local DataService = require(script.Parent.DataService)
+local MonetizationService = require(script.Parent.MonetizationService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local PlotService = require(script.Parent.PlotService)
 
@@ -26,6 +27,8 @@ type PlayerData = Types.PlayerData
 type PublishedTower = Types.PublishedTower
 
 local TowerService = {}
+
+local budgetFor: (Player, PlayerData) -> number
 
 local states: { [Player]: TowerCodec.PlaceState } = {}
 local editLocked: { [Player]: boolean } = {} -- set by RunTimerService during runs
@@ -204,6 +207,14 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	Analytics.step(player, "Published")
 	Badges.award(player, "FirstPublish")
 	return true, nil
+end
+
+-- Level budget, plus the Builder Pass bonus.
+budgetFor = function(player: Player, data: PlayerData): number
+	return Progression.budget(
+		ProgressionService.level(data),
+		MonetizationService.hasPass(player, "BuilderPass")
+	)
 end
 
 local TABS = table.freeze({ new = true, popular = true, hard = true, friends = true, featured = true })
@@ -431,7 +442,8 @@ end
 -- its verification) and the target slot becomes the editable tower.
 local function onSwitchSlot(player: Player, index: any): boolean
 	local data = editable(player)
-	if not data or not isInt(index, 1, Config.TOWER_SLOTS) or index == data.activeSlot then
+	local slots = Progression.slots(MonetizationService.hasPass(player, "BuilderPass"))
+	if not data or not isInt(index, 1, slots) or index == data.activeSlot then
 		return false
 	end
 	data.slots[tostring(data.activeSlot)] = {
@@ -446,16 +458,19 @@ local function onSwitchSlot(player: Player, index: any): boolean
 	data.tower = if target then target.tower else TowerCodec.empty()
 	data.towerName = if target then target.name else "Tower " .. key
 	data.verifiedHash = if target then target.verifiedHash else nil
-	states[player] = TowerCodec.buildState(data.tower, Progression.budget(ProgressionService.level(data)))
+	states[player] = TowerCodec.buildState(data.tower, budgetFor(player, data))
 	pushTower(player, data)
 	ProgressionService.refresh(player)
 	return true
 end
 
-local function canUseMaterial(data: PlayerData, key: string): boolean
+local function canUseMaterial(player: Player, data: PlayerData, key: string): boolean
 	local def = Cosmetics.byKey[key]
 	if not def then
 		return false
+	end
+	if def.pass then
+		return MonetizationService.hasPass(player, def.pass)
 	end
 	if def.bricks > 0 then
 		return data.unlocked[key] == true
@@ -469,7 +484,7 @@ local function onSetMaterial(player: Player, key: any): (boolean, string?)
 	if not data or type(key) ~= "string" or not queryLimiter:allow(player) then
 		return false, "bad request"
 	end
-	if not canUseMaterial(data, key) then
+	if not canUseMaterial(player, data, key) then
 		return false, "locked"
 	end
 	data.material = key
@@ -550,9 +565,10 @@ function TowerService.init()
 	ProgressionService.Changed:Connect(function(player: Player, data: PlayerData)
 		local state = states[player]
 		if state then
-			state.budget = Progression.budget(ProgressionService.level(data))
+			state.budget = budgetFor(player, data)
 		end
 	end)
+	MonetizationService.Changed:Connect(ProgressionService.refresh)
 	task.spawn(function()
 		while true do
 			task.wait(Config.STATS_FLUSH_SECONDS)
@@ -565,7 +581,7 @@ function TowerService.init()
 
 	DataService.Loaded:Connect(function(player: Player, data: PlayerData)
 		finished[player] = {}
-		states[player] = TowerCodec.buildState(data.tower, Progression.budget(ProgressionService.level(data)))
+		states[player] = TowerCodec.buildState(data.tower, budgetFor(player, data))
 		pushTower(player, data)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
