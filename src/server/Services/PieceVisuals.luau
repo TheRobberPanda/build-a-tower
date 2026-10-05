@@ -8,7 +8,6 @@ local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 local PieceVisuals = {}
 
 local G = Config.GRID_STUDS
-local TILE = "rbxassetid://139861751774533" -- assets/ui/grid_cell.png (white cell outline)
 
 -- Structural colour shifts with height so a tower reads as a colourful climb.
 -- Fake walls and one-way walls use the same colour as blocks at that height.
@@ -52,17 +51,19 @@ local function deco(
 	return p
 end
 
--- White cell outlines on every face: the blocky "obby" look.
-local function tiles(part: BasePart, transparency: number)
-	for _, face in Enum.NormalId:GetEnumItems() do
-		local t = Instance.new("Texture")
-		t.Texture = TILE
-		t.Face = face
-		t.StudsPerTileU = G
-		t.StudsPerTileV = G
-		t.Transparency = transparency
-		t.Color3 = Color3.fromRGB(30, 30, 40) -- dark cell edges
-		t.Parent = part
+-- Four glowing strips around the top edge of a pad.
+local function frame(part: BasePart, color: Color3)
+	local top = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.05, 0)
+	local sx, sz = part.Size.X, part.Size.Z
+	for _, e in
+		{
+			{ Vector3.new(sx, 0.2, 0.5), CFrame.new(0, 0, sz / 2 - 0.25) },
+			{ Vector3.new(sx, 0.2, 0.5), CFrame.new(0, 0, -sz / 2 + 0.25) },
+			{ Vector3.new(0.5, 0.2, sz - 1), CFrame.new(sx / 2 - 0.25, 0, 0) },
+			{ Vector3.new(0.5, 0.2, sz - 1), CFrame.new(-sx / 2 + 0.25, 0, 0) },
+		}
+	do
+		deco(part, e[1], top * e[2], color, Enum.Material.Neon)
 	end
 end
 
@@ -91,44 +92,54 @@ local function pole(part: BasePart, flagColor: Color3)
 	deco(part, Vector3.new(0.1, 1.6, 2.4), top * CFrame.new(0, 4.1, 1.25), flagColor, Enum.Material.Fabric)
 end
 
-local function ring(part: BasePart, color: Color3, height: number)
-	local d = math.min(part.Size.X, part.Size.Z) * 0.85
-	deco(
-		part,
-		Vector3.new(0.3, d, d),
-		part.CFrame * CFrame.new(0, part.Size.Y / 2 + height, 0) * CFrame.Angles(0, 0, math.rad(90)),
-		color,
-		Enum.Material.Neon
-	).Shape =
-		Enum.PartType.Cylinder
-end
-
 -- name = piece type name; y/r = grid row and rotation; channelColor for linked pieces.
 function PieceVisuals.decorate(part: BasePart, name: string, y: number, r: number, channelColor: Color3?)
 	if name == "Block" or name == "FakeWall" or name == "OneWay" then
 		part.Color = PieceVisuals.heightColor(y)
-		tiles(part, 0.35)
 	elseif name == "Platform" then
 		part.Color = PieceVisuals.heightColor(y):Lerp(Color3.new(1, 1, 1), 0.25)
-		tiles(part, 0.45)
 	elseif name == "Ramp" then
 		part.Color = PieceVisuals.heightColor(y):Lerp(Color3.fromRGB(255, 200, 120), 0.35)
 	elseif name == "Crumble" then
 		part.Color = Color3.fromRGB(176, 138, 96)
-		tiles(part, 0.6)
 	elseif name == "JumpPad" then
-		part.Color = Color3.fromRGB(60, 60, 70)
+		-- Dark square pad with a glowing yellow frame (like the reference art).
+		part.Color = Color3.fromRGB(70, 74, 86)
 		part.Material = Enum.Material.SmoothPlastic
-		ring(part, Color3.fromRGB(255, 190, 40), 0.05)
-		sparkles(part, Color3.fromRGB(255, 210, 80), 4)
+		frame(part, Color3.fromRGB(255, 200, 40))
+		sparkles(part, Color3.fromRGB(255, 220, 90), 3)
 	elseif name == "Teleporter" then
+		-- A glowing archway: two posts, a lintel and a translucent portal pane.
 		local color = channelColor or Color3.fromRGB(170, 85, 255)
-		part.Color = Color3.fromRGB(40, 40, 55)
+		part.Color = Color3.fromRGB(60, 50, 80)
 		part.Material = Enum.Material.SmoothPlastic
-		part.Transparency = 0
-		ring(part, color, 0.05)
-		ring(part, color, 2).Transparency = 0.5
-		sparkles(part, color, 10)
+		part.Size = Vector3.new(part.Size.X, 0.6, part.Size.Z)
+		part.CFrame -= Vector3.new(0, (G - 0.6) / 2, 0)
+		local base = part.CFrame
+		local h = G - 0.6
+		for _, side in { -1, 1 } do
+			deco(
+				part,
+				Vector3.new(0.6, h, 0.6),
+				base * CFrame.new(side * (G / 2 - 0.5), 0.3 + h / 2, 0),
+				color:Lerp(Color3.new(1, 1, 1), 0.2)
+			)
+		end
+		deco(
+			part,
+			Vector3.new(G - 0.4, 0.6, 0.6),
+			base * CFrame.new(0, 0.3 + h - 0.3, 0),
+			color:Lerp(Color3.new(1, 1, 1), 0.2)
+		)
+		local pane = deco(
+			part,
+			Vector3.new(G - 1.6, h - 0.6, 0.2),
+			base * CFrame.new(0, 0.3 + (h - 0.6) / 2, 0),
+			color,
+			Enum.Material.Neon
+		)
+		pane.Transparency = 0.35
+		sparkles(part, color, 8)
 	elseif name == "Finish" then
 		part.Color = Color3.fromRGB(0, 200, 90)
 		pole(part, Color3.fromRGB(255, 255, 255))
@@ -156,8 +167,6 @@ function PieceVisuals.decorate(part: BasePart, name: string, y: number, r: numbe
 			Color3.fromRGB(90, 90, 100),
 			Enum.Material.Metal
 		)
-	elseif name == "Door" then
-		tiles(part, 0.7)
 	end
 end
 

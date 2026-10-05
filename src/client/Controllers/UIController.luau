@@ -46,6 +46,9 @@ local PIECE_COLORS: { [string]: Color3 } = {
 	Lamp = Color3.fromRGB(255, 220, 140),
 	Flag = Color3.fromRGB(230, 60, 60),
 	Pumpkin = Color3.fromRGB(255, 130, 20),
+	Stairs = Color3.fromRGB(255, 140, 30),
+	Beam = Color3.fromRGB(40, 120, 255),
+	LongRamp = Color3.fromRGB(255, 160, 60),
 }
 local SHORT_NAMES: { [string]: string } = {
 	InvisiblePlatform = "Invisible",
@@ -53,6 +56,7 @@ local SHORT_NAMES: { [string]: string } = {
 	JumpPad = "Jump Pad",
 	Teleporter = "Teleport",
 	OneWay = "One Way",
+	LongRamp = "Long Ramp",
 }
 
 local SECRET_NAMES: { [string]: string } = {

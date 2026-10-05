@@ -101,6 +101,10 @@ local list: { PieceDef } = {
 		props = {},
 		decor = true,
 	},
+	-- Premades (several parts; rotation turns them like a ramp)
+	{ id = 19, name = "Stairs", hint = "Walkable stairs, 2 high", size = { 1, 2, 2 }, props = {} },
+	{ id = 20, name = "Beam", hint = "Long plank walkway", size = { 1, 1, 4 }, props = {} },
+	{ id = 21, name = "LongRamp", hint = "Long sloped plank, 2 high", size = { 1, 2, 4 }, props = {} },
 }
 
 local byId: { [number]: PieceDef } = {}

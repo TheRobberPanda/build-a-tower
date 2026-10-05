@@ -16,6 +16,60 @@ type Piece = Types.Piece
 
 local PieceFactory = {}
 
+local function child(root: BasePart, name: string, size: Vector3, offset: CFrame, color: Color3): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = root.CFrame * offset
+	p.Color = color
+	p.Material = Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Parent = root
+	return p
+end
+
+local ORANGE = Color3.fromRGB(255, 140, 30)
+local BLUE = Color3.fromRGB(40, 120, 255)
+local YELLOW = Color3.fromRGB(255, 205, 40)
+
+-- Premade pieces, built in the root's local space (length along local Z, rising toward +Z).
+local COMPOUND: { [string]: (BasePart) -> () } = {
+	Stairs = function(root)
+		local size = root.Size
+		local steps = 8
+		local run, rise = size.Z / steps, size.Y / steps
+		for i = 1, steps do
+			local h = rise * i
+			child(
+				root,
+				"Stairs",
+				Vector3.new(size.X, h, run),
+				CFrame.new(0, -size.Y / 2 + h / 2, -size.Z / 2 + run * (i - 0.5)),
+				if i % 2 == 0 then ORANGE else ORANGE:Lerp(YELLOW, 0.3)
+			)
+		end
+	end,
+	Beam = function(root)
+		local size = root.Size
+		child(root, "Beam", Vector3.new(size.X, 1.2, size.Z), CFrame.new(0, size.Y / 2 - 0.6, 0), BLUE)
+		child(
+			root,
+			"BeamTrim",
+			Vector3.new(size.X - 0.6, 0.4, size.Z - 0.6),
+			CFrame.new(0, size.Y / 2 - 1.4, 0),
+			YELLOW
+		)
+	end,
+	LongRamp = function(root)
+		local size = root.Size
+		local length = math.sqrt(size.Z ^ 2 + (size.Y - 1) ^ 2)
+		local angle = math.atan2(size.Y - 1, size.Z)
+		child(root, "LongRamp", Vector3.new(size.X, 1, length), CFrame.Angles(-angle, 0, 0), ORANGE) -- rises toward +Z
+	end,
+}
+
 local INSET = { Block = true, Platform = true, FakeWall = true, OneWay = true, Crumble = true, Door = true }
 
 local COLORS: { [string]: Color3 } = {
@@ -37,6 +91,9 @@ local COLORS: { [string]: Color3 } = {
 	Lamp = Color3.fromRGB(255, 220, 140),
 	Flag = Color3.fromRGB(230, 60, 60),
 	Pumpkin = Color3.fromRGB(255, 130, 20),
+	Stairs = Color3.fromRGB(255, 140, 30),
+	Beam = Color3.fromRGB(40, 120, 255),
+	LongRamp = Color3.fromRGB(255, 140, 30),
 }
 
 local TELEPORTER_COLORS: { Color3 } = {
@@ -51,13 +108,13 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 	local sx, sy, sz = TowerCodec.extent(piece)
 	local g = Config.GRID_STUDS
 	local part: BasePart = if def.name == "Ramp" then Instance.new("WedgePart") else Instance.new("Part")
-	-- WedgePart size is defined before rotation, so use the unrotated def size
-	part.Size = if def.name == "Ramp"
+	-- Ramps and premades are sized before rotation and turned with the CFrame.
+	local turned = def.name == "Ramp" or COMPOUND[def.name] ~= nil
+	part.Size = if turned
 		then Vector3.new(def.size[1], def.size[2], def.size[3]) * g
 		else Vector3.new(sx, sy, sz) * g
 	local center = origin + Vector3.new(piece.x + sx / 2, piece.y + sy / 2, piece.z + sz / 2) * g
-	part.CFrame = CFrame.new(center)
-		* CFrame.Angles(0, if def.name == "Ramp" then piece.r * math.pi / 2 else 0, 0)
+	part.CFrame = CFrame.new(center) * CFrame.Angles(0, if turned then piece.r * math.pi / 2 else 0, 0)
 	part.Anchored = true
 	part.Color = COLORS[def.name]
 	part.Name = def.name
@@ -136,6 +193,15 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 	if def.name == "Button" or def.name == "Door" then
 		local ch = piece.p and piece.p.ch or 1
 		part.Color = TELEPORTER_COLORS[ch] or part.Color -- button and its doors share a colour
+	end
+	local build = COMPOUND[def.name]
+	if build then
+		-- The root is an invisible box; solid, visible children do the work.
+		part.Transparency = 1
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		build(part)
 	end
 	-- Small gaps between neighbouring blocks outline them (a 0.12 stud inset per side).
 	if INSET[def.name] then

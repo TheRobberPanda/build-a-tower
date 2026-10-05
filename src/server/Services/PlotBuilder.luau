@@ -7,15 +7,6 @@ local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 
 local PlotBuilder = {}
 
-local BAND_COLORS = {
-	Color3.fromRGB(40, 120, 255),
-	Color3.fromRGB(255, 140, 30),
-	Color3.fromRGB(255, 205, 40),
-	Color3.fromRGB(60, 200, 90),
-	Color3.fromRGB(235, 60, 75),
-	Color3.fromRGB(150, 80, 240),
-}
-
 local GRID_TEXTURE = "rbxassetid://139861751774533" -- assets/ui/grid_cell.png
 
 local G = Config.GRID_STUDS
@@ -90,6 +81,32 @@ local function noQuery(folder: Instance)
 	end
 end
 
+-- A copy of a Creator Store model from ServerStorage.SceneryAssets, scaled and
+-- set on the ground at `at`. Returns false when the asset isn't there.
+local function prop(parent: Instance, name: string, at: Vector3, scale: number, rng: Random): boolean
+	local assets = game:GetService("ServerStorage"):FindFirstChild("SceneryAssets")
+	local template = assets and assets:FindFirstChild(name)
+	if not template or not template:IsA("Model") then
+		return false
+	end
+	local m = template:Clone()
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanQuery = false
+			d.CanTouch = false
+		elseif d:IsA("LuaSourceContainer") then
+			d:Destroy() -- never run scripts from free models
+		end
+	end
+	m:ScaleTo(m:GetScale() * scale)
+	m:PivotTo(CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
+	local cf, size = m:GetBoundingBox()
+	m:PivotTo(m:GetPivot() + (at - Vector3.new(cf.X, cf.Y - size.Y / 2, cf.Z)))
+	m.Parent = parent
+	return true
+end
+
 local function rock(parent: Instance, at: Vector3, size: number)
 	local r = decoPart(
 		parent,
@@ -103,87 +120,53 @@ local function rock(parent: Instance, at: Vector3, size: number)
 	r.CanQuery = false
 end
 
--- The fixed core: a sandstone tower. Its outer shape is exactly the core
--- footprint (corner pillars and trim bands reach the edge, the walls are
--- recessed), so pieces built against it never overlap decoration.
+-- The fixed tower frame: four steel corner pillars and a blue floor every
+-- level (Config.CORE / TowerCodec.inCore). Pillars sit 0.1 studs inside the
+-- footprint so no face is shared with the floors or neighbouring pieces.
 local function core(model: Model, origin: Vector3)
 	local c = Config.CORE
-	local w = (c.x1 - c.x0) * G
-	local d = (c.z1 - c.z0) * G
 	local h = c.height * G
-	local cx, cz = (c.x0 + c.x1) / 2 * G, (c.z0 + c.z1) / 2 * G
 	local folder = Instance.new("Folder")
 	folder.Name = "Core"
-	local inset = 0.5
-	local wall = Color3.fromRGB(70, 78, 96) -- dark panels
-	local trim = Color3.fromRGB(196, 200, 210) -- steel
-	local body = part(
-		folder,
-		"CoreBody",
-		Vector3.new(w - inset * 2, h - 0.6, d - inset * 2),
-		CFrame.new(origin + Vector3.new(cx, (h - 0.6) / 2, cz)),
-		wall,
-		Enum.Material.SmoothPlastic
-	)
-	body:SetAttribute("Core", true)
-	-- Corner pillars, full height, flush with the footprint (solid, so raycasts
-	-- and building treat the core as its full 2x2 size).
-	for _, sx in { -1, 1 } do
-		for _, sz in { -1, 1 } do
-			part(
+	local steel = Color3.fromRGB(140, 140, 142) -- neutral grey, like the reference
+	local floorColor = Color3.fromRGB(40, 120, 255)
+	local trimColor = Color3.fromRGB(255, 205, 40)
+	for _, x in { c.x0, c.x1 - 1 } do
+		for _, z in { c.z0, c.z1 - 1 } do
+			local p = part(
 				folder,
 				"CorePillar",
-				Vector3.new(1.4, h - 0.6, 1.4),
-				CFrame.new(
-					origin + Vector3.new(cx + sx * (w / 2 - 0.7), (h - 0.6) / 2, cz + sz * (d / 2 - 0.7))
-				),
-				trim,
-				Enum.Material.Metal
+				Vector3.new(G - 1.2, h - 0.02, G - 1.2), -- slimmer than the cell it reserves
+				CFrame.new(origin + Vector3.new((x + 0.5) * G, h / 2 - 0.01, (z + 0.5) * G)),
+				steel,
+				Enum.Material.SmoothPlastic
 			)
+			p:SetAttribute("Core", true)
 		end
 	end
-	-- Trim bands every 4 cells fill the recess to the edge.
-	for y = 0, c.height, 4 do
-		local bandY = math.clamp(y * G, 0.5, h - 1.2)
-		part(
+	local w, d = (c.x1 - c.x0) * G, (c.z1 - c.z0) * G
+	local cx, cz = (c.x0 + c.x1) / 2 * G, (c.z0 + c.z1) / 2 * G
+	for k = 1, c.levels do
+		local top = k * c.level * G
+		local floor = part(
 			folder,
-			"CoreBand",
-			Vector3.new(w - 0.16, 1, d - 0.16), -- a hair inside the pillars: no shared faces
-			CFrame.new(origin + Vector3.new(cx, bandY, cz)),
-			BAND_COLORS[(y // 4) % #BAND_COLORS + 1], -- same colour bands as the pieces
+			"CoreFloor",
+			Vector3.new(w, 1.4, d),
+			CFrame.new(origin + Vector3.new(cx, top - 0.7, cz)),
+			floorColor,
+			Enum.Material.SmoothPlastic
+		)
+		floor:SetAttribute("Core", true)
+		-- Yellow trim under the floor edge (decor, inside the footprint).
+		decoPart(
+			folder,
+			"CoreTrim",
+			Vector3.new(w - 0.4, 0.6, d - 0.4),
+			CFrame.new(origin + Vector3.new(cx, top - 1.7, cz)),
+			trimColor,
 			Enum.Material.SmoothPlastic
 		)
 	end
-	-- Dark window slits set into the recessed walls, two per side every other band.
-	for y = 2, c.height - 2, 8 do
-		for _, side in { -1, 1 } do
-			decoPart(
-				folder,
-				"Window",
-				Vector3.new(1.4, 3.2, 0.2),
-				CFrame.new(origin + Vector3.new(cx, y * G, cz + side * (d / 2 - inset + 0.05))),
-				Color3.fromRGB(46, 38, 34),
-				Enum.Material.SmoothPlastic
-			)
-			decoPart(
-				folder,
-				"Window",
-				Vector3.new(0.2, 3.2, 1.4),
-				CFrame.new(origin + Vector3.new(cx + side * (w / 2 - inset + 0.05), y * G, cz)),
-				Color3.fromRGB(46, 38, 34),
-				Enum.Material.SmoothPlastic
-			)
-		end
-	end
-	-- Coloured roof cap (inside the footprint, top flush with the roof).
-	part(
-		folder,
-		"CoreRoof",
-		Vector3.new(w, 0.6, d),
-		CFrame.new(origin + Vector3.new(cx, h - 0.3, cz)),
-		Color3.fromRGB(255, 205, 40),
-		Enum.Material.Neon
-	)
 	folder.Parent = model
 end
 
@@ -262,19 +245,60 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		top -= depth
 	end
 
-	-- Trees and rocks on the rim, outside the buildable grid.
+	-- Trees, bushes and rocks on the rim, outside the buildable grid. Uses the free
+	-- Creator Store models in ServerStorage.SceneryAssets (see CREDITS.md) and
+	-- falls back to simple part-built ones when they are missing.
 	local rng = Random.new(model.Name:len() * 7919)
-	for _ = 1, 7 do
-		local side = rng:NextInteger(1, 3)
-		local at = if side == 1
-			then Vector3.new(rng:NextNumber(-8, -3), 0, rng:NextNumber(0, sizeZ))
-			elseif side == 2 then Vector3.new(sizeX + rng:NextNumber(3, 8), 0, rng:NextNumber(0, sizeZ))
-			else Vector3.new(rng:NextNumber(0, sizeX), 0, sizeZ + rng:NextNumber(3, 8))
-		tree(scenery, origin + at, rng:NextNumber(0.8, 1.3))
+	local function rimSpot(margin: number): Vector3
+		local side = rng:NextInteger(1, 4)
+		return if side == 1
+			then Vector3.new(
+				rng:NextNumber(-RIM + margin, -margin),
+				0,
+				rng:NextNumber(front + margin, back - margin)
+			)
+			elseif side == 2 then Vector3.new(
+				sizeX + rng:NextNumber(margin, RIM - margin),
+				0,
+				rng:NextNumber(front + margin, back - margin)
+			)
+			elseif side == 3 then Vector3.new(
+				rng:NextNumber(0, sizeX),
+				0,
+				sizeZ + rng:NextNumber(margin, RIM - margin)
+			)
+			else Vector3.new(rng:NextNumber(0, sizeX), 0, front + rng:NextNumber(margin, RIM - margin))
 	end
-	for _ = 1, 6 do
-		local at = Vector3.new(rng:NextNumber(-10, sizeX + 10), 0.5, sizeZ + rng:NextNumber(2, 10))
-		rock(scenery, origin + at, rng:NextNumber(1.5, 3.5))
+	local placed = 0
+	for _, spec in
+		{
+			{ names = { "Tree1", "Tree2" }, count = 8, scale = { 0.45, 0.7 }, margin = 4 },
+			{ names = { "Bush1", "Bush2" }, count = 10, scale = { 0.6, 0.9 }, margin = 2 },
+			{ names = { "Rock1", "Rock2" }, count = 6, scale = { 0.25, 0.5 }, margin = 2 },
+		}
+	do
+		for _ = 1, spec.count do
+			local name = spec.names[rng:NextInteger(1, #spec.names)]
+			if
+				prop(
+					scenery,
+					name,
+					origin + rimSpot(spec.margin),
+					rng:NextNumber(spec.scale[1], spec.scale[2]),
+					rng
+				)
+			then
+				placed += 1
+			end
+		end
+	end
+	if placed == 0 then
+		for _ = 1, 7 do
+			tree(scenery, origin + rimSpot(3), rng:NextNumber(0.8, 1.3))
+		end
+		for _ = 1, 6 do
+			rock(scenery, origin + rimSpot(2) + Vector3.new(0, 0.5, 0), rng:NextNumber(1.5, 3.5))
+		end
 	end
 	noQuery(scenery)
 	scenery.Parent = model

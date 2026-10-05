@@ -40,10 +40,19 @@ local function forEachCell(piece: Piece, fn: (number) -> ())
 	end
 end
 
--- True if the cell belongs to the plot's fixed tower core.
+-- True if the cell belongs to the plot's fixed tower frame: a corner pillar, or
+-- one of the floors (the top row of each level).
 function TowerCodec.inCore(x: number, y: number, z: number): boolean
 	local c = Config.CORE
-	return x >= c.x0 and x < c.x1 and z >= c.z0 and z < c.z1 and y < c.height
+	if x < c.x0 or x >= c.x1 or z < c.z0 or z >= c.z1 or y >= c.height then
+		return false
+	end
+	if y % c.level == c.level - 1 then
+		return true -- floor
+	end
+	local edgeX = x == c.x0 or x == c.x1 - 1
+	local edgeZ = z == c.z0 or z == c.z1 - 1
+	return edgeX and edgeZ -- pillar
 end
 
 -- Checks a single untrusted value and returns a clean copy (unknown fields dropped).

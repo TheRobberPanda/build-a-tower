@@ -14,3 +14,9 @@
 | SFX: Crumble (impactWood_heavy_002) | Kenney "Impact Sounds" | CC0 | Roblox audio 109580080804011 |
 | Game pass and Bricks icons | Generated (google/gemini-3.1-flash-image via OpenRouter) | Generated for this project | marketing/raw/pass_builder.png, pass_vip.png, bricks.png |
 | Badge icons | Generated (google/gemini-3.1-flash-image via OpenRouter) | Generated for this project | marketing/final/badges/*.png |
+| Low Poly Tree (Tree1, 4893246329, Abishpc) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot scenery |
+| Low-Poly Tree (Tree2, 3287226226, akbarbinta) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets |
+| Low Poly Rock (Rock1, 7299047040, linktimehero) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets |
+| Low Poly Rock Pack (Rock2, 2128776869, FracturedSkies) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets |
+| Low poly big bush (Bush1, 14720410685, Tanakob12345) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets |
+| Low-Poly Bush (Bush2, 5003870763, Exp_p) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets |
