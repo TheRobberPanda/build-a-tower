@@ -79,8 +79,8 @@ local themes: { ThemeDef } = {
 	{
 		key = "grass",
 		name = "Meadow",
-		color = Color3.fromRGB(80, 140, 90),
-		material = Enum.Material.SmoothPlastic,
+		color = Color3.fromRGB(110, 178, 78), -- matches the island grass (PlotBuilder)
+		material = Enum.Material.Grass,
 	},
 	{
 		key = "lava",
