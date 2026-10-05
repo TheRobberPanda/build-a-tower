@@ -14,6 +14,8 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 - [x] Browse empty state
 - [ ] **(Paulo)** Playtest checkpoint: one Studio session, ~15 min, I drive and screenshot
 
+- [x] Analytics: onboarding funnel (join → place → test run → verified → published), race events
+
 ## 2. Private test (Oct 10–14)
 - [ ] **(Paulo)** Publish the place to Roblox (private), enable Studio API access for DataStores
 - [ ] Two-client local server test: browse, race, leaderboard, publish

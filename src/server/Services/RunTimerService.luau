@@ -11,6 +11,7 @@ local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
+local Analytics = require(script.Parent.Analytics)
 local AntiCheat = require(script.Parent.AntiCheat)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
@@ -51,11 +52,13 @@ local function finish(player: Player, run: Run)
 		-- Only verify if the tower is still exactly the one that was climbed.
 		if data and TowerCodec.hash(data.tower) == run.hash then
 			data.verifiedHash = run.hash
+			Analytics.step(player, "Verified")
 		end
 		Remotes.event("RunResult"):FireClient(player, true, ms, false)
 		Remotes.event("TowerChanged")
 			:FireClient(player, data and data.tower, data and data.verifiedHash ~= nil)
 	else
+		Analytics.event(player, "RaceFinished", ms / 1000)
 		local improved, previous = TowerService.published()
 			:submitTime(run.ownerId, run.hash, player.UserId, ms)
 		Remotes.event("RunResult"):FireClient(player, true, ms, improved, nil, previous)
@@ -151,6 +154,11 @@ local function onStartRun(player: Player, ownerId: any)
 		end
 	end)
 	run.startedAt = os.clock() -- start after the teleport
+	if ownerId == player.UserId then
+		Analytics.step(player, "StartedTestRun")
+	else
+		Analytics.event(player, "RaceStarted")
+	end
 	Remotes.event("RunStarted"):FireClient(player, ownerId, towerName)
 end
 

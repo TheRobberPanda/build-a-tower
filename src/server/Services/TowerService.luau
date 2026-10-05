@@ -12,6 +12,7 @@ local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
 local PublishedStore = require(script.Parent.Parent.Lib.PublishedStore)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
+local Analytics = require(script.Parent.Analytics)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
 
@@ -95,6 +96,7 @@ local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p
 	table.insert(data.tower.pieces, piece)
 	data.verifiedHash = nil -- any edit resets verification
 	pushTower(player, data)
+	Analytics.step(player, "PlacedPiece")
 end
 
 local function onRemove(player: Player, x: any, y: any, z: any)
@@ -154,6 +156,7 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	data.publishedHash = hash
 	towerCache[player.UserId] = nil
 	browseCache = nil
+	Analytics.step(player, "Published")
 	return true, nil
 end
 
