@@ -318,6 +318,15 @@ local function buildRunHud()
 		Size = UDim2.fromScale(0.1, 0.07),
 		Parent = runLayer,
 	})
+	-- Back to the start with a fresh timer, same tower.
+	Kit.button("Restart", Theme.Accent, function()
+		Remotes.event("StartRun"):FireServer(State.runOwner)
+	end, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(0.985, 0.1),
+		Size = UDim2.fromScale(0.1, 0.07),
+		Parent = runLayer,
+	})
 end
 
 ---------------------------------------------------------------- modals
