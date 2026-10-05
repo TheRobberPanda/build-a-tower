@@ -37,6 +37,7 @@ local Config = {
 	AC_SPEED_SLACK = 6,
 	AC_TELEPORT_RADIUS = 10,
 	AC_FLAGS_TO_FAIL = 3,
+	AC_FLAG_DECAY_SECONDS = 10, -- one flag forgiven per this many clean seconds (lag spikes)
 
 	-- Runs
 	MAX_RUN_MS = 60 * 60 * 1000,

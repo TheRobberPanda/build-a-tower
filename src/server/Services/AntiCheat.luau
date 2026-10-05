@@ -15,6 +15,7 @@ type Watch = {
 	last: Vector3?,
 	lastAt: number,
 	flags: number,
+	cleanSince: number,
 	onFail: (reason: string) -> (),
 }
 
@@ -56,7 +57,13 @@ end
 
 -- Start checking. `onFail` is called once when flags reach the limit.
 function AntiCheat.watch(player: Player, onFail: (string) -> ())
-	watched[player] = { allow = allowanceFor(player), lastAt = os.clock(), flags = 0, onFail = onFail }
+	watched[player] = {
+		allow = allowanceFor(player),
+		lastAt = os.clock(),
+		flags = 0,
+		cleanSince = os.clock(),
+		onFail = onFail,
+	}
 end
 
 function AntiCheat.unwatch(player: Player)
@@ -91,12 +98,16 @@ function AntiCheat.init()
 					})
 					if reason then
 						w.flags += 1
+						w.cleanSince = now
 						warn(string.format("[AntiCheat] %s flagged (%d): %s", player.Name, w.flags, reason))
 						if w.flags >= Config.AC_FLAGS_TO_FAIL then
 							watched[player] = nil
 							task.spawn(w.onFail, reason)
 							continue
 						end
+					elseif w.flags > 0 and now - w.cleanSince >= Config.AC_FLAG_DECAY_SECONDS then
+						w.flags -= 1
+						w.cleanSince = now
 					end
 				end
 				w.last = pos
