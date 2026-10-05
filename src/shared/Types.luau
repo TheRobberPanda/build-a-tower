@@ -44,6 +44,7 @@ export type PlayerData = {
 	trail: string?, -- equipped Cosmetics trail key
 	theme: string, -- VIP plot theme key
 	receipts: { string }, -- recent dev product purchase ids (dedupe), oldest first
+	contestVotes: { [string]: { number } }, -- contest id -> owner ids voted for
 }
 
 export type PublishedTower = {

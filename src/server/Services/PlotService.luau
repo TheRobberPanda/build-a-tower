@@ -54,6 +54,7 @@ local COLORS: { [string]: Color3 } = {
 	Plant = Color3.fromRGB(70, 160, 70),
 	Lamp = Color3.fromRGB(255, 220, 140),
 	Flag = Color3.fromRGB(230, 60, 60),
+	Pumpkin = Color3.fromRGB(255, 130, 20),
 }
 
 local TELEPORTER_COLORS: { Color3 } = {
@@ -131,6 +132,13 @@ local function makePart(piece: Piece, origin: Vector3): BasePart
 			light.Brightness = 1.5
 			light.Color = part.Color
 			light.Parent = part
+		elseif def.name == "Pumpkin" then
+			part.Shape = Enum.PartType.Ball
+			part.Material = Enum.Material.SmoothPlastic
+			local glow = Instance.new("PointLight")
+			glow.Range = 8
+			glow.Color = Color3.fromRGB(255, 160, 60)
+			glow.Parent = part
 		elseif def.name == "Flag" then
 			part.Size = Vector3.new(part.Size.X * 0.9, part.Size.Y * 0.5, 0.3)
 			part.Position += Vector3.new(0, Config.GRID_STUDS / 2, 0)

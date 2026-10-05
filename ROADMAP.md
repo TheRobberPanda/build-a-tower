@@ -73,7 +73,7 @@ No pay to win: times and leaderboards are never for sale.
 | VIP plot themes | Game pass | Plot base skins, skyboxes. |
 | Premium payouts | Free | Engagement-based payouts; the loops above drive this. |
 
-## M7. Events and live ops (ongoing)
+## M7. Events and live ops — DONE (schedule in Config.EVENT_PIECES / Config.CONTESTS)
 - Seasonal build contests with a theme and a voted winner.
 - Limited time pieces (e.g. a Halloween fake door).
 - Monthly leaderboard resets for a "season best" next to the all-time best.

@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataStoreService = game:GetService("DataStoreService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Events = require(ReplicatedStorage.Shared.Events)
 local Format = require(ReplicatedStorage.Shared.Format)
 local PathCodec = require(ReplicatedStorage.Shared.PathCodec)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
@@ -128,7 +129,8 @@ local function finish(player: Player, run: Run)
 	TowerService.recordFinish(player, run.ownerId, run.hash, ms, usedList)
 	local top = TowerService.published():topTimes(run.ownerId, run.hash, 1)
 	local holder = top and top[1]
-	local improved, previous = TowerService.published():submitTime(run.ownerId, run.hash, player.UserId, ms)
+	local improved, previous = TowerService.published()
+		:submitTime(run.ownerId, run.hash, player.UserId, ms, Events.season(os.time()))
 	if improved then
 		saveReplay(player, run, ms)
 	end

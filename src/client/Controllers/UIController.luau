@@ -14,6 +14,7 @@ local Theme = require(script.Parent.Parent.UI.Theme)
 local State = require(script.Parent.Parent.State)
 local BuildController = require(script.Parent.BuildController)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local Events = require(ReplicatedStorage.Shared.Events)
 local GhostController = require(script.Parent.GhostController)
 local SocialController = require(script.Parent.SocialController)
 local LiveRaceController = require(script.Parent.LiveRaceController)
@@ -42,6 +43,7 @@ local PIECE_COLORS: { [string]: Color3 } = {
 	Plant = Color3.fromRGB(70, 160, 70),
 	Lamp = Color3.fromRGB(255, 220, 140),
 	Flag = Color3.fromRGB(230, 60, 60),
+	Pumpkin = Color3.fromRGB(255, 130, 20),
 }
 local SHORT_NAMES: { [string]: string } = {
 	InvisiblePlatform = "Invisible",
@@ -203,7 +205,7 @@ local function buildHotbar()
 		local slot: TextButton = Kit.new("TextButton", {
 			Name = def.name,
 			LayoutOrder = def.id,
-			Size = UDim2.fromScale(1 / 17.5, 1),
+			Size = UDim2.fromScale(1 / 18.5, 1),
 			BackgroundColor3 = Theme.Panel,
 			AutoButtonColor = true,
 			Text = "",
@@ -252,6 +254,7 @@ local function buildHotbar()
 			State.set({ selected = def.id, deleting = false })
 		end)
 		slots[def.id] = slot
+		slot.Visible = Events.pieceAvailable(def.id, os.time()) -- limited-time pieces
 	end
 
 	budgetLabel = Kit.label("Pieces 0/" .. State.budget, {
@@ -580,11 +583,13 @@ local browseSearch: TextBox
 
 local BROWSE_TABS = {
 	{ "featured", "Featured" },
+	{ "contest", "Contest" },
 	{ "new", "New" },
 	{ "popular", "Popular" },
 	{ "hard", "Hardest" },
 	{ "friends", "Friends" },
 }
+local contestInfo: { [string]: any }? = nil
 
 local function buildBrowse()
 	local body = makeModal("Browse", "Towers", 0.8)
@@ -600,8 +605,9 @@ local function buildBrowse()
 		browseTabButtons[t[1]] = Kit.button(t[2], Theme.PanelLight, function()
 			browseTab = t[1]
 			UIController.openBrowse()
-		end, { LayoutOrder = i, Size = UDim2.fromScale(0.19, 1), Parent = tabs })
+		end, { LayoutOrder = i, Size = UDim2.fromScale(0.158, 1), Parent = tabs })
 	end
+	browseTabButtons.contest.Visible = false -- shown while a contest runs
 	browseSearch = Kit.new("TextBox", {
 		Position = UDim2.fromScale(0, 0.12),
 		Size = UDim2.fromScale(1, 0.08),
@@ -629,12 +635,15 @@ local function buildBrowse()
 end
 
 local reportButton: TextButton
+local monthlyButton: TextButton
 local leaderboardOwner = 0
+local leaderboardMonthly = false
 
 local function buildLeaderboard()
 	local body = makeModal("Leaderboard", "Best times", 0.75)
 	leaderboardTitle = Kit.label("", {
-		Size = UDim2.fromScale(1, 0.1),
+		Position = UDim2.fromScale(0.23, 0), -- between the season toggle and Report
+		Size = UDim2.fromScale(0.54, 0.1),
 		Font = Theme.BodyFont,
 		TextColor3 = Theme.TextDim,
 		Parent = body,
@@ -646,6 +655,14 @@ local function buildLeaderboard()
 		Parent = body,
 	})
 	leaderboardList = listFrame(holder)
+	monthlyButton = Kit.button("All time", Theme.Accent, function()
+		leaderboardMonthly = not leaderboardMonthly
+		UIController.openLeaderboard(leaderboardOwner)
+	end, {
+		Position = UDim2.fromScale(0, 0),
+		Size = UDim2.fromScale(0.22, 0.1),
+		Parent = body,
+	})
 	reportButton = Kit.button("Report", Theme.Danger, function()
 		local ownerId = leaderboardOwner
 		reportButton.Visible = false
@@ -729,6 +746,48 @@ local DIFFICULTY_COLORS: { [string]: Color3 } = {
 }
 
 -- query: builder name to search instead of the current tab.
+-- First row of the Contest tab: theme, phase and what you can do now.
+local function contestHeader(info: { [string]: any })
+	local r = row(browseList, 0)
+	r.Size = UDim2.new(1, -8, 0, 64)
+	local days = math.max(0, math.floor((tonumber(info.endsIn) or 0) / 86400))
+	local voting = info.phase == "voting"
+	Kit.label(string.format('Contest: "%s"', tostring(info.theme)), {
+		Position = UDim2.fromScale(0.03, 0.05),
+		Size = UDim2.fromScale(0.62, 0.45),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = r,
+	})
+	Kit.label(
+		if voting
+			then string.format("Voting · %d votes left · %d days", tonumber(info.votesLeft) or 0, days)
+			else string.format("Entries open · %d days left", days),
+		{
+			Position = UDim2.fromScale(0.03, 0.55),
+			Size = UDim2.fromScale(0.62, 0.38),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextColor3 = Theme.TextDim,
+			Font = Theme.BodyFont,
+			Parent = r,
+		}
+	)
+	if not voting then
+		local entered = info.entered == true
+		local button = Kit.button(if entered then "Entered" else "Enter my tower", Theme.Primary, function()
+			task.spawn(function()
+				local ok, success, err = pcall(function()
+					return Remotes.func("EnterContest"):InvokeServer()
+				end)
+				SocialController.toast(
+					if ok and success then "Your tower is entered!" else tostring(err or "Could not enter")
+				)
+				UIController.openBrowse()
+			end)
+		end, { Position = UDim2.fromScale(0.67, 0.18), Size = UDim2.fromScale(0.31, 0.64), Parent = r })
+		Kit.setEnabled(button, not entered, Theme.Primary)
+	end
+end
+
 function UIController.openBrowse(query: string?)
 	openModal("Browse")
 	for key, button in browseTabButtons do
@@ -737,16 +796,25 @@ function UIController.openBrowse(query: string?)
 	clearList(browseList)
 	Kit.label("Loading...", { Size = UDim2.new(1, 0, 0, 40), Font = Theme.BodyFont, Parent = browseList })
 	task.spawn(function()
+		local okInfo, contest = pcall(function()
+			return Remotes.func("ContestInfo"):InvokeServer()
+		end)
+		contestInfo = if okInfo and type(contest) == "table" then contest else nil
+		browseTabButtons.contest.Visible = contestInfo ~= nil
 		local ok, list = pcall(function()
 			return Remotes.func("Browse")
 				:InvokeServer(browseTab, if query and query ~= "" then query else nil)
 		end)
 		clearList(browseList)
+		if browseTab == "contest" and not query and contestInfo then
+			contestHeader(contestInfo)
+		end
 		if not ok or type(list) ~= "table" or #list == 0 then
 			local empty = if not ok
 				then "Could not load"
 				elseif query then "No tower by that builder"
 				elseif browseTab == "friends" then "No friends' towers yet"
+				elseif browseTab == "contest" then "No entries yet"
 				elseif browseTab == "featured" then "No featured tower yet. Like towers to pick next week's!"
 				else "No towers here yet. Be the first!"
 			Kit.label(empty, { Size = UDim2.new(1, 0, 0, 40), Font = Theme.BodyFont, Parent = browseList })
@@ -817,8 +885,24 @@ function UIController.openBrowse(query: string?)
 				Size = UDim2.fromScale(0.14, 0.72),
 				Parent = r,
 			})
-			-- Host a live race (not on your own tower).
-			if owner ~= player.UserId then
+			local voting = browseTab == "contest" and contestInfo and contestInfo.phase == "voting"
+			if voting and owner ~= player.UserId then
+				Kit.button("Vote", Theme.Primary, function()
+					task.spawn(function()
+						local ok2, success, err = pcall(function()
+							return Remotes.func("VoteContest"):InvokeServer(owner)
+						end)
+						SocialController.toast(
+							if ok2 and success then "Vote counted!" else tostring(err or "Could not vote")
+						)
+					end)
+				end, {
+					Position = UDim2.fromScale(0.85, 0.14),
+					Size = UDim2.fromScale(0.13, 0.72),
+					Parent = r,
+				})
+			elseif owner ~= player.UserId then
+				-- Host a live race (not on your own tower).
 				Kit.button("Live", Theme.Primary, function()
 					openModal(nil)
 					LiveRaceController.host(owner)
@@ -837,10 +921,11 @@ function UIController.openLeaderboard(ownerId: number)
 	clearList(leaderboardList)
 	leaderboardOwner = ownerId
 	reportButton.Visible = ownerId ~= player.UserId
+	monthlyButton.Text = if leaderboardMonthly then "This month" else "All time"
 	leaderboardTitle.Text = "Loading..."
 	task.spawn(function()
 		local ok, list, summary = pcall(function()
-			return Remotes.func("Leaderboard"):InvokeServer(ownerId)
+			return Remotes.func("Leaderboard"):InvokeServer(ownerId, leaderboardMonthly)
 		end)
 		local title = userName(ownerId) .. "'s tower"
 		if ok and type(summary) == "table" then

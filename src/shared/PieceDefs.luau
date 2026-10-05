@@ -28,6 +28,8 @@ local list: { PieceDef } = {
 	{ id = 15, name = "Plant", size = { 1, 1, 1 }, props = {}, decor = true },
 	{ id = 16, name = "Lamp", size = { 1, 2, 1 }, props = {}, decor = true },
 	{ id = 17, name = "Flag", size = { 1, 2, 1 }, props = { ch = { 1, 4 } }, decor = true }, -- ch = colour
+	-- M7 limited-time (window in Config.EVENT_PIECES)
+	{ id = 18, name = "Pumpkin", size = { 1, 1, 1 }, props = {}, decor = true },
 }
 
 local byId: { [number]: PieceDef } = {}

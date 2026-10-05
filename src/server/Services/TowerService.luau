@@ -8,6 +8,7 @@ local TextService = game:GetService("TextService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local Events = require(ReplicatedStorage.Shared.Events)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local Progression = require(ReplicatedStorage.Shared.Progression)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -137,7 +138,7 @@ local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p
 		return
 	end
 	local piece = TowerCodec.validatePiece({ t = t, x = x, y = y, z = z, r = r, p = p })
-	if not piece or not TowerCodec.canAdd(state, piece) then
+	if not piece or not Events.pieceAvailable(piece.t, os.time()) or not TowerCodec.canAdd(state, piece) then
 		return
 	end
 	TowerCodec.add(state, piece)
@@ -217,7 +218,8 @@ budgetFor = function(player: Player, data: PlayerData): number
 	)
 end
 
-local TABS = table.freeze({ new = true, popular = true, hard = true, friends = true, featured = true })
+local TABS =
+	table.freeze({ new = true, popular = true, hard = true, friends = true, featured = true, contest = true })
 
 -- (ownerId, likes) after likes are flushed; FeaturedService counts them per week.
 local liked = Instance.new("BindableEvent")
@@ -228,6 +230,13 @@ local featuredSource: () -> { string } = function()
 end
 function TowerService.setFeaturedSource(fn: () -> { string })
 	featuredSource = fn
+end
+
+local contestSource: () -> { string } = function()
+	return {}
+end
+function TowerService.setContestSource(fn: () -> { string })
+	contestSource = fn
 end
 
 local function towerHeight(tower: PublishedTower): number
@@ -346,6 +355,7 @@ local function onBrowse(player: Player, tab: any, query: any): { any }
 	end
 	local keys = if name == "featured"
 		then featuredSource()
+		elseif name == "contest" then contestSource()
 		elseif name == "popular" then keysOf(stats:popularPage(25))
 		elseif name == "hard" then keysOf(stats:hardestPage(25))
 		else keysOf(published:browsePage(25))
@@ -408,7 +418,8 @@ function TowerService.hasLiked(player: Player, ownerId: number, hash: string): b
 	return data ~= nil and data.liked[tostring(ownerId)] == hash
 end
 
-local function onLeaderboard(player: Player, ownerId: any): ({ any }, { [string]: any }?)
+-- monthly = true for this month's season board instead of all-time.
+local function onLeaderboard(player: Player, ownerId: any, monthly: any): ({ any }, { [string]: any }?)
 	if not queryLimiter:allow(player) or not isInt(ownerId, 1, 2 ^ 53) then
 		return {}
 	end
@@ -417,7 +428,8 @@ local function onLeaderboard(player: Player, ownerId: any): ({ any }, { [string]
 		return {}
 	end
 	local out = {}
-	for _, e in published:topTimes(ownerId, tower.hash, 10) or {} do
+	local season = if monthly == true then Events.season(os.time()) else nil
+	for _, e in published:topTimes(ownerId, tower.hash, 10, season) or {} do
 		table.insert(out, { userId = tonumber(e.key), ms = e.value })
 	end
 	local st = stats:get(ownerId, tower.hash)

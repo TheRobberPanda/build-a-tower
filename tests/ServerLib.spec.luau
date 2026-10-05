@@ -261,6 +261,16 @@ return function()
 			expect(ps:publish(7, "Spire", tower)).to.equal(false)
 		end)
 
+		it("keeps a monthly season board next to the all-time one", function()
+			local ps = newPublished()
+			local h = TowerCodec.hash(tower)
+			ps:submitTime(7, h, 1, 10000, "202609")
+			expect(ps:submitTime(7, h, 1, 12000, "202610")).to.equal(false) -- not an all-time best
+			local season = ps:topTimes(7, h, 10, "202610") :: any
+			expect(season[1].value).to.equal(12000) -- but it is October's best
+			expect((ps:topTimes(7, h, 10) :: any)[1].value).to.equal(10000)
+		end)
+
 		it("rejects implausible times", function()
 			local ps = newPublished()
 			local h = TowerCodec.hash(tower)

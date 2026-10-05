@@ -77,6 +77,7 @@ function ProfileStore.defaultData(): PlayerData
 		slots = {},
 		theme = Cosmetics.DEFAULT_THEME,
 		receipts = {},
+		contestVotes = {},
 	}
 end
 
@@ -155,6 +156,20 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 	end
 	if type(raw.theme) == "string" and Cosmetics.themeByKey[raw.theme] then
 		data.theme = raw.theme
+	end
+	if type(raw.contestVotes) == "table" then
+		for _, contest in Config.CONTESTS do
+			local votes = raw.contestVotes[contest.id]
+			if type(votes) == "table" then
+				local clean = {}
+				for _, id in votes do
+					if type(id) == "number" and #clean < Config.CONTEST_VOTES then
+						table.insert(clean, id)
+					end
+				end
+				data.contestVotes[contest.id] = clean
+			end
+		end
 	end
 	if type(raw.receipts) == "table" then
 		for _, id in raw.receipts do

@@ -193,27 +193,31 @@ function PublishedStore.browsePage(self: PublishedStore, count: number): { Entry
 	return readPage(self, self._deps.browse, false, count)
 end
 
+-- Monthly "season" board for the same tower version, e.g. season "202610".
+function PublishedStore.seasonBoardName(ownerId: number, hash: string, season: string): string
+	return Config.SEASON_LB_PREFIX .. season .. "_" .. tostring(ownerId) .. "_" .. string.sub(hash, 1, 16)
+end
+
+-- season = nil for all-time, or a season id for that month's board.
 function PublishedStore.topTimes(
 	self: PublishedStore,
 	ownerId: number,
 	hash: string,
-	count: number
+	count: number,
+	season: string?
 ): { Entry }?
-	return readPage(self, self._deps.leaderboard(PublishedStore.leaderboardName(ownerId, hash)), true, count)
+	local name = if season
+		then PublishedStore.seasonBoardName(ownerId, hash, season)
+		else PublishedStore.leaderboardName(ownerId, hash)
+	return readPage(self, self._deps.leaderboard(name), true, count)
 end
 
--- Records ms only if it beats the racer's stored best. Returns (improved, previous best ms?).
-function PublishedStore.submitTime(
+local function keepBest(
 	self: PublishedStore,
-	ownerId: number,
-	hash: string,
+	store: any,
 	racerId: number,
 	ms: number
-): (boolean, number?)
-	if ms % 1 ~= 0 or ms < Config.MIN_RUN_MS or ms > Config.MAX_RUN_MS then
-		return false
-	end
-	local store = self._deps.leaderboard(PublishedStore.leaderboardName(ownerId, hash))
+): (boolean, boolean, number?)
 	local improved = false
 	local previous: number? = nil
 	local ok = Retry.call(self._retry, function()
@@ -227,6 +231,32 @@ function PublishedStore.submitTime(
 			return ms
 		end)
 	end)
+	return ok, improved, previous
+end
+
+-- Records ms only if it beats the racer's stored best. Returns (improved, previous best ms?).
+function PublishedStore.submitTime(
+	self: PublishedStore,
+	ownerId: number,
+	hash: string,
+	racerId: number,
+	ms: number,
+	season: string?
+): (boolean, number?)
+	if ms % 1 ~= 0 or ms < Config.MIN_RUN_MS or ms > Config.MAX_RUN_MS then
+		return false
+	end
+	local ok, improved, previous =
+		keepBest(self, self._deps.leaderboard(PublishedStore.leaderboardName(ownerId, hash)), racerId, ms)
+	if season then
+		-- A slower time can still be this month's best.
+		keepBest(
+			self,
+			self._deps.leaderboard(PublishedStore.seasonBoardName(ownerId, hash, season)),
+			racerId,
+			ms
+		)
+	end
 	return ok and improved, previous
 end
 

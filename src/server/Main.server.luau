@@ -21,6 +21,7 @@ for _, name in
 		"RunTimerService",
 		"LiveRaceService",
 		"FeaturedService",
+		"ContestService",
 	}
 do
 	(require(Services:FindFirstChild(name) :: ModuleScript) :: any).init()

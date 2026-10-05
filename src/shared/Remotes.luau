@@ -30,8 +30,8 @@ Remotes.Events = table.freeze({
 
 Remotes.Functions = table.freeze({
 	"Publish", -- (name) -> (ok, err)
-	"Browse", -- (tab: "featured"|"new"|"popular"|"hard"|"friends", query?) -> cards
-	"Leaderboard", -- (ownerId) -> list
+	"Browse", -- (tab: "featured"|"contest"|"new"|"popular"|"hard"|"friends", query?) -> cards
+	"Leaderboard", -- (ownerId, monthly?) -> (list, summary)
 	"ReportTower", -- (ownerId) -> ok
 	"LikeTower", -- (ownerId) -> ok; only after finishing that version
 	"GetReplay", -- (ownerId, racerId; 0 = record) -> { racer, ms, path, splits }?
@@ -47,6 +47,9 @@ Remotes.Functions = table.freeze({
 	"BuyTrail", -- (key) -> (ok, err); buys with Bricks if needed and equips
 	"EquipTrail", -- (key or "") -> ok
 	"SetTheme", -- (key) -> ok; VIP only
+	"ContestInfo", -- () -> { id, theme, phase, endsIn, votesLeft, entered }?
+	"EnterContest", -- () -> (ok, err)
+	"VoteContest", -- (ownerId) -> (ok, err)
 })
 
 function Remotes.setup(): Folder

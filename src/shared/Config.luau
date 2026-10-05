@@ -24,6 +24,7 @@ local Config = {
 	PUBLISHED_STORE = "Towers_v1",
 	BROWSE_STORE = "Browse_v1",
 	LEADERBOARD_PREFIX = "LB_v1_",
+	SEASON_LB_PREFIX = "LBS_v1_", -- + yyyymm_owner_hash16: monthly boards
 	REPORTS_STORE = "Reports_v1",
 	STATS_STORE = "Stats_v1",
 	POPULAR_STORE = "Popular_v1",
@@ -70,6 +71,7 @@ local Config = {
 		SecretHunter = 0, -- 10 secrets found in total
 		RecordHolder = 0, -- best time on any tower
 		FeaturedPodium = 0, -- top 3 on the weekly featured tower
+		ContestWinner = 0, -- top 3 in a build contest
 	}),
 	SECRET_BADGES = table.freeze({
 		FakeWall = "WallWalker",
@@ -111,6 +113,23 @@ local Config = {
 		-- [123456] = 500,
 	}),
 	RECEIPTS_KEPT = 50, -- recent purchase ids remembered per player (dedupe)
+
+	-- Live ops (UTC unix seconds)
+	EVENT_PIECES = table.freeze({ -- piece id -> { from, to }: placeable only in this window
+		[18] = table.freeze({ 1791763200, 1793750400 }), -- Pumpkin: 2026-10-12 .. 2026-11-04
+	}),
+	CONTESTS = table.freeze({
+		table.freeze({
+			id = "2026_halloween",
+			theme = "Spooky towers",
+			starts = 1791763200, -- 2026-10-12
+			votingFrom = 1793145600, -- 2026-10-28
+			ends = 1793750400, -- 2026-11-04
+		}),
+	}),
+	CONTEST_STORE_PREFIX = "Contest_v1_", -- + id: OrderedDataStore of votes per entry
+	CONTEST_VOTES = 3, -- votes per player per contest
+	CONTEST_PRIZE_BRICKS = 500,
 
 	-- Runs
 	MAX_RUN_MS = 60 * 60 * 1000,
