@@ -28,6 +28,7 @@ local published: PublishedStore.PublishedStore
 local editLimiter = RateLimiter.new(20, 10)
 local publishLimiter = RateLimiter.new(1, 1 / 10)
 local queryLimiter = RateLimiter.new(5, 1)
+local reportLimiter = RateLimiter.new(3, 1 / 60)
 
 local CACHE_SECONDS = 30
 local towerCache: { [number]: { at: number, tower: PublishedTower? } } = {}
@@ -195,10 +196,26 @@ local function onLeaderboard(player: Player, ownerId: any): { any }
 	return out
 end
 
+local function onReport(player: Player, ownerId: any): boolean
+	if not isInt(ownerId, 1, 2 ^ 53) or ownerId == player.UserId or not reportLimiter:allow(player) then
+		return false
+	end
+	local tower = TowerService.getPublished(ownerId)
+	if not tower then
+		return false
+	end
+	if published:report(ownerId, tower.hash, player.UserId) then
+		warn(string.format("[TowerService] tower %d (%s) hidden after reports", ownerId, tower.hash))
+		browseCache = nil
+	end
+	return true
+end
+
 function TowerService.init()
 	published = PublishedStore.new({
 		published = DataStoreService:GetDataStore(Config.PUBLISHED_STORE),
 		browse = DataStoreService:GetOrderedDataStore(Config.BROWSE_STORE),
+		reports = DataStoreService:GetDataStore(Config.REPORTS_STORE),
 		leaderboard = function(name: string)
 			return DataStoreService:GetOrderedDataStore(name)
 		end,
@@ -219,6 +236,7 @@ function TowerService.init()
 		editLimiter:forget(player)
 		publishLimiter:forget(player)
 		queryLimiter:forget(player)
+		reportLimiter:forget(player)
 	end)
 
 	Remotes.event("PlacePiece").OnServerEvent:Connect(onPlace)
@@ -226,6 +244,7 @@ function TowerService.init()
 	Remotes.func("Publish").OnServerInvoke = onPublish
 	Remotes.func("Browse").OnServerInvoke = onBrowse
 	Remotes.func("Leaderboard").OnServerInvoke = onLeaderboard
+	Remotes.func("ReportTower").OnServerInvoke = onReport
 end
 
 return TowerService

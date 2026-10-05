@@ -16,6 +16,8 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 
 - [x] Analytics: onboarding funnel (join → place → test run → verified → published), race events
 
+- [x] Tower reports: 5 distinct reports hide that tower version from browse and block republishing it (Reports_v1)
+
 ## 2. Private test (Oct 10–14)
 - [ ] **(Paulo)** Publish the place to Roblox (private), enable Studio API access for DataStores
 - [ ] Two-client local server test: browse, race, leaderboard, publish

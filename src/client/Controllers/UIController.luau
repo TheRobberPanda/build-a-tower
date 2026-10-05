@@ -401,6 +401,9 @@ local function buildBrowse()
 	browseList = listFrame(makeModal("Browse", "Towers", 0.75))
 end
 
+local reportButton: TextButton
+local leaderboardOwner = 0
+
 local function buildLeaderboard()
 	local body = makeModal("Leaderboard", "Best times", 0.75)
 	leaderboardTitle = Kit.label("", {
@@ -416,6 +419,21 @@ local function buildLeaderboard()
 		Parent = body,
 	})
 	leaderboardList = listFrame(holder)
+	reportButton = Kit.button("Report", Theme.Danger, function()
+		local ownerId = leaderboardOwner
+		reportButton.Visible = false
+		task.spawn(function()
+			pcall(function()
+				Remotes.func("ReportTower"):InvokeServer(ownerId)
+			end)
+		end)
+		leaderboardTitle.Text = "Thanks, reported"
+	end, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.fromScale(0.22, 0.1),
+		Parent = body,
+	})
 end
 
 local resultTime: TextLabel
@@ -511,6 +529,8 @@ end
 function UIController.openLeaderboard(ownerId: number)
 	openModal("Leaderboard")
 	clearList(leaderboardList)
+	leaderboardOwner = ownerId
+	reportButton.Visible = ownerId ~= player.UserId
 	leaderboardTitle.Text = "Loading..."
 	task.spawn(function()
 		local ok, list = pcall(function()

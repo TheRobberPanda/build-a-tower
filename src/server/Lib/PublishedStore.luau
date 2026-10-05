@@ -5,6 +5,7 @@
 -- published  (DataStore)        key = ownerId -> PublishedTower
 -- browse     (OrderedDataStore) key = ownerId -> publishedAt (newest first)
 -- leaderboard(OrderedDataStore) one per (owner, tower hash), key = racerId -> best ms (ascending)
+-- reports    (DataStore)        key = ownerId -> { hash, by = {reporterIds} } for the current version
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -22,6 +23,7 @@ export type Deps = {
 	published: any, -- GetAsync/UpdateAsync
 	browse: any, -- OrderedDataStore
 	leaderboard: (name: string) -> any, -- returns an OrderedDataStore
+	reports: any, -- DataStore
 	now: () -> number,
 	wait: (number) -> (),
 	budgetReady: (() -> boolean)?,
@@ -74,6 +76,9 @@ function PublishedStore.publish(
 	}
 	local deps = self._deps
 	local key = tostring(ownerId)
+	if self:isHidden(ownerId, record.hash) then
+		return false, "hidden after reports"
+	end
 	-- Tower first, then the browse entry, so the list never points at a missing tower.
 	local wrote = Retry.call(self._retry, function()
 		return deps.published:UpdateAsync(key, function()
@@ -90,6 +95,56 @@ function PublishedStore.publish(
 		return false, "browse"
 	end
 	return true, record.hash
+end
+
+-- True if this exact tower version collected enough reports to be hidden.
+function PublishedStore.isHidden(self: PublishedStore, ownerId: number, hash: string): boolean
+	local deps = self._deps
+	local ok, raw = Retry.call(self._retry, function()
+		return deps.reports:GetAsync(tostring(ownerId))
+	end)
+	return ok
+		and type(raw) == "table"
+		and raw.hash == hash
+		and type(raw.by) == "table"
+		and #raw.by >= Config.REPORTS_TO_HIDE
+end
+
+-- One report per reporter per tower version. Owners can't report themselves.
+-- Returns true when this report hid the tower from the browse list.
+function PublishedStore.report(
+	self: PublishedStore,
+	ownerId: number,
+	hash: string,
+	reporterId: number
+): boolean
+	if reporterId == ownerId then
+		return false
+	end
+	local deps = self._deps
+	local hide = false
+	local ok = Retry.call(self._retry, function()
+		return deps.reports:UpdateAsync(tostring(ownerId), function(old: any)
+			hide = false
+			local rec = if type(old) == "table"
+					and old.hash == hash
+					and type(old.by) == "table"
+				then old
+				else { hash = hash, by = {} }
+			if table.find(rec.by, reporterId) or #rec.by >= Config.REPORTS_TO_HIDE then
+				return nil
+			end
+			table.insert(rec.by, reporterId)
+			hide = #rec.by >= Config.REPORTS_TO_HIDE
+			return rec
+		end)
+	end)
+	if ok and hide then
+		Retry.call(self._retry, function()
+			return deps.browse:RemoveAsync(tostring(ownerId))
+		end)
+	end
+	return ok and hide
 end
 
 -- Loads and re-validates a published tower (data from the store is untrusted too).

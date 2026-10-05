@@ -47,6 +47,12 @@ function FakeDataStore:SetAsync(key: string, value: any)
 	self.writes += 1
 end
 
+function FakeDataStore:RemoveAsync(key: string)
+	self:_maybeFail()
+	self.data[key] = nil
+	self.writes += 1
+end
+
 function FakeDataStore:GetSortedAsync(ascending: boolean, pageSize: number)
 	self:_maybeFail()
 	local items = {}

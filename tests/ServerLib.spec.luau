@@ -181,6 +181,7 @@ return function()
 			local deps = {
 				published = FakeDataStore.new(),
 				browse = FakeDataStore.new(),
+				reports = FakeDataStore.new(),
 				leaderboard = function(name)
 					boards[name] = boards[name] or FakeDataStore.new()
 					return boards[name]
@@ -220,6 +221,21 @@ return function()
 			local top = ps:topTimes(7, h, 10) :: any
 			expect(top[1].value).to.equal(15000)
 			expect(top[2].value).to.equal(18000)
+		end)
+
+		it("hides a tower after enough distinct reports and blocks republishing it", function()
+			local ps, deps = newPublished()
+			local _, hash = ps:publish(7, "Spire", tower)
+			expect(ps:report(7, hash, 7)).to.equal(false) -- self report ignored
+			for racer = 1, Config.REPORTS_TO_HIDE - 1 do
+				expect(ps:report(7, hash, racer)).to.equal(false)
+				expect(ps:report(7, hash, racer)).to.equal(false) -- duplicate ignored
+			end
+			expect(deps.browse.data["7"]).never.to.equal(nil)
+			expect(ps:report(7, hash, 99)).to.equal(true)
+			expect(deps.browse.data["7"]).to.equal(nil)
+			expect(ps:isHidden(7, hash)).to.equal(true)
+			expect(ps:publish(7, "Spire", tower)).to.equal(false)
 		end)
 
 		it("rejects implausible times", function()

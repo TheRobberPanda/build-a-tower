@@ -20,6 +20,7 @@ Remotes.Functions = table.freeze({
 	"Publish", -- (name) -> (ok, err)
 	"Browse", -- () -> list
 	"Leaderboard", -- (ownerId) -> list
+	"ReportTower", -- (ownerId) -> ok
 })
 
 function Remotes.setup(): Folder
