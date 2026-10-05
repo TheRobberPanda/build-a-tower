@@ -42,6 +42,7 @@ local runLayer: Frame
 local slots: { [number]: Frame } = {}
 local budgetLabel: TextLabel
 local verifiedLabel: TextLabel
+local hintLabel: TextLabel
 local deleteButton: TextButton
 local settingButton: TextButton
 local publishButton: TextButton
@@ -231,6 +232,14 @@ local function buildHotbar()
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 0.86),
 		Size = UDim2.fromScale(0.3, 0.04),
+		Parent = buildLayer,
+	})
+	-- First-time guidance, top centre; hidden once the tower has a Finish.
+	hintLabel = Kit.label("", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.02),
+		Size = UDim2.fromScale(0.5, 0.045),
+		Font = Theme.BodyFont,
 		Parent = buildLayer,
 	})
 end
@@ -607,6 +616,18 @@ local function render()
 	deleteButton.BackgroundColor3 = if State.deleting then Theme.Danger else Theme.PanelLight
 	Kit.setEnabled(publishButton, State.verified, Theme.Primary)
 	Kit.setEnabled(publishConfirm, State.verified, Theme.Primary)
+	local hasFinish = false
+	for _, piece in if State.tower then State.tower.pieces else {} do
+		if piece.t == PieceDefs.FINISH_ID then
+			hasFinish = true
+		end
+	end
+	hintLabel.Text = if count == 0
+		then "Tap the grid to place pieces and build upwards"
+		elseif not hasFinish then "Top it off with a Finish piece, then Test Run"
+		else ""
+	hintLabel.Visible = hintLabel.Text ~= ""
+
 	-- A teleporter alone on its channel goes nowhere; tell the builder.
 	local perChannel: { [number]: number } = {}
 	for _, piece in if State.tower then State.tower.pieces else {} do
