@@ -442,13 +442,14 @@ local function buildTowerMenu()
 end
 
 local function buildTools()
-	-- Right edge, above the mobile jump button.
+	-- Right edge, above the mobile jump button. Only the building actions live
+	-- here; everything else is behind Menu so buttons stay touch-sized.
 	local column = Kit.new("Frame", {
 		Name = "Tools",
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.fromScale(0.985, 0.4),
-		Size = UDim2.fromScale(0.14, 0.5),
+		Position = UDim2.fromScale(0.985, 0.42),
+		Size = UDim2.fromScale(0.14, 0.56),
 		Parent = buildLayer,
 	})
 	Kit.new("UISizeConstraint", { MaxSize = Vector2.new(170, math.huge), Parent = column })
@@ -458,35 +459,68 @@ local function buildTools()
 		VerticalAlignment = Enum.VerticalAlignment.Center,
 		Parent = column,
 	})
-	local function tool(order: number, text: string, color: Color3, fn: () -> ()): TextButton
+	local function tool(
+		parent: Instance,
+		order: number,
+		text: string,
+		color: Color3,
+		fn: () -> ()
+	): TextButton
 		return Kit.button(text, color, fn, {
 			LayoutOrder = order,
-			Size = UDim2.fromScale(1, 0.11),
-			Parent = column,
+			Size = UDim2.fromScale(1, 0.18),
+			Parent = parent,
 		})
 	end
-	tool(1, "Rotate", Theme.Accent, function()
+	tool(column, 1, "Rotate", Theme.Accent, function()
 		State.set({ rotation = (State.rotation + 1) % 4 })
 	end)
-	settingButton = tool(2, "", Theme.Accent, BuildController.cycleSetting)
-	deleteButton = tool(3, "Delete", Theme.PanelLight, function()
+	settingButton = tool(column, 2, "", Theme.Accent, BuildController.cycleSetting)
+	deleteButton = tool(column, 3, "Delete", Theme.PanelLight, function()
 		State.set({ deleting = not State.deleting })
 	end)
-	testButton = tool(4, "Test Run", Theme.Success, function()
+	testButton = tool(column, 4, "Test Run", Theme.Success, function()
 		Remotes.event("StartRun"):FireServer(player.UserId)
 	end)
-	publishButton = tool(5, "Publish", Theme.Primary, function()
+
+	-- Menu: a second column to the left of the tools.
+	local menu = Kit.new("Frame", {
+		Name = "Menu",
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.fromScale(0.83, 0.42),
+		Size = UDim2.fromScale(0.14, 0.56),
+		Visible = false,
+		Parent = buildLayer,
+	})
+	Kit.new("UISizeConstraint", { MaxSize = Vector2.new(170, math.huge), Parent = menu })
+	Kit.new("UIListLayout", {
+		Padding = UDim.new(0.025, 0),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Parent = menu,
+	})
+	local function menuItem(order: number, text: string, color: Color3, fn: () -> ()): TextButton
+		return tool(menu, order, text, color, function()
+			menu.Visible = false
+			fn()
+		end)
+	end
+	tool(column, 5, "Menu", Theme.PanelLight, function()
+		menu.Visible = not menu.Visible
+	end)
+	publishButton = menuItem(1, "Publish", Theme.Primary, function()
 		openModal("Publish")
 	end)
-	tool(6, "Browse", Theme.Accent, function()
+	menuItem(2, "Browse", Theme.Accent, function()
 		UIController.openBrowse()
 	end)
-	tool(8, "Players", Theme.PanelLight, function()
-		SocialController.openPlayers()
-	end)
-	tool(7, "Tower", Theme.PanelLight, function()
+	menuItem(3, "My Towers", Theme.PanelLight, function()
 		openModal("TowerMenu")
 		renderTowerMenu()
+	end)
+	menuItem(4, "Players", Theme.PanelLight, function()
+		SocialController.openPlayers()
 	end)
 
 	verifiedLabel = Kit.label("", {
@@ -1179,7 +1213,7 @@ local function render()
 		verifiedLabel.TextColor3 = Theme.Danger
 	else
 		verifiedLabel.Text = if State.verified
-			then "Verified: ready to publish"
+			then "Verified! Menu → Publish"
 			else "Climb your tower to verify it"
 		verifiedLabel.TextColor3 = if State.verified then Theme.Success else Theme.TextDim
 	end
