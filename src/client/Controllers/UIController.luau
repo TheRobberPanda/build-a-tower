@@ -20,6 +20,7 @@ local GhostController = require(script.Parent.GhostController)
 local SocialController = require(script.Parent.SocialController)
 local LiveRaceController = require(script.Parent.LiveRaceController)
 local ShopController = require(script.Parent.ShopController)
+local CameraController = require(script.Parent.CameraController)
 
 local UIController = {}
 
@@ -280,6 +281,15 @@ local function buildHotbar()
 		Size = UDim2.fromScale(0.3, 0.04),
 		Parent = buildLayer,
 	})
+	-- Build camera toggle, under the Shop button (bottom left is the thumbstick).
+	local camButton = Kit.button("Camera", Theme.PanelLight, CameraController.toggle, {
+		Position = UDim2.fromScale(0.015, 0.305),
+		Size = UDim2.fromScale(0.09, 0.055),
+		Parent = buildLayer,
+	})
+	CameraController.Changed:Connect(function(on: boolean)
+		camButton.BackgroundColor3 = if on then Theme.Primary else Theme.PanelLight
+	end)
 	pieceHint = Kit.label("", {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 0.815),
