@@ -37,7 +37,7 @@ local function write(player: Player, data: PlayerData, final: boolean)
 	local ok, err = store:save(player.UserId, data, final)
 	if not ok then
 		log(string.format("save failed for %d: %s", player.UserId, tostring(err)))
-		if err == "lost" and not final then
+		if err == "lost" and not final and profiles[player] then
 			noSave[player] = true -- another server owns the record now
 			player:Kick("Your data is open in another server. Please rejoin.")
 		end
