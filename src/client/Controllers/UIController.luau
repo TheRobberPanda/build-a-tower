@@ -187,18 +187,25 @@ end
 ---------------------------------------------------------------- build layer
 
 local function buildHotbar()
-	local bar = Kit.new("Frame", {
+	-- Square tiles sized by the bar height (touch friendly); scrolls sideways
+	-- when there are more pieces than fit.
+	local bar = Kit.new("ScrollingFrame", {
 		Name = "Hotbar",
 		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 0.985),
-		Size = UDim2.fromScale(0.8, 0.11),
+		Size = UDim2.fromScale(0.8, 0.12),
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.X,
+		ScrollingDirection = Enum.ScrollingDirection.X,
+		ScrollBarThickness = 4,
+		ElasticBehavior = Enum.ElasticBehavior.Never,
 		Parent = buildLayer,
 	})
 	Kit.new("UIListLayout", {
 		FillDirection = Enum.FillDirection.Horizontal,
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		Padding = UDim.new(0.01, 0),
+		Padding = UDim.new(0, 6),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = bar,
 	})
@@ -206,7 +213,7 @@ local function buildHotbar()
 		local slot: TextButton = Kit.new("TextButton", {
 			Name = def.name,
 			LayoutOrder = def.id,
-			Size = UDim2.fromScale(1 / 18.5, 1),
+			Size = UDim2.fromOffset(60, 60), -- resized to the bar height below
 			BackgroundColor3 = Theme.Panel,
 			AutoButtonColor = true,
 			Text = "",
@@ -257,6 +264,14 @@ local function buildHotbar()
 		slots[def.id] = slot
 		slot.Visible = Events.pieceAvailable(def.id, os.time()) -- limited-time pieces
 	end
+	local function sizeTiles()
+		local h = math.max(math.floor(bar.AbsoluteSize.Y * 0.9), 44)
+		for _, slot in slots do
+			slot.Size = UDim2.fromOffset(h, h)
+		end
+	end
+	bar:GetPropertyChangedSignal("AbsoluteSize"):Connect(sizeTiles)
+	sizeTiles()
 
 	budgetLabel = Kit.label("Pieces 0/" .. State.budget, {
 		AnchorPoint = Vector2.new(0.5, 1),
