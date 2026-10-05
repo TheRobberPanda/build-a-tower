@@ -161,6 +161,7 @@ local function makePart(piece: Piece, origin: Vector3): BasePart
 		or def.name == "FakeWall"
 		or def.name == "InvisiblePlatform"
 		or def.name == "Crumble"
+		or def.name == "Conveyor"
 		or def.name == "OneWay"
 		or def.name == "Button"
 	then

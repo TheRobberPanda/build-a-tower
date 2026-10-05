@@ -69,6 +69,19 @@ function MechanicsController.start()
 		addOneWay(inst)
 	end
 	CollectionService:GetInstanceAddedSignal("OneWay"):Connect(addOneWay)
+
+	-- Conveyors: an anchored part's velocity doesn't replicate, and characters
+	-- are simulated on the client, so set it here from the server's Dir attribute.
+	local function addConveyor(inst: Instance)
+		local dir = inst:GetAttribute("Dir")
+		if inst:IsA("BasePart") and typeof(dir) == "Vector3" then
+			inst.AssemblyLinearVelocity = dir * Config.CONVEYOR_SPEED
+		end
+	end
+	for _, inst in CollectionService:GetTagged("Conveyor") do
+		addConveyor(inst)
+	end
+	CollectionService:GetInstanceAddedSignal("Conveyor"):Connect(addConveyor)
 	game:GetService("RunService").Heartbeat:Connect(updateOneWays)
 
 	for _, part in CollectionService:GetTagged("JumpPad") do

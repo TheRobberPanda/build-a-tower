@@ -334,6 +334,118 @@ step("checkpoint split, death respawns there, run continues", function()
 		)
 end)
 
+local function partAt(x: number, y: number, z: number): BasePart?
+	local plot = workspace.Plots:FindFirstChild("Plot_" .. player.UserId)
+	local pieces = plot and plot:FindFirstChild("Pieces")
+	local target = cellCenter(x, y, z)
+	local best, bestDist = nil, math.huge
+	for _, part in if pieces then pieces:GetChildren() else {} do
+		if part:IsA("BasePart") then
+			local d = (part.Position - target).Magnitude
+			if d < bestDist then
+				best, bestDist = part, d
+			end
+		end
+	end
+	return if bestDist < 4 then best else nil
+end
+
+-- Stand on top of a cell (outside runs, so moving the character is fine).
+local function standOn(x: number, y: number, z: number)
+	local char = character()
+	char:PivotTo(CFrame.new(cellCenter(x, y, z) + Vector3.new(0, G / 2 + 3, 0)))
+end
+
+step("fake wall: walk straight through it to the finish", function()
+	place(6, 8, 0, 3) -- fake wall on the spawn -> finish line
+	if not startRun() then
+		return false, "no run"
+	end
+	walkTo(cellCenter(8, 0, 6), 15, 1.5)
+	local r = runResult(10)
+	return r ~= nil and r[1] == true, "result=" .. tostring(r and r[1])
+end)
+
+step("invisible platform is solid and invisible", function()
+	place(7, 14, 0, 14)
+	local part = partAt(14, 0, 14)
+	return part ~= nil and part.Transparency == 1 and part.CanCollide, part and part.Name
+end)
+
+step("crumble falls after landing and comes back", function()
+	place(9, 0, 0, 12)
+	standOn(0, 0, 12)
+	task.wait(1.5)
+	local part = partAt(0, 0, 12)
+	local fell = part ~= nil and part.CanCollide == false
+	standOn(14, 0, 8) -- step off so it isn't touched again when it returns
+	task.wait(3.5)
+	local back = part ~= nil and part.CanCollide == true
+	return fell and back, string.format("fell=%s back=%s", tostring(fell), tostring(back))
+end)
+
+step("conveyor carries a standing player", function()
+	place(10, 12, 0, 4, 1) -- rotation 1
+	-- Upstream end (the belt runs toward -X), measured from landing.
+	standOn(13, 0, 4)
+	local _, humanoid, root = character()
+	waitFor(function()
+		return humanoid.FloorMaterial ~= Enum.Material.Air
+	end, 2)
+	local start = root.Position
+	task.wait(0.4)
+	local moved = (root.Position - start) * Vector3.new(1, 0, 1)
+	local belt = partAt(12, 0, 4)
+	return moved.Magnitude > 3,
+		string.format(
+			"moved %.1f studs; belt=%s vel=%s dir=%s floor=%s anchored=%s pos=%s",
+			moved.Magnitude,
+			belt and belt.Name or "nil",
+			belt and tostring(belt.AssemblyLinearVelocity) or "-",
+			belt and tostring(belt:GetAttribute("Dir")) or "-",
+			humanoid.FloorMaterial.Name,
+			tostring(root.Anchored),
+			tostring(root.Position - plotOrigin())
+		)
+end)
+
+step("button opens doors on its channel, then they close", function()
+	place(13, 4, 0, 14, 0, { ch = 3 }) -- door
+	task.wait(0.2)
+	place(12, 2, 0, 14, 0, { ch = 3 }) -- button
+	local door = partAt(4, 0, 14) or partAt(4, 1, 14)
+	standOn(2, 0, 14)
+	task.wait(1)
+	local opened = door ~= nil and door.CanCollide == false
+	standOn(10, 0, 14) -- step away
+	task.wait(6.5)
+	local closed = door ~= nil and door.CanCollide == true
+	return opened and closed, string.format("opened=%s closed=%s", tostring(opened), tostring(closed))
+end)
+
+step("one-way wall: passable from behind, solid from the front", function()
+	place(11, 6, 0, 10, 0) -- rotation 0: pass direction is -Z
+	local wall = partAt(6, 0, 10) or partAt(6, 1, 10)
+	if not wall then
+		return false, "no part"
+	end
+	standOn(6, 0, 12) -- behind (entry side)
+	task.wait(0.5)
+	local passable = wall.CanCollide == false
+	standOn(6, 0, 7) -- in front (exit side)
+	task.wait(0.5)
+	local solid = wall.CanCollide == true
+	return passable and solid,
+		string.format("behind passable=%s front solid=%s", tostring(passable), tostring(solid))
+end)
+
+step("decorations don't count toward the budget", function()
+	local before = progress and progress.budget
+	local ok = place(15, 15, 0, 0) -- plant
+	local plant = partAt(15, 0, 0)
+	return ok and plant ~= nil and plant.CanCollide == false, "budget " .. tostring(before)
+end)
+
 step("browse tabs and search answer", function()
 	local details = {}
 	local all = true
