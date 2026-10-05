@@ -40,6 +40,12 @@ local function forEachCell(piece: Piece, fn: (number) -> ())
 	end
 end
 
+-- True if the cell belongs to the plot's fixed tower core.
+function TowerCodec.inCore(x: number, y: number, z: number): boolean
+	local c = Config.CORE
+	return x >= c.x0 and x < c.x1 and z >= c.z0 and z < c.z1 and y < c.height
+end
+
 -- Checks a single untrusted value and returns a clean copy (unknown fields dropped).
 function TowerCodec.validatePiece(raw: any): (Piece?, string?)
 	if type(raw) ~= "table" then
@@ -63,6 +69,15 @@ function TowerCodec.validatePiece(raw: any): (Piece?, string?)
 		or piece.z + sz > Config.PLOT_CELLS_Z
 	then
 		return nil, "out of bounds"
+	end
+	for dy = 0, sy - 1 do
+		for dz = 0, sz - 1 do
+			for dx = 0, sx - 1 do
+				if TowerCodec.inCore(piece.x + dx, piece.y + dy, piece.z + dz) then
+					return nil, "inside the core"
+				end
+			end
+		end
 	end
 
 	if raw.p ~= nil then

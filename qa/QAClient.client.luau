@@ -265,11 +265,11 @@ end)
 
 -- A finish right in front of the spawn, and a test run that walks onto it.
 step("test run verifies the tower", function()
-	place(8, 8, 0, 6) -- Finish, far enough for a run over the 1 s minimum
+	place(8, 8, 0, 3) -- Finish, far enough for a run over the 1 s minimum
 	if not startRun() then
 		return false, "RunStarted never arrived"
 	end
-	walkTo(cellCenter(8, 0, 6), 15, 1.5)
+	walkTo(cellCenter(8, 0, 3), 15, 1.5)
 	local r = runResult(10)
 	return r ~= nil and r[1] == true and waitFor(function()
 		return verified
@@ -299,7 +299,7 @@ step("jump pad launches without failing the run", function()
 	task.wait(3)
 	conn:Disconnect()
 	local failed = lastResult and lastResult[1] == false and tostring(lastResult[4] or "")
-	walkTo(cellCenter(8, 0, 6), 15, 1.5)
+	walkTo(cellCenter(8, 0, 3), 15, 1.5)
 	local r = runResult(10)
 	return peak > 80 and r ~= nil and r[1] == true,
 		string.format(
@@ -347,7 +347,7 @@ step("checkpoint split, death respawns there, run continues", function()
 	task.wait(1)
 	local nearCheckpoint = (root.Position - cellCenter(4, 0, 1)).Magnitude < 10
 	local stillRunning = lastResult == nil
-	walkTo(cellCenter(8, 0, 6), 15, 1.5)
+	walkTo(cellCenter(8, 0, 3), 15, 1.5)
 	local r = runResult(10)
 	return gotSplit and nearCheckpoint and stillRunning and r ~= nil and r[1] == true,
 		string.format(
@@ -382,11 +382,11 @@ local function standOn(x: number, y: number, z: number)
 end
 
 step("fake wall: walk straight through it to the finish", function()
-	place(6, 8, 0, 3) -- fake wall on the spawn -> finish line
+	place(6, 8, 0, 1) -- fake wall on the spawn -> finish line
 	if not startRun() then
 		return false, "no run"
 	end
-	walkTo(cellCenter(8, 0, 6), 15, 1.5)
+	walkTo(cellCenter(8, 0, 3), 15, 1.5)
 	local r = runResult(10)
 	return r ~= nil and r[1] == true, "result=" .. tostring(r and r[1])
 end)

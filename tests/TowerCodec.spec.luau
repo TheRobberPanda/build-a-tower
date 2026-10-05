@@ -19,6 +19,14 @@ return function()
 			expect(TowerCodec.validatePiece(p(1, 0.5, 0, 0))).never.to.be.ok()
 			expect(TowerCodec.validatePiece("x")).never.to.be.ok()
 		end)
+		it("keeps pieces out of the tower core but allows them on top", function()
+			local c = Config.CORE
+			expect(TowerCodec.validatePiece(p(1, c.x0, 0, c.z0))).to.equal(nil)
+			expect(TowerCodec.validatePiece(p(2, c.x0 - 1, 3, c.z0 - 1))).to.equal(nil) -- 2x2 platform overlapping a corner
+			expect(TowerCodec.validatePiece(p(1, c.x0 - 1, 3, c.z0))).to.be.ok() -- right next to it
+			expect(TowerCodec.validatePiece(p(1, c.x0, c.height, c.z0))).to.be.ok() -- on the roof
+		end)
+
 		it("checks bounds using the rotated footprint", function()
 			local edge = Config.PLOT_CELLS_X - 1
 			-- Ramp is 1x1x2: fits at the x edge unrotated, not when rotated

@@ -8,6 +8,9 @@ local Config = {
 	PLOT_CELLS_X = 16, -- valid x: 0..PLOT_CELLS_X-1
 	PLOT_CELLS_Z = 16,
 	PLOT_CELLS_Y = 64, -- valid y: 0..PLOT_CELLS_Y-1
+	-- Fixed tower core in the middle of every plot (cells, inclusive start, exclusive end).
+	-- Pieces can't overlap it; players build around and onto it.
+	CORE = table.freeze({ x0 = 6, x1 = 10, z0 = 6, z1 = 10, height = 20 }),
 	PIECE_BUDGET = 150, -- at level 1; grows with level (Progression.budget)
 	PIECE_BUDGET_MAX = 300,
 	PIECE_BUDGET_STORED = 400, -- largest tower any player can have (level cap + Builder Pass)
