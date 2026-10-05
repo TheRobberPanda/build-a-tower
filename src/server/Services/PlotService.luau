@@ -111,22 +111,52 @@ function PlotService.spawnCFrame(player: Player): CFrame?
 	return CFrame.lookAt(pos, pos + Vector3.zAxis)
 end
 
--- Clears the plot and builds `pieces` on it.
+local function pieceKey(piece: Piece): string
+	local key = string.format("%d,%d,%d,%d,%d", piece.t, piece.x, piece.y, piece.z, piece.r)
+	if piece.p then
+		local names = {}
+		for k in piece.p do
+			table.insert(names, k)
+		end
+		table.sort(names)
+		for _, k in names do
+			key ..= string.format(",%s=%d", k, piece.p[k])
+		end
+	end
+	return key
+end
+
+-- Makes the plot show exactly `pieces`. Only changed parts are destroyed or
+-- created, so an edit replicates one part instead of the whole tower.
 function PlotService.render(player: Player, pieces: { Piece })
 	local plot = plots[player]
 	if not plot then
 		return
 	end
-	local container = plot.model:FindFirstChild("Pieces")
-	if container then
-		container:Destroy()
+	local folder = plot.model:FindFirstChild("Pieces")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "Pieces"
+		folder.Parent = plot.model
 	end
-	local folder = Instance.new("Folder")
-	folder.Name = "Pieces"
+	assert(folder)
+	local wanted: { [string]: Piece } = {}
 	for _, piece in pieces do
-		makePart(piece, plot.origin).Parent = folder
+		wanted[pieceKey(piece)] = piece
 	end
-	folder.Parent = plot.model
+	for _, part in folder:GetChildren() do
+		local key = part:GetAttribute("Key")
+		if type(key) == "string" and wanted[key] then
+			wanted[key] = nil -- already there
+		else
+			part:Destroy()
+		end
+	end
+	for key, piece in wanted do
+		local part = makePart(piece, plot.origin)
+		part:SetAttribute("Key", key)
+		part.Parent = folder
+	end
 end
 
 local function onPlayerAdded(player: Player)
