@@ -36,7 +36,14 @@ local function toCell(origin: Vector3, worldPos: Vector3): Vector3
 end
 
 local function selectedPiece(cell: Vector3): TowerCodec.Piece
-	return { t = State.selected, x = cell.X, y = cell.Y, z = cell.Z, r = State.rotation }
+	return {
+		t = State.selected,
+		x = cell.X,
+		y = cell.Y,
+		z = cell.Z,
+		r = State.rotation,
+		p = State.selectedProps(),
+	}
 end
 
 -- Raycasts onto the player's own plot. `viewport` = coordinates include the top-bar
@@ -107,7 +114,8 @@ local function act(target: Target?)
 		end
 	elseif target.valid then
 		local c = target.cell
-		Remotes.event("PlacePiece"):FireServer(State.selected, c.X, c.Y, c.Z, State.rotation)
+		Remotes.event("PlacePiece")
+			:FireServer(State.selected, c.X, c.Y, c.Z, State.rotation, State.selectedProps())
 	end
 end
 
@@ -121,6 +129,18 @@ local KEY_TO_PIECE: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Seven] = 7,
 	[Enum.KeyCode.Eight] = 8,
 }
+
+-- Steps the selected piece's setting (jump pad power, teleporter channel).
+function BuildController.cycleSetting()
+	local k, range = State.settingOf(State.selected)
+	if not k or not range then
+		return
+	end
+	local cur = State.props[k] or range[1]
+	local props = table.clone(State.props)
+	props[k] = if cur >= range[2] then range[1] else cur + 1
+	State.set({ props = props })
+end
 
 function BuildController.init()
 	ghost = Instance.new("Part")
@@ -146,6 +166,8 @@ function BuildController.start()
 				State.set({ selected = piece, deleting = false })
 			elseif input.KeyCode == Enum.KeyCode.R then
 				State.set({ rotation = (State.rotation + 1) % 4 })
+			elseif input.KeyCode == Enum.KeyCode.F then
+				BuildController.cycleSetting()
 			elseif input.KeyCode == Enum.KeyCode.X then
 				State.set({ deleting = not State.deleting })
 			end

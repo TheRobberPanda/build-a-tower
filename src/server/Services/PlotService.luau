@@ -46,6 +46,13 @@ local COLORS: { [string]: Color3 } = {
 	Finish = Color3.fromRGB(0, 200, 90),
 }
 
+local TELEPORTER_COLORS: { Color3 } = {
+	Color3.fromRGB(170, 85, 255),
+	Color3.fromRGB(0, 170, 255),
+	Color3.fromRGB(255, 85, 170),
+	Color3.fromRGB(255, 255, 85),
+}
+
 local function makePart(piece: Piece, origin: Vector3): BasePart
 	local def = PieceDefs.byId[piece.t]
 	local sx, sy, sz = TowerCodec.extent(piece)
@@ -74,6 +81,14 @@ local function makePart(piece: Piece, origin: Vector3): BasePart
 		part.Transparency = 1
 	elseif def.name == "JumpPad" or def.name == "Finish" or def.name == "Teleporter" then
 		part.Material = Enum.Material.Neon
+	end
+	if def.name == "Teleporter" then
+		local ch = piece.p and piece.p.ch or 1
+		part.Color = TELEPORTER_COLORS[ch] or part.Color -- linked pairs share a colour
+	elseif def.name == "JumpPad" then
+		local power = piece.p and piece.p.power or 1
+		part.Size = Vector3.new(part.Size.X, part.Size.Y * (0.25 + 0.15 * power), part.Size.Z) -- taller = stronger
+		part.Position -= Vector3.new(0, (Config.GRID_STUDS - part.Size.Y) / 2, 0)
 	end
 	if def.name == "JumpPad" or def.name == "Teleporter" then
 		CollectionService:AddTag(part, def.name) -- MechanicsService / client controller pick these up

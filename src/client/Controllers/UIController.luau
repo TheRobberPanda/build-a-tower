@@ -12,6 +12,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Kit = require(script.Parent.Parent.UI.Kit)
 local Theme = require(script.Parent.Parent.UI.Theme)
 local State = require(script.Parent.Parent.State)
+local BuildController = require(script.Parent.BuildController)
 
 local UIController = {}
 
@@ -42,6 +43,7 @@ local slots: { [number]: Frame } = {}
 local budgetLabel: TextLabel
 local verifiedLabel: TextLabel
 local deleteButton: TextButton
+local settingButton: TextButton
 local publishButton: TextButton
 local testButton: TextButton
 local timerLabel: TextLabel
@@ -253,23 +255,24 @@ local function buildTools()
 	local function tool(order: number, text: string, color: Color3, fn: () -> ()): TextButton
 		return Kit.button(text, color, fn, {
 			LayoutOrder = order,
-			Size = UDim2.fromScale(1, 0.17),
+			Size = UDim2.fromScale(1, 0.145),
 			Parent = column,
 		})
 	end
 	tool(1, "Rotate", Theme.Accent, function()
 		State.set({ rotation = (State.rotation + 1) % 4 })
 	end)
-	deleteButton = tool(2, "Delete", Theme.PanelLight, function()
+	settingButton = tool(2, "", Theme.Accent, BuildController.cycleSetting)
+	deleteButton = tool(3, "Delete", Theme.PanelLight, function()
 		State.set({ deleting = not State.deleting })
 	end)
-	testButton = tool(3, "Test Run", Theme.Success, function()
+	testButton = tool(4, "Test Run", Theme.Success, function()
 		Remotes.event("StartRun"):FireServer(player.UserId)
 	end)
-	publishButton = tool(4, "Publish", Theme.Primary, function()
+	publishButton = tool(5, "Publish", Theme.Primary, function()
 		openModal("Publish")
 	end)
-	tool(5, "Browse", Theme.Accent, function()
+	tool(6, "Browse", Theme.Accent, function()
 		UIController.openBrowse()
 	end)
 
@@ -581,6 +584,12 @@ local function render()
 	budgetLabel.Text = string.format("Pieces %d/%d", count, Config.PIECE_BUDGET)
 	budgetLabel.TextColor3 = if count >= Config.PIECE_BUDGET then Theme.Danger else Theme.Text
 
+	local settingKey, settingRange = State.settingOf(State.selected)
+	settingButton.Visible = settingKey ~= nil and not State.deleting
+	if settingKey and settingRange then
+		local value = State.props[settingKey] or settingRange[1]
+		settingButton.Text = string.format("%s %d", if settingKey == "ch" then "Channel" else "Power", value)
+	end
 	deleteButton.BackgroundColor3 = if State.deleting then Theme.Danger else Theme.PanelLight
 	Kit.setEnabled(publishButton, State.verified, Theme.Primary)
 	Kit.setEnabled(publishConfirm, State.verified, Theme.Primary)
