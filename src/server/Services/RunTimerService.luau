@@ -51,7 +51,7 @@ end
 local function restoreOwnTower(player: Player)
 	local data = DataService.get(player)
 	if data then
-		PlotService.render(player, data.tower.pieces)
+		PlotService.render(player, data.tower.pieces, data.material)
 	end
 end
 
@@ -258,7 +258,7 @@ local function onStartRun(player: Player, ownerId: any)
 		end
 		hash = TowerCodec.hash(data.tower)
 		towerName = data.towerName
-		PlotService.render(player, data.tower.pieces)
+		PlotService.render(player, data.tower.pieces, data.material)
 	else
 		local tower = TowerService.getPublished(ownerId)
 		if not tower then
@@ -266,7 +266,7 @@ local function onStartRun(player: Player, ownerId: any)
 		end
 		hash = tower.hash
 		towerName = tower.name
-		PlotService.render(player, tower.pieces)
+		PlotService.render(player, tower.pieces, tower.mat)
 	end
 
 	local run: Run = {
@@ -355,7 +355,7 @@ local function onWatchReplay(player: Player, ownerId: any, racerId: any): { [str
 	end
 	watching[player] = true
 	TowerService.setEditLocked(player, true)
-	PlotService.render(player, tower.pieces)
+	PlotService.render(player, tower.pieces, tower.mat)
 	return replay
 end
 

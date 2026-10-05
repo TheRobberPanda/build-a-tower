@@ -61,13 +61,24 @@ return function()
 			expect(tower and #tower.pieces).to.equal(1)
 			expect(dropped).to.equal(3)
 		end)
+		it("uses the given budget and keeps decorations outside it", function()
+			local state = TowerCodec.newPlaceState(2)
+			TowerCodec.add(state, p(1, 0, 0, 0))
+			TowerCodec.add(state, p(1, 1, 0, 0))
+			expect(TowerCodec.canAdd(state, p(1, 2, 0, 0))).to.equal(false)
+			expect(TowerCodec.canAdd(state, p(15, 2, 0, 0))).to.equal(true) -- plant
+			TowerCodec.add(state, p(15, 2, 0, 0))
+			TowerCodec.remove(state, p(15, 2, 0, 0))
+			expect(state.decor).to.equal(0)
+			expect(state.total).to.equal(2)
+		end)
 		it("trims towers over budget", function()
 			local pieces = {}
-			for i = 0, Config.PIECE_BUDGET + 9 do
+			for i = 0, Config.PIECE_BUDGET_MAX + 9 do
 				table.insert(pieces, p(1, i % 16, i // 256, (i // 16) % 16))
 			end
 			local tower, dropped = TowerCodec.sanitize({ v = 1, pieces = pieces })
-			expect(tower and #tower.pieces).to.equal(Config.PIECE_BUDGET)
+			expect(tower and #tower.pieces).to.equal(Config.PIECE_BUDGET_MAX)
 			expect(dropped).to.equal(10)
 		end)
 		it("refuses data from a newer schema", function()

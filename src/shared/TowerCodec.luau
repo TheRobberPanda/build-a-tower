@@ -100,19 +100,26 @@ end
 export type PlaceState = {
 	occupied: { [number]: boolean },
 	counts: { [number]: number },
-	total: number,
+	total: number, -- pieces counting toward the budget
+	decor: number, -- decorations (own cap, outside the budget)
+	budget: number,
 }
 
-function TowerCodec.newPlaceState(): PlaceState
-	return { occupied = {}, counts = {}, total = 0 }
+-- budget defaults to the maximum any level allows (used when loading stored towers).
+function TowerCodec.newPlaceState(budget: number?): PlaceState
+	return { occupied = {}, counts = {}, total = 0, decor = 0, budget = budget or Config.PIECE_BUDGET_MAX }
 end
 
 -- Checks budget, per-type limits and overlap against the current state.
 function TowerCodec.canAdd(state: PlaceState, piece: Piece): (boolean, string?)
-	if state.total >= Config.PIECE_BUDGET then
+	local def = PieceDefs.byId[piece.t]
+	if def.decor then
+		if state.decor >= Config.DECOR_MAX then
+			return false, "decor limit"
+		end
+	elseif state.total >= state.budget then
 		return false, "over budget"
 	end
-	local def = PieceDefs.byId[piece.t]
 	if def.maxCount and (state.counts[piece.t] or 0) >= def.maxCount then
 		return false, "type limit"
 	end
@@ -133,7 +140,11 @@ function TowerCodec.add(state: PlaceState, piece: Piece)
 		state.occupied[i] = true
 	end)
 	state.counts[piece.t] = (state.counts[piece.t] or 0) + 1
-	state.total += 1
+	if PieceDefs.byId[piece.t].decor then
+		state.decor += 1
+	else
+		state.total += 1
+	end
 end
 
 function TowerCodec.remove(state: PlaceState, piece: Piece)
@@ -141,7 +152,11 @@ function TowerCodec.remove(state: PlaceState, piece: Piece)
 		state.occupied[i] = nil
 	end)
 	state.counts[piece.t] -= 1
-	state.total -= 1
+	if PieceDefs.byId[piece.t].decor then
+		state.decor -= 1
+	else
+		state.total -= 1
+	end
 end
 
 function TowerCodec.empty(): Tower
@@ -194,8 +209,8 @@ function TowerCodec.validate(raw: any): (boolean, string?)
 	return false, "no finish"
 end
 
-function TowerCodec.buildState(tower: Tower): PlaceState
-	local state = TowerCodec.newPlaceState()
+function TowerCodec.buildState(tower: Tower, budget: number?): PlaceState
+	local state = TowerCodec.newPlaceState(budget)
 	for _, piece in tower.pieces do
 		TowerCodec.add(state, piece)
 	end

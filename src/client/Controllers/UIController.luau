@@ -13,6 +13,7 @@ local Kit = require(script.Parent.Parent.UI.Kit)
 local Theme = require(script.Parent.Parent.UI.Theme)
 local State = require(script.Parent.Parent.State)
 local BuildController = require(script.Parent.BuildController)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local GhostController = require(script.Parent.GhostController)
 
 local UIController = {}
@@ -35,6 +36,9 @@ local PIECE_COLORS: { [string]: Color3 } = {
 	Button = Color3.fromRGB(230, 60, 60),
 	Door = Color3.fromRGB(150, 100, 60),
 	Checkpoint = Color3.fromRGB(0, 190, 200),
+	Plant = Color3.fromRGB(70, 160, 70),
+	Lamp = Color3.fromRGB(255, 220, 140),
+	Flag = Color3.fromRGB(230, 60, 60),
 }
 local SHORT_NAMES: { [string]: string } = {
 	InvisiblePlatform = "Invisible",
@@ -57,6 +61,9 @@ local buildLayer: Frame
 local runLayer: Frame
 local slots: { [number]: Frame } = {}
 local budgetLabel: TextLabel
+local levelLabel: TextLabel
+local bricksLabel: TextLabel
+local xpFill: Frame
 local verifiedLabel: TextLabel
 local hintLabel: TextLabel
 local deleteButton: TextButton
@@ -193,7 +200,7 @@ local function buildHotbar()
 		local slot: TextButton = Kit.new("TextButton", {
 			Name = def.name,
 			LayoutOrder = def.id,
-			Size = UDim2.fromScale(1 / 14.5, 1),
+			Size = UDim2.fromScale(1 / 17.5, 1),
 			BackgroundColor3 = Theme.Panel,
 			AutoButtonColor = true,
 			Text = "",
@@ -244,7 +251,7 @@ local function buildHotbar()
 		slots[def.id] = slot
 	end
 
-	budgetLabel = Kit.label("Pieces 0/" .. Config.PIECE_BUDGET, {
+	budgetLabel = Kit.label("Pieces 0/" .. State.budget, {
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 0.86),
 		Size = UDim2.fromScale(0.3, 0.04),
@@ -258,6 +265,143 @@ local function buildHotbar()
 		Font = Theme.BodyFont,
 		Parent = buildLayer,
 	})
+end
+
+-- Level, XP bar and Bricks, left side below the Roblox top bar.
+local function buildProfileBadge()
+	local panel = Kit.panel({
+		Name = "Profile",
+		Position = UDim2.fromScale(0.015, 0.12),
+		Size = UDim2.fromScale(0.16, 0.1),
+		Parent = gui,
+	})
+	Kit.new(
+		"UISizeConstraint",
+		{ MinSize = Vector2.new(130, 50), MaxSize = Vector2.new(220, 90), Parent = panel }
+	)
+	levelLabel = Kit.label("Lv 1", {
+		Position = UDim2.fromScale(0.06, 0.05),
+		Size = UDim2.fromScale(0.4, 0.45),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = panel,
+	})
+	bricksLabel = Kit.label("0 Bricks", {
+		Position = UDim2.fromScale(0.45, 0.08),
+		Size = UDim2.fromScale(0.5, 0.38),
+		TextXAlignment = Enum.TextXAlignment.Right,
+		TextColor3 = Theme.Primary,
+		Font = Theme.BodyFont,
+		Parent = panel,
+	})
+	local bar = Kit.new("Frame", {
+		Position = UDim2.fromScale(0.06, 0.62),
+		Size = UDim2.fromScale(0.88, 0.22),
+		BackgroundColor3 = Theme.PanelLight,
+		Parent = panel,
+	}, { Kit.corner(0.5) })
+	xpFill = Kit.new("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = Theme.Success,
+		Parent = bar,
+	}, { Kit.corner(0.5) })
+end
+
+---------------------------------------------------------------- tower menu (slots + materials)
+
+local slotButtons: { TextButton } = {}
+local materialList: ScrollingFrame
+local towerMenuStatus: TextLabel
+
+local function renderTowerMenu()
+	for i, button in slotButtons do
+		button.BackgroundColor3 = if i == State.activeSlot then Theme.Primary else Theme.PanelLight
+	end
+	if not materialList then
+		return
+	end
+	clearList(materialList)
+	for i, def in Cosmetics.materials do
+		local r = row(materialList, i)
+		Kit.label(def.name, {
+			Position = UDim2.fromScale(0.04, 0.15),
+			Size = UDim2.fromScale(0.5, 0.7),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = r,
+		})
+		local owned = if def.bricks > 0 then State.unlocked[def.key] == true else State.level >= def.level
+		local text, color, action
+		if State.material == def.key then
+			text, color = "Equipped", Theme.Success
+		elseif owned then
+			text, color, action = "Use", Theme.Accent, "SetMaterial"
+		elseif State.level < def.level then
+			text, color = "Lv " .. def.level, Theme.PanelLight
+		else
+			text, color, action = def.bricks .. " Bricks", Theme.Primary, "BuyMaterial"
+		end
+		local button = Kit.button(text, color, function()
+			if not action then
+				return
+			end
+			task.spawn(function()
+				local ok, success, err = pcall(function()
+					return Remotes.func(action):InvokeServer(def.key)
+				end)
+				if ok and success then
+					State.set({ material = def.key })
+					towerMenuStatus.Text = def.name .. " equipped"
+				else
+					towerMenuStatus.Text = if ok and type(err) == "string"
+						then err
+						else "Could not change material"
+				end
+				renderTowerMenu()
+			end)
+		end, { Position = UDim2.fromScale(0.6, 0.12), Size = UDim2.fromScale(0.37, 0.76), Parent = r })
+		Kit.setEnabled(button, action ~= nil or State.material == def.key, color)
+	end
+end
+
+local function buildTowerMenu()
+	local body = makeModal("TowerMenu", "My towers", 0.75)
+	local slotsRow =
+		Kit.new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 0.12), Parent = body })
+	Kit.new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0.02, 0),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = slotsRow,
+	})
+	for i = 1, Config.TOWER_SLOTS do
+		slotButtons[i] = Kit.button("Tower " .. i, Theme.PanelLight, function()
+			task.spawn(function()
+				local ok, switched = pcall(function()
+					return Remotes.func("SwitchSlot"):InvokeServer(i)
+				end)
+				towerMenuStatus.Text = if ok and switched then "Switched to tower " .. i else ""
+			end)
+		end, { LayoutOrder = i, Size = UDim2.fromScale(0.31, 1), Parent = slotsRow })
+	end
+	towerMenuStatus = Kit.label("", {
+		Position = UDim2.fromScale(0, 0.13),
+		Size = UDim2.fromScale(1, 0.07),
+		Font = Theme.BodyFont,
+		TextColor3 = Theme.TextDim,
+		Parent = body,
+	})
+	Kit.label("Material", {
+		Position = UDim2.fromScale(0, 0.21),
+		Size = UDim2.fromScale(1, 0.07),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = body,
+	})
+	local holder = Kit.new("Frame", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromScale(0, 0.3),
+		Size = UDim2.fromScale(1, 0.7),
+		Parent = body,
+	})
+	materialList = listFrame(holder)
 end
 
 local function buildTools()
@@ -280,7 +424,7 @@ local function buildTools()
 	local function tool(order: number, text: string, color: Color3, fn: () -> ()): TextButton
 		return Kit.button(text, color, fn, {
 			LayoutOrder = order,
-			Size = UDim2.fromScale(1, 0.145),
+			Size = UDim2.fromScale(1, 0.125),
 			Parent = column,
 		})
 	end
@@ -299,6 +443,10 @@ local function buildTools()
 	end)
 	tool(6, "Browse", Theme.Accent, function()
 		UIController.openBrowse()
+	end)
+	tool(7, "Tower", Theme.PanelLight, function()
+		openModal("TowerMenu")
+		renderTowerMenu()
 	end)
 
 	verifiedLabel = Kit.label("", {
@@ -833,9 +981,19 @@ local function render()
 		stroke.Color = if active then Theme.Primary else Theme.Stroke
 		stroke.Thickness = if active then 4 else 3
 	end
-	local count = if State.tower then #State.tower.pieces else 0
-	budgetLabel.Text = string.format("Pieces %d/%d", count, Config.PIECE_BUDGET)
-	budgetLabel.TextColor3 = if count >= Config.PIECE_BUDGET then Theme.Danger else Theme.Text
+	local count = 0
+	for _, piece in if State.tower then State.tower.pieces else {} do
+		local def = PieceDefs.byId[piece.t]
+		if def and not def.decor then
+			count += 1
+		end
+	end
+	budgetLabel.Text = string.format("Pieces %d/%d", count, State.budget)
+	budgetLabel.TextColor3 = if count >= State.budget then Theme.Danger else Theme.Text
+	levelLabel.Text = string.format("Lv %d", State.level)
+	bricksLabel.Text = string.format("%d Bricks", State.bricks)
+	local span = math.max(State.nextXp - State.levelXp, 1)
+	xpFill.Size = UDim2.fromScale(math.clamp((State.xp - State.levelXp) / span, 0, 1), 1)
 
 	local settingKey, settingRange = State.settingOf(State.selected)
 	settingButton.Visible = settingKey ~= nil and not State.deleting
@@ -906,11 +1064,13 @@ function UIController.init()
 	})
 	buildHotbar()
 	buildTools()
+	buildProfileBadge()
 	buildRunHud()
 	buildPublish()
 	buildBrowse()
 	buildLeaderboard()
 	buildResults()
+	buildTowerMenu()
 	gui.Parent = player:WaitForChild("PlayerGui")
 	render()
 end
@@ -918,6 +1078,26 @@ end
 function UIController.start()
 	State.Changed:Connect(render)
 
+	Remotes.event("Progress").OnClientEvent:Connect(function(p)
+		if type(p) == "table" then
+			local patch = {}
+			for _, k in { "xp", "bricks", "level", "budget", "levelXp", "nextXp", "activeSlot" } do
+				if type(p[k]) == "number" then
+					patch[k] = p[k]
+				end
+			end
+			if type(p.material) == "string" then
+				patch.material = p.material
+			end
+			if type(p.unlocked) == "table" then
+				patch.unlocked = p.unlocked
+			end
+			State.set(patch)
+			if openModalName == "TowerMenu" then
+				renderTowerMenu()
+			end
+		end
+	end)
 	Remotes.event("TowerChanged").OnClientEvent:Connect(function(tower, verified)
 		State.set({ tower = tower, verified = verified == true })
 	end)

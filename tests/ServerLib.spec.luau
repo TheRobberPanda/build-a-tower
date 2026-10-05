@@ -167,6 +167,29 @@ return function()
 			expect(#store.data.u_1.quarantine.tower.pieces).to.equal(2)
 		end)
 
+		it("loads inactive tower slots and keeps their verification only if it matches", function()
+			local store = FakeDataStore.new()
+			local finish = { v = 1, pieces = { { t = 8, x = 0, y = 0, z = 0, r = 0 } } }
+			store.data.u_1 = {
+				v = 1,
+				data = {
+					tower = { v = 1, pieces = {} },
+					activeSlot = 2,
+					slots = {
+						["1"] = { tower = finish, name = "Old", verifiedHash = TowerCodec.hash(finish) },
+						["2"] = { tower = finish, name = "Ignored: active slot lives in data.tower" },
+						["3"] = { tower = finish, name = "Stale", verifiedHash = "nope" },
+					},
+				},
+			}
+			local data = newProfiles(store, "A"):load(1) :: any
+			expect(data.activeSlot).to.equal(2)
+			expect(data.slots["1"].name).to.equal("Old")
+			expect(data.slots["1"].verifiedHash).to.equal(TowerCodec.hash(finish))
+			expect(data.slots["2"]).to.equal(nil)
+			expect(data.slots["3"].verifiedHash).to.equal(nil)
+		end)
+
 		it("drops verification that no longer matches the tower", function()
 			local store = FakeDataStore.new()
 			store.data.u_1 = { v = 1, data = { tower = { v = 1, pieces = {} }, verifiedHash = "stale" } }

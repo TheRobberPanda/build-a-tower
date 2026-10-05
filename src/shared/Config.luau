@@ -8,7 +8,11 @@ local Config = {
 	PLOT_CELLS_X = 16, -- valid x: 0..PLOT_CELLS_X-1
 	PLOT_CELLS_Z = 16,
 	PLOT_CELLS_Y = 64, -- valid y: 0..PLOT_CELLS_Y-1
-	PIECE_BUDGET = 150,
+	PIECE_BUDGET = 150, -- at level 1; grows with level (Progression.budget)
+	PIECE_BUDGET_MAX = 300,
+	DECOR_MAX = 60,
+	TOWER_SLOTS = 3,
+	MAX_LEVEL = 50,
 	TOWER_NAME_MAX = 24,
 
 	-- DataStores
@@ -70,6 +74,14 @@ local Config = {
 		Button = "Doorman",
 	}),
 	SECRET_HUNTER_COUNT = 10,
+
+	-- Builder rewards (credited when others finish / like your published tower)
+	CREDITS_STORE = "Credits_v1",
+	XP_PER_FINISH = 10,
+	XP_PER_LIKE = 25,
+	BRICKS_PER_FINISH = 5,
+	BRICKS_PER_LIKE = 10,
+	BRICKS_DAILY_CAP = 500, -- per builder per UTC day, against alt-account farming
 
 	-- Replays
 	REPLAYS_STORE = "Replays_v1",

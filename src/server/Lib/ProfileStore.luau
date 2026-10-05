@@ -7,6 +7,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Retry = require(script.Parent.Retry)
@@ -68,6 +69,12 @@ function ProfileStore.defaultData(): PlayerData
 		liked = {},
 		likedOrder = {},
 		secretsFound = 0,
+		xp = 0,
+		bricks = 0,
+		material = Cosmetics.DEFAULT,
+		unlocked = {},
+		activeSlot = 1,
+		slots = {},
 	}
 end
 
@@ -111,6 +118,51 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 		and raw.secretsFound >= 0
 	then
 		data.secretsFound = math.floor(math.min(raw.secretsFound, 1e9))
+	end
+	if
+		type(raw.activeSlot) == "number"
+		and raw.activeSlot % 1 == 0
+		and raw.activeSlot >= 1
+		and raw.activeSlot <= Config.TOWER_SLOTS
+	then
+		data.activeSlot = raw.activeSlot
+	end
+	if type(raw.slots) == "table" then
+		for i = 1, Config.TOWER_SLOTS do
+			local key = tostring(i)
+			local slot = raw.slots[key]
+			if i ~= data.activeSlot and type(slot) == "table" then
+				local slotTower, slotDropped = TowerCodec.sanitize(slot.tower)
+				if not slotTower then
+					return nil, false -- newer schema in a slot: refuse, like the main tower
+				end
+				local slotHash = TowerCodec.hash(slotTower)
+				data.slots[key] = {
+					tower = slotTower,
+					name = if type(slot.name) == "string" and #slot.name <= Config.TOWER_NAME_MAX
+						then slot.name
+						else "Tower " .. key,
+					verifiedHash = if slot.verifiedHash == slotHash then slotHash else nil,
+				}
+				dropped += slotDropped
+			end
+		end
+	end
+	if type(raw.material) == "string" and Cosmetics.byKey[raw.material] then
+		data.material = raw.material
+	end
+	if type(raw.unlocked) == "table" then
+		for key, v in raw.unlocked do
+			if v == true and type(key) == "string" and Cosmetics.byKey[key] then
+				data.unlocked[key] = true
+			end
+		end
+	end
+	for _, field in { "xp", "bricks" } do
+		local v = raw[field]
+		if type(v) == "number" and v == v and v >= 0 then
+			(data :: any)[field] = math.floor(math.min(v, 1e12))
+		end
 	end
 	if type(raw.likedOrder) == "table" and type(raw.liked) == "table" then
 		for _, key in raw.likedOrder do

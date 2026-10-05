@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -50,6 +51,9 @@ local COLORS: { [string]: Color3 } = {
 	Button = Color3.fromRGB(230, 60, 60),
 	Door = Color3.fromRGB(150, 100, 60),
 	Checkpoint = Color3.fromRGB(0, 190, 200),
+	Plant = Color3.fromRGB(70, 160, 70),
+	Lamp = Color3.fromRGB(255, 220, 140),
+	Flag = Color3.fromRGB(230, 60, 60),
 }
 
 local TELEPORTER_COLORS: { Color3 } = {
@@ -112,6 +116,28 @@ local function makePart(piece: Piece, origin: Vector3): BasePart
 		part.Material = Enum.Material.Neon
 	elseif def.name == "Door" then
 		part.Material = Enum.Material.WoodPlanks
+	elseif def.decor then
+		part.CanCollide = false
+		part.CanTouch = false
+		part.CastShadow = false
+		if def.name == "Plant" then
+			part.Shape = Enum.PartType.Ball
+			part.Material = Enum.Material.Grass
+		elseif def.name == "Lamp" then
+			part.Size = Vector3.new(part.Size.X * 0.3, part.Size.Y, part.Size.Z * 0.3)
+			part.Material = Enum.Material.Neon
+			local light = Instance.new("PointLight")
+			light.Range = 14
+			light.Brightness = 1.5
+			light.Color = part.Color
+			light.Parent = part
+		elseif def.name == "Flag" then
+			part.Size = Vector3.new(part.Size.X * 0.9, part.Size.Y * 0.5, 0.3)
+			part.Position += Vector3.new(0, Config.GRID_STUDS / 2, 0)
+			part.Material = Enum.Material.Fabric
+			local ch = piece.p and piece.p.ch or 1
+			part.Color = TELEPORTER_COLORS[ch] or part.Color
+		end
 	elseif def.name == "Checkpoint" then
 		part.Size = Vector3.new(part.Size.X, part.Size.Y * 0.25, part.Size.Z)
 		part.Position -= Vector3.new(0, (Config.GRID_STUDS - part.Size.Y) / 2, 0)
@@ -177,7 +203,7 @@ end
 
 -- Makes the plot show exactly `pieces`. Only changed parts are destroyed or
 -- created, so an edit replicates one part instead of the whole tower.
-function PlotService.render(player: Player, pieces: { Piece })
+function PlotService.render(player: Player, pieces: { Piece }, mat: string?)
 	local plot = plots[player]
 	if not plot then
 		return
@@ -205,6 +231,13 @@ function PlotService.render(player: Player, pieces: { Piece })
 		local part = makePart(piece, plot.origin)
 		part:SetAttribute("Key", key)
 		part.Parent = folder
+	end
+	-- Tower material on structural pieces (cosmetic, so applied in place).
+	local def = Cosmetics.byKey[mat or Cosmetics.DEFAULT] or Cosmetics.byKey[Cosmetics.DEFAULT]
+	for _, part in folder:GetChildren() do
+		if part:IsA("BasePart") and Cosmetics.structural[part.Name] then
+			part.Material = def.material
+		end
 	end
 end
 

@@ -7,7 +7,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
+local Progression = require(ReplicatedStorage.Shared.Progression)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -17,6 +19,7 @@ local TowerStats = require(script.Parent.Parent.Lib.TowerStats)
 local Analytics = require(script.Parent.Analytics)
 local Badges = require(script.Parent.Badges)
 local DataService = require(script.Parent.DataService)
+local ProgressionService = require(script.Parent.ProgressionService)
 local PlotService = require(script.Parent.PlotService)
 
 type PlayerData = Types.PlayerData
@@ -45,7 +48,7 @@ local function isInt(n: any, lo: number, hi: number): boolean
 end
 
 local function pushTower(player: Player, data: PlayerData)
-	PlotService.render(player, data.tower.pieces)
+	PlotService.render(player, data.tower.pieces, data.material)
 	Remotes.event("TowerChanged"):FireClient(player, data.tower, data.verifiedHash ~= nil)
 end
 
@@ -155,7 +158,7 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	if not okFilter then
 		return false, "filter unavailable"
 	end
-	local ok, result = published:publish(player.UserId, filtered, data.tower)
+	local ok, result = published:publish(player.UserId, filtered, data.tower, data.material)
 	if not ok then
 		return false, result
 	end
@@ -377,6 +380,78 @@ local function onLeaderboard(player: Player, ownerId: any): ({ any }, { [string]
 	return out, summary
 end
 
+-- Switch to another tower slot. The current tower is kept as it is (including
+-- its verification) and the target slot becomes the editable tower.
+local function onSwitchSlot(player: Player, index: any): boolean
+	local data = editable(player)
+	if not data or not isInt(index, 1, Config.TOWER_SLOTS) or index == data.activeSlot then
+		return false
+	end
+	data.slots[tostring(data.activeSlot)] = {
+		tower = data.tower,
+		name = data.towerName,
+		verifiedHash = data.verifiedHash,
+	}
+	local key = tostring(index)
+	local target = data.slots[key]
+	data.slots[key] = nil
+	data.activeSlot = index
+	data.tower = if target then target.tower else TowerCodec.empty()
+	data.towerName = if target then target.name else "Tower " .. key
+	data.verifiedHash = if target then target.verifiedHash else nil
+	states[player] = TowerCodec.buildState(data.tower, Progression.budget(ProgressionService.level(data)))
+	pushTower(player, data)
+	ProgressionService.refresh(player)
+	return true
+end
+
+local function canUseMaterial(data: PlayerData, key: string): boolean
+	local def = Cosmetics.byKey[key]
+	if not def then
+		return false
+	end
+	if def.bricks > 0 then
+		return data.unlocked[key] == true
+	end
+	return ProgressionService.level(data) >= def.level
+end
+
+-- Equip a material you have unlocked. Cosmetic: does not clear verification.
+local function onSetMaterial(player: Player, key: any): (boolean, string?)
+	local data = DataService.get(player)
+	if not data or type(key) ~= "string" or not queryLimiter:allow(player) then
+		return false, "bad request"
+	end
+	if not canUseMaterial(data, key) then
+		return false, "locked"
+	end
+	data.material = key
+	if not editLocked[player] then
+		PlotService.render(player, data.tower.pieces, data.material)
+	end
+	return true, nil
+end
+
+-- Buy a Bricks material (level requirement still applies).
+local function onBuyMaterial(player: Player, key: any): (boolean, string?)
+	local data = DataService.get(player)
+	local def = if type(key) == "string" then Cosmetics.byKey[key] else nil
+	if not data or not def or def.bricks <= 0 or not queryLimiter:allow(player) then
+		return false, "bad request"
+	end
+	if data.unlocked[def.key] then
+		return true, nil
+	end
+	if ProgressionService.level(data) < def.level then
+		return false, "level " .. def.level
+	end
+	if not ProgressionService.spend(player, def.bricks) then
+		return false, "not enough Bricks"
+	end
+	data.unlocked[def.key] = true
+	return onSetMaterial(player, def.key)
+end
+
 local function onReport(player: Player, ownerId: any): boolean
 	if not isInt(ownerId, 1, 2 ^ 53) or ownerId == player.UserId or not reportLimiter:allow(player) then
 		return false
@@ -417,7 +492,15 @@ function TowerService.init()
 		log = function(msg)
 			warn("[TowerStats] " .. msg)
 		end,
+		onFlushed = ProgressionService.credit,
 	})
+	-- Level-ups raise the piece budget immediately.
+	ProgressionService.Changed:Connect(function(player: Player, data: PlayerData)
+		local state = states[player]
+		if state then
+			state.budget = Progression.budget(ProgressionService.level(data))
+		end
+	end)
 	task.spawn(function()
 		while true do
 			task.wait(Config.STATS_FLUSH_SECONDS)
@@ -430,7 +513,7 @@ function TowerService.init()
 
 	DataService.Loaded:Connect(function(player: Player, data: PlayerData)
 		finished[player] = {}
-		states[player] = TowerCodec.buildState(data.tower)
+		states[player] = TowerCodec.buildState(data.tower, Progression.budget(ProgressionService.level(data)))
 		pushTower(player, data)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
@@ -450,6 +533,9 @@ function TowerService.init()
 	Remotes.func("Leaderboard").OnServerInvoke = onLeaderboard
 	Remotes.func("ReportTower").OnServerInvoke = onReport
 	Remotes.func("LikeTower").OnServerInvoke = onLike
+	Remotes.func("SetMaterial").OnServerInvoke = onSetMaterial
+	Remotes.func("SwitchSlot").OnServerInvoke = onSwitchSlot
+	Remotes.func("BuyMaterial").OnServerInvoke = onBuyMaterial
 end
 
 return TowerService

@@ -16,6 +16,7 @@ Remotes.Events = table.freeze({
 	"RunResult", -- server -> client (ok, ms, improved, message?, previousBestMs?, canLike?, info?)
 	"Split", -- server -> client (checkpointIndex, ms)
 	"StopWatch", -- () stop watching a replay
+	"Progress", -- server -> client { xp, bricks, level, budget, levelXp, nextXp, material, unlocked }
 })
 
 Remotes.Functions = table.freeze({
@@ -26,6 +27,9 @@ Remotes.Functions = table.freeze({
 	"LikeTower", -- (ownerId) -> ok; only after finishing that version
 	"GetReplay", -- (ownerId, racerId; 0 = record) -> { racer, ms, path, splits }?
 	"WatchReplay", -- (ownerId, racerId) -> replay?; renders the tower on your plot
+	"SetMaterial", -- (key) -> (ok, err)
+	"BuyMaterial", -- (key) -> (ok, err); spends Bricks
+	"SwitchSlot", -- (index) -> ok
 })
 
 function Remotes.setup(): Folder

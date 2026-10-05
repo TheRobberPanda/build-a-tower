@@ -43,7 +43,7 @@ Goal: mastery loop. Learn routes from better players.
 | Replay viewer | M | Watch top runs with a free camera. |
 | Split times | S | Checkpoint splits from a new Checkpoint piece. |
 
-## M4. Builder progression and rewards (month 3–4)
+## M4. Builder progression and rewards — DONE
 Goal: reasons to keep building.
 
 | Feature | Size | Notes |

@@ -32,6 +32,8 @@ export type Deps = {
 	wait: (number) -> (),
 	budgetReady: (() -> boolean)?,
 	log: ((string) -> ())?,
+	-- After a successful flush: what was added for this owner (to reward the builder).
+	onFlushed: ((ownerId: number, finishes: number, likes: number) -> ())?,
 }
 
 type Pending = {
@@ -214,6 +216,9 @@ function TowerStats.flush(self: TowerStats)
 				self._pending[ownerId] = merged
 			end
 			continue
+		end
+		if deps.onFlushed then
+			deps.onFlushed(ownerId, p.finishes, p.likes)
 		end
 		Retry.call(self._retry, function()
 			return deps.popular:SetAsync(key, TowerStats.popularScore(s))

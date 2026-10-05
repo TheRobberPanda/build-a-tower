@@ -21,6 +21,16 @@ local State = {
 	runOwner = 0,
 	runName = "",
 	runStartedAt = 0,
+	-- progression (from the server's Progress event)
+	level = 1,
+	xp = 0,
+	bricks = 0,
+	budget = 150,
+	levelXp = 0,
+	nextXp = 100,
+	material = "plastic",
+	unlocked = {} :: { [string]: boolean },
+	activeSlot = 1,
 	Changed = changed.Event,
 }
 

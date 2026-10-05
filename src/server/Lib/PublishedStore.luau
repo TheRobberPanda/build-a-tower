@@ -10,6 +10,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Retry = require(script.Parent.Retry)
@@ -60,7 +61,8 @@ function PublishedStore.publish(
 	self: PublishedStore,
 	ownerId: number,
 	name: string,
-	tower: Tower
+	tower: Tower,
+	mat: string?
 ): (boolean, string?)
 	local ok, err = TowerCodec.validate(tower)
 	if not ok then
@@ -73,6 +75,7 @@ function PublishedStore.publish(
 		hash = TowerCodec.hash(tower),
 		pieces = tower.pieces,
 		publishedAt = self._deps.now(),
+		mat = mat,
 	}
 	local deps = self._deps
 	local key = tostring(ownerId)
@@ -167,6 +170,7 @@ function PublishedStore.get(self: PublishedStore, ownerId: number): PublishedTow
 		hash = TowerCodec.hash(tower),
 		pieces = tower.pieces,
 		publishedAt = if type(raw.publishedAt) == "number" then raw.publishedAt else 0,
+		mat = if type(raw.mat) == "string" and Cosmetics.byKey[raw.mat] then raw.mat else nil,
 	}
 end
 

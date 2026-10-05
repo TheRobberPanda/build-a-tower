@@ -12,6 +12,7 @@ for _, name in
 		"Badges",
 		"PlotService",
 		"DataService",
+		"ProgressionService",
 		"TowerService",
 		"AntiCheat",
 		"MechanicsService",

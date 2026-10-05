@@ -24,6 +24,10 @@ local list: { PieceDef } = {
 	{ id = 13, name = "Door", size = { 1, 2, 1 }, props = { ch = { 1, 4 } } },
 	-- M3
 	{ id = 14, name = "Checkpoint", size = { 1, 1, 1 }, props = {}, maxCount = 16 }, -- respawn point + split time
+	-- M4 decorations (no collision, outside the budget)
+	{ id = 15, name = "Plant", size = { 1, 1, 1 }, props = {}, decor = true },
+	{ id = 16, name = "Lamp", size = { 1, 2, 1 }, props = {}, decor = true },
+	{ id = 17, name = "Flag", size = { 1, 2, 1 }, props = { ch = { 1, 4 } }, decor = true }, -- ch = colour
 }
 
 local byId: { [number]: PieceDef } = {}
