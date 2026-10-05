@@ -56,7 +56,7 @@ local function targetAt(screenPos: Vector2, viewport: boolean): Target?
 		then camera:ViewportPointToRay(screenPos.X, screenPos.Y)
 		else camera:ScreenPointToRay(screenPos.X, screenPos.Y)
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * 500, rayParams)
-	if not hit then
+	if not hit or hit.Instance.Name == "Apron" then
 		return nil
 	end
 	-- Nudge along the normal: outwards = the empty cell to build in, inwards = the piece hit.

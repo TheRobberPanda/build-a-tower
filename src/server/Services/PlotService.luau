@@ -15,6 +15,8 @@ type Piece = Types.Piece
 local PlotService = {}
 
 local PLOT_SPACING = 200
+local APRON_DEPTH = 16
+local GRID_TEXTURE = "rbxassetid://139861751774533" -- assets/ui/grid_cell.png
 local plotsFolder = Instance.new("Folder")
 plotsFolder.Name = "Plots"
 
@@ -89,7 +91,9 @@ function PlotService.spawnCFrame(player: Player): CFrame?
 		return nil
 	end
 	local g = Config.GRID_STUDS
-	return CFrame.new(plot.origin + Vector3.new(Config.PLOT_CELLS_X * g / 2, 3, -6))
+	-- On the apron, facing the tower
+	local pos = plot.origin + Vector3.new(Config.PLOT_CELLS_X * g / 2, 3, -APRON_DEPTH / 2)
+	return CFrame.lookAt(pos, pos + Vector3.zAxis)
 end
 
 -- Clears the plot and builds `pieces` on it.
@@ -118,15 +122,47 @@ local function onPlayerAdded(player: Player)
 	model.Name = "Plot_" .. player.UserId
 	model:SetAttribute("OwnerId", player.UserId)
 	model:SetAttribute("Origin", origin) -- clients convert world <-> grid with this
+	-- Base covers exactly the buildable grid; the apron in front is where runs start.
 	local base = Instance.new("Part")
 	base.Name = "Base"
 	base.Anchored = true
-	base.Size = Vector3.new(Config.PLOT_CELLS_X * g + 16, 1, Config.PLOT_CELLS_Z * g + 24)
-	base.Position = origin + Vector3.new(Config.PLOT_CELLS_X * g / 2, -0.5, Config.PLOT_CELLS_Z * g / 2 - 4)
-	base.Color = Color3.fromRGB(80, 120, 80)
+	base.Size = Vector3.new(Config.PLOT_CELLS_X * g, 1, Config.PLOT_CELLS_Z * g)
+	base.Position = origin + Vector3.new(Config.PLOT_CELLS_X * g / 2, -0.5, Config.PLOT_CELLS_Z * g / 2)
+	base.Color = Color3.fromRGB(80, 140, 90)
+	base.Material = Enum.Material.SmoothPlastic
+	base.TopSurface = Enum.SurfaceType.Smooth
+	local grid = Instance.new("Texture")
+	grid.Texture = GRID_TEXTURE
+	grid.Face = Enum.NormalId.Top
+	grid.StudsPerTileU = g
+	grid.StudsPerTileV = g
+	grid.Parent = base
 	base.Parent = model
+	local apron = Instance.new("Part")
+	apron.Name = "Apron"
+	apron.Anchored = true
+	apron.Size = Vector3.new(Config.PLOT_CELLS_X * g, 1, APRON_DEPTH)
+	apron.Position = origin + Vector3.new(Config.PLOT_CELLS_X * g / 2, -0.5, -APRON_DEPTH / 2)
+	apron.Color = Color3.fromRGB(90, 95, 110)
+	apron.Material = Enum.Material.SmoothPlastic
+	apron.TopSurface = Enum.SurfaceType.Smooth
+	apron.Parent = model
 	model.Parent = plotsFolder
 	plots[player] = { slot = slot, origin = origin, model = model }
+
+	-- Everyone spawns at their own plot.
+	local function onCharacter(character: Model)
+		task.defer(function()
+			local cf = PlotService.spawnCFrame(player)
+			if cf and character.Parent then
+				character:PivotTo(cf)
+			end
+		end)
+	end
+	player.CharacterAdded:Connect(onCharacter)
+	if player.Character then
+		onCharacter(player.Character)
+	end
 end
 
 local function onPlayerRemoving(player: Player)

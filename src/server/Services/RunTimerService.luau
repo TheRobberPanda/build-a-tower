@@ -89,8 +89,14 @@ local function onStartRun(player: Player, ownerId: any)
 	local towerName: string
 	if ownerId == player.UserId then
 		local data = DataService.get(player)
-		if not data or not TowerCodec.validate(data.tower) then
-			return -- needs a finish piece and a valid tower
+		if not data then
+			return
+		end
+		local valid, err = TowerCodec.validate(data.tower)
+		if not valid then
+			local msg = if err == "no finish" then "Place a Finish piece first" else "Tower is not valid"
+			Remotes.event("RunResult"):FireClient(player, false, 0, false, msg)
+			return
 		end
 		hash = TowerCodec.hash(data.tower)
 		towerName = data.towerName

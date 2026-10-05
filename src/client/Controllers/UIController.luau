@@ -91,6 +91,7 @@ local function makeModal(name: string, title: string, sizeY: number): Frame
 		{ MinSize = Vector2.new(300, 0), MaxSize = Vector2.new(560, math.huge), Parent = panel }
 	)
 	Kit.label(title, {
+		Name = "Title",
 		Size = UDim2.fromScale(0.75, 0.13),
 		Position = UDim2.fromScale(0.04, 0.03),
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -534,9 +535,17 @@ function UIController.openLeaderboard(ownerId: number)
 	end)
 end
 
+local function setResultTitle(text: string)
+	local title = modals.Results:FindFirstChild("Title")
+	if title and title:IsA("TextLabel") then
+		title.Text = text
+	end
+end
+
 local function showResult(ok: boolean, ms: number, improved: boolean, message: string?)
 	if not ok then
 		if message then -- invalid run; a plain quit shows nothing
+			setResultTitle("Not this time")
 			resultTime.Text = "No time"
 			resultNote.Text = message
 			resultTimesButton.Visible = false
@@ -545,6 +554,7 @@ local function showResult(ok: boolean, ms: number, improved: boolean, message: s
 		return
 	end
 	local own = State.runOwner == player.UserId
+	setResultTitle("Finished!")
 	resultTime.Text = Kit.formatMs(ms)
 	resultNote.Text = if own
 		then "Tower verified! You can publish it now."
