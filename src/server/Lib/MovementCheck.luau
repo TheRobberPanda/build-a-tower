@@ -62,4 +62,33 @@ function MovementCheck.check(
 	return nil
 end
 
+export type Hover = { since: number? }
+
+-- Flags staying airborne without falling (fly/hover exploits). `airborne` is the
+-- humanoid's FloorMaterial == Air; `dy` the vertical move since the last sample.
+-- A real jump stops rising within ~0.5 s; jump pads get their launch window.
+function MovementCheck.hover(
+	state: Hover,
+	airborne: boolean,
+	dy: number,
+	now: number,
+	launching: boolean,
+	maxSeconds: number
+): string?
+	if not airborne or launching or dy < -0.5 then
+		state.since = nil
+		return nil
+	end
+	local since = state.since
+	if not since then
+		state.since = now
+		return nil
+	end
+	if now - since > maxSeconds then
+		state.since = now -- one flag per window
+		return string.format("airborne without falling %.1fs", now - since)
+	end
+	return nil
+end
+
 return MovementCheck

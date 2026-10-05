@@ -16,6 +16,7 @@ type Watch = {
 	lastAt: number,
 	flags: number,
 	cleanSince: number,
+	hover: MovementCheck.Hover,
 	onFail: (reason: string) -> (),
 }
 
@@ -62,6 +63,7 @@ function AntiCheat.watch(player: Player, onFail: (string) -> ())
 		lastAt = os.clock(),
 		flags = 0,
 		cleanSince = os.clock(),
+		hover = {},
 		onFail = onFail,
 	}
 end
@@ -95,7 +97,14 @@ function AntiCheat.init()
 						speedFactor = Config.AC_SPEED_FACTOR,
 						speedSlack = Config.AC_SPEED_SLACK,
 						teleportRadius = Config.AC_TELEPORT_RADIUS,
-					})
+					}) or MovementCheck.hover(
+						w.hover,
+						humanoid.FloorMaterial == Enum.Material.Air,
+						pos.Y - last.Y,
+						now,
+						now <= w.allow.launchUntil,
+						Config.AC_HOVER_SECONDS
+					)
 					if reason then
 						w.flags += 1
 						w.cleanSince = now

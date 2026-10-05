@@ -5,10 +5,8 @@ server-timed test run to publish it (verify-to-publish), and others race publish
 towers for per-tower leaderboards. Secrets (fake walls, invisible platforms, jump
 pads, teleporters) are core: anyone who finds them may use them.
 
-## V1 scope (do not exceed)
-One plot per player, 8 piece types, piece budget, verify-to-publish, browse list,
-best times per tower. Later: secret badges, builder-vs-average hints, replays,
-difficulty labels, creator rewards, live races.
+## Scope
+Full game per ROADMAP.md (Paulo, 2026-10-05: build everything, test at the end). V1 core first, then milestones M1-M7 in order.
 
 ## Tooling
 - Rojo 7.7 (`rojo serve`, plugin in Vinegar's `.../drive_c/users/frelse/AppData/Local/Roblox/Plugins`), Wally, Selene, StyLua via rokit (`rokit.toml`).
@@ -47,4 +45,4 @@ Mobile first: Scale sizing, UIAspectRatioConstraint, safe insets, keep thumbstic
 Direct, short messages. Numbered steps for Studio actions. Commit after each working step. Use the roblox-dev skills when relevant.
 
 ## Playtesting and screenshots
-Never start a playtest, screenshot Studio, or send keyboard/mouse input (xdotool) on your own: it steals Paulo's focus. Edit-mode MCP calls are fine (e.g. run the TestEZ specs via execute_luau). For Play-mode checks, give Paulo numbered steps and let him report back.
+Never start a playtest, screenshot Studio, or send keyboard/mouse input (xdotool) on your own: it steals Paulo's focus. Edit-mode MCP calls are fine: run the specs with `tools/run_specs_edit.luau` via execute_luau (it bypasses Studio's require cache). For Play-mode checks, give Paulo numbered steps and let him report back.
