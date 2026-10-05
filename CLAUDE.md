@@ -14,7 +14,7 @@ difficulty labels, creator rewards, live races.
 - Rojo 7.7 (`rojo serve`, plugin in Vinegar's `.../drive_c/users/frelse/AppData/Local/Roblox/Plugins`), Wally, Selene, StyLua via rokit (`rokit.toml`).
 - Strict Luau everywhere (`--!strict`, `.luaurc`).
 - Before committing: `selene src tests` and `stylua src tests`.
-- Studio MCP (`robloxstudio`, Linux-native) is connected: use it to playtest and read output.
+- Studio MCP (`robloxstudio`, Linux-native): Edit-mode use only (see Playtesting).
 - Tests: TestEZ specs in `tests/` (`*.spec.luau`), run automatically by `tests/RunTests.server.luau` when you press Play in Studio.
 
 ## Layout
@@ -46,5 +46,5 @@ Mobile first: Scale sizing, UIAspectRatioConstraint, safe insets, keep thumbstic
 ## Working with Paulo
 Direct, short messages. Numbered steps for Studio actions. Commit after each working step. Use the roblox-dev skills when relevant.
 
-## Screenshots
-Play-mode screenshots: the MCP capture only works in Edit mode, so raise the Studio window with xdotool and grab it with PIL ImageGrab (X11/Cinnamon), then restore focus.
+## Playtesting and screenshots
+Never start a playtest, screenshot Studio, or send keyboard/mouse input (xdotool) on your own: it steals Paulo's focus. Edit-mode MCP calls are fine (e.g. run the TestEZ specs via execute_luau). For Play-mode checks, give Paulo numbered steps and let him report back.
