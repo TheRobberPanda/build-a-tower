@@ -11,6 +11,7 @@ local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
+local AntiCheat = require(script.Parent.AntiCheat)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
 local TowerService = require(script.Parent.TowerService)
@@ -34,6 +35,7 @@ local function endRun(player: Player)
 		run.conn:Disconnect()
 	end
 	runs[player] = nil
+	AntiCheat.unwatch(player)
 	TowerService.setEditLocked(player, false)
 end
 
@@ -131,8 +133,16 @@ local function onStartRun(player: Player, ownerId: any)
 
 	local spawn = PlotService.spawnCFrame(player)
 	if spawn then
+		AntiCheat.expectTeleport(player, spawn.Position)
 		character:PivotTo(spawn)
 	end
+	AntiCheat.watch(player, function(reason)
+		if runs[player] == run then
+			endRun(player)
+			restoreOwnTower(player)
+			Remotes.event("RunResult"):FireClient(player, false, 0, false, "Run invalid: " .. reason)
+		end
+	end)
 	run.startedAt = os.clock() -- start after the teleport
 	Remotes.event("RunStarted"):FireClient(player, ownerId, towerName)
 end

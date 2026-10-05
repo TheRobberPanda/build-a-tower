@@ -534,9 +534,15 @@ function UIController.openLeaderboard(ownerId: number)
 	end)
 end
 
-local function showResult(ok: boolean, ms: number, improved: boolean)
+local function showResult(ok: boolean, ms: number, improved: boolean, message: string?)
 	if not ok then
-		return -- quit or invalid run: just return to building
+		if message then -- invalid run; a plain quit shows nothing
+			resultTime.Text = "No time"
+			resultNote.Text = message
+			resultTimesButton.Visible = false
+			openModal("Results")
+		end
+		return
 	end
 	local own = State.runOwner == player.UserId
 	resultTime.Text = Kit.formatMs(ms)
@@ -618,9 +624,14 @@ function UIController.start()
 		end
 		State.set({ mode = "run", runOwner = ownerId, runName = tostring(name), runStartedAt = os.clock() })
 	end)
-	Remotes.event("RunResult").OnClientEvent:Connect(function(ok, ms, improved)
+	Remotes.event("RunResult").OnClientEvent:Connect(function(ok, ms, improved, message)
 		State.set({ mode = "build" })
-		showResult(ok == true, tonumber(ms) or 0, improved == true)
+		showResult(
+			ok == true,
+			tonumber(ms) or 0,
+			improved == true,
+			if type(message) == "string" then message else nil
+		)
 	end)
 
 	-- Display-only timer; the real time is measured on the server.

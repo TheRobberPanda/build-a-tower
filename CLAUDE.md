@@ -19,8 +19,8 @@ difficulty labels, creator rewards, live races.
 
 ## Layout
 - `src/shared` -> ReplicatedStorage.Shared: Config, PieceDefs, Types, Remotes, TowerCodec (pure tower logic).
-- `src/server` -> ServerScriptService.Server: `Main.server.luau` bootstrap, `Services/` (PlotService, DataService, TowerService, RunTimerService; AntiCheat TODO), `Lib/` pure/injectable (ProfileStore, PublishedStore, Retry, SessionLock, RateLimiter).
-- `src/client` -> StarterPlayerScripts.Client: `Controllers/` (Build, UI, Camera) TODO.
+- `src/server` -> ServerScriptService.Server: `Main.server.luau` bootstrap, `Services/` (PlotService, DataService, TowerService, AntiCheat, MechanicsService, RunTimerService), `Lib/` pure/injectable (ProfileStore, PublishedStore, Retry, SessionLock, RateLimiter, MovementCheck).
+- `src/client` -> StarterPlayerScripts.Client: `init.client.luau` bootstrap, `State`, `UI/` (Theme, Kit), `Controllers/` (Build, UI, Mechanics).
 
 ## Rules
 - Server-authoritative. Clients send intents (place type X at cell, rotation); server validates ownership, bounds, type, budget, overlap.
@@ -45,3 +45,6 @@ Mobile first: Scale sizing, UIAspectRatioConstraint, safe insets, keep thumbstic
 
 ## Working with Paulo
 Direct, short messages. Numbered steps for Studio actions. Commit after each working step. Use the roblox-dev skills when relevant.
+
+## Screenshots
+Play-mode screenshots: the MCP capture only works in Edit mode, so raise the Studio window with xdotool and grab it with PIL ImageGrab (X11/Cinnamon), then restore focus.

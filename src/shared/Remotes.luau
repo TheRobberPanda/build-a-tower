@@ -13,7 +13,7 @@ Remotes.Events = table.freeze({
 	"TowerChanged", -- server -> client (tower, verified)
 	"StopRun", -- () leave the current run
 	"RunStarted", -- server -> client (ownerId, towerName)
-	"RunResult", -- server -> client (ok, ms, improved)
+	"RunResult", -- server -> client (ok, ms, improved, message?)
 })
 
 Remotes.Functions = table.freeze({

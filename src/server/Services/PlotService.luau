@@ -1,6 +1,7 @@
 --!strict
 -- One plot per player. Renders a tower's pieces as parts on the plot.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -71,6 +72,9 @@ local function makePart(piece: Piece, origin: Vector3): BasePart
 		part.Transparency = 1
 	elseif def.name == "JumpPad" or def.name == "Finish" or def.name == "Teleporter" then
 		part.Material = Enum.Material.Neon
+	end
+	if def.name == "JumpPad" or def.name == "Teleporter" then
+		CollectionService:AddTag(part, def.name) -- MechanicsService / client controller pick these up
 	end
 	return part
 end
