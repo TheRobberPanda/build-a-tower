@@ -1153,7 +1153,9 @@ local function showResult(
 	setResultTitle("Finished!")
 	resultTime.Text = Kit.formatMs(ms)
 	resultNote.Text = if own
-		then "Tower verified! You can publish it now."
+		then (if State.inRound
+			then "You made it! Your tower is in the race."
+			else "Tower verified! You can publish it now.")
 		elseif improved and previous then string.format(
 			"New personal best! (was %s)",
 			Kit.formatMs(previous)
@@ -1249,7 +1251,7 @@ local function render()
 		verifiedLabel.TextColor3 = Theme.Danger
 	else
 		verifiedLabel.Text = if State.verified
-			then "Verified! Menu → Publish"
+			then (if State.inRound then "Verified! It will be raced" else "Verified! Menu → Publish")
 			else "Climb your tower to verify it"
 		verifiedLabel.TextColor3 = if State.verified then Theme.Success else Theme.TextDim
 	end
