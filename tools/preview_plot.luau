@@ -42,7 +42,7 @@ PlotBuilder.base(model, origin, 16)
 PlotBuilder.build(model, origin, 16)
 local raw = game:GetService("DataStoreService"):GetDataStore("Players_v1"):GetAsync("u_757790113")
 local slot = raw and raw.data and raw.data.slots and raw.data.slots["1"]
-local pieces = slot and slot.tower.pieces or {}
+local pieces = if ACTIVE and raw then raw.data.tower.pieces elseif slot then slot.tower.pieces else {}
 if SHOWCASE then
 	-- A hand-placed layout that shows off the premades around the frame.
 	local function P(t, x, y, z, r, p)
