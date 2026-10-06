@@ -59,6 +59,11 @@ local function updateClock()
 		end
 	end
 	local left = math.max(0, math.ceil((state.endsAt or 0) - workspace:GetServerTimeNow()))
+	if not State.inRound and (phase == "build" or phase == "race" or phase == "vote") then
+		title = if State.sitOut
+			then "Free build (sitting out)"
+			else "Round in progress, you're in the next one"
+	end
 	if phase == "waiting" then
 		clock.Text = title
 	else

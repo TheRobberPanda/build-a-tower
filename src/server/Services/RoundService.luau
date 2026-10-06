@@ -113,31 +113,58 @@ local function loadedPlayers(): { Player }
 	return list
 end
 
+local function addEntry(p: Player)
+	RunTimerService.stop(p, "A round is starting")
+	if not TowerService.enterRound(p) then
+		return
+	end
+	local e: Entry = {
+		player = p,
+		name = p.DisplayName,
+		coins = 0,
+		wins = 0,
+		valid = false,
+		stars = {},
+		donated = {},
+	}
+	table.insert(entries, e)
+	entryOf[p] = e
+	local spawn = PlotService.spawnCFrame(p)
+	local character = p.Character
+	if spawn and character then
+		character:PivotTo(spawn)
+	end
+end
+
 local function startBuild(): boolean
 	table.clear(entries)
 	table.clear(entryOf)
 	for _, p in loadedPlayers() do
-		RunTimerService.stop(p, "A round is starting")
-		if TowerService.enterRound(p) then
-			local e: Entry = {
-				player = p,
-				name = p.DisplayName,
-				coins = 0,
-				wins = 0,
-				valid = false,
-				stars = {},
-				donated = {},
-			}
-			table.insert(entries, e)
-			entryOf[p] = e
-			local spawn = PlotService.spawnCFrame(p)
-			local character = p.Character
-			if spawn and character then
-				character:PivotTo(spawn)
-			end
-		end
+		addEntry(p)
 	end
 	return #entries > 0
+end
+
+-- Joined (or stopped sitting out) early in a build phase: still in time to play.
+local LATE_JOIN_SECONDS = 120
+local function tryLateJoin(p: Player)
+	if
+		phase == "build"
+		and not entryOf[p]
+		and not sitOut[p]
+		and DataService.get(p)
+		and p.Character
+		and state.endsAt - workspace:GetServerTimeNow() > seconds(LATE_JOIN_SECONDS)
+	then
+		addEntry(p)
+		state.players = #entries
+		local members = {}
+		for _, e in entries do
+			table.insert(members, e.player.UserId)
+		end
+		state.members = members
+		Remotes.event("Round"):FireAllClients(state)
+	end
 end
 
 local function endBuild()
@@ -386,10 +413,17 @@ function RoundService.init()
 	Remotes.event("RoundSitOut").OnServerEvent:Connect(function(player: Player, on: any)
 		if type(on) == "boolean" and limiter:allow(player) then
 			sitOut[player] = if on then true else nil
+			if not on then
+				tryLateJoin(player)
+			end
 		end
 	end)
 	DataService.Loaded:Connect(function(player: Player)
 		Remotes.event("Round"):FireClient(player, state)
+		if not player.Character then
+			player.CharacterAdded:Wait()
+		end
+		tryLateJoin(player)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		entryOf[player] = nil
