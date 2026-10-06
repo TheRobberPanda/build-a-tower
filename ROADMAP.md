@@ -16,18 +16,20 @@ Round-based party game for 6 players. The home place is the player's own island
 - Coins: buy more pieces, donate to builders.
 - Pass: one-time Game Pass that unlocks special pieces (portals, jump pads and similar).
 
-## Round-mode milestones (build in order)
-| # | Feature | Reuses |
-|---|---|---|
-| R1 | Round place + RoundService state machine (Lobby, Build, Race xN, Replay/Vote, Results), slots for 6 towers | PlotService, TowerService, RunTimerService |
-| R2 | Matchmaking queue + teleport, home island stays as is | MemoryStore, TeleportService |
-| R3 | Race: shared tower copy, players don't collide, ghosts, 2:30 limit, builder wins if nobody finishes | LiveRaceService, AntiCheat |
-| R4 | Builder's verify-climb replay + 1-5 star vote, auto-save winning towers, Most popular list | PathCodec, PublishedStore |
-| R5 | Coins: donations, piece shop | ProgressionService (Bricks becomes Coins) |
-| R6 | Medals: random drops, rarities, trade-in for coins, gifting. Replaces Roblox badges in Badges.luau | DataService (schema bump) |
-| R7 | Pass: special pieces gated behind the Game Pass | MonetizationService |
+## Release plan (revised 2026-10-06, Claude as project director)
+Goal: publishable release. Mechanics that can't be built or tested with confidence are replaced or cut.
 
-Open: "winning towers" is read as towers whose round produced a winner (any valid raced tower). Confirm.
+| # | Feature | Status |
+|---|---|---|
+| R1 | RoundService in the main place: Waiting → Intermission → Build+verify (5:00) → Race ×N → Vote → Results | built (d4563bd) |
+| R2 | ~~MemoryStore queue + teleport~~ **replaced**: Roblox server fill (MaxPlayers 6) is the matchmaking; each server loops rounds. "Sit out rounds" toggle = home island free building. Cross-server queue untestable solo and not needed at launch CCU. | built |
+| R3 | Race reuses LiveRaceService (own plot copy each = no collision, live ghosts), 2:30, first to top wins, else builder wins | built |
+| R4 | Builder's verify climb replayed (in-memory path), 1-5 stars, 4+ stars counts as a like (feeds Popular). Valid towers rated ≥3 (or unrated) auto-publish as the player's tower | built |
+| R5 | Coins (= Bricks renamed in UI): round rewards, donations (10/50); spend on materials/trails (existing shop). Separate piece shop **cut**: pieces are free, budget is fixed in rounds for fairness | built |
+| R6 | Medals | **post-launch** (schema bump + trading exploit surface) |
+| R7 | Game Pass special pieces | **post-launch**; existing Builder Pass/VIP stay |
+
+Release gate: specs green, QA harness (solo round) passes, 2-client round test, Paulo's multiplayer session, store art, Paulo publishes.
 
 ---
 
