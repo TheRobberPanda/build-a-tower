@@ -128,7 +128,7 @@ local function core(model: Model, origin: Vector3)
 			end
 			for k = 0, c.levels - 1 do
 				local y = k * lv
-				-- Plinth at the foot of each level and a dark band under each floor.
+				-- Plinth at the foot of each level.
 				decoPart(
 					folder,
 					"CorePlinth",
@@ -136,14 +136,6 @@ local function core(model: Model, origin: Vector3)
 					CFrame.new(at + Vector3.new(0, y + 0.5, 0)),
 					band,
 					Enum.Material.Concrete
-				)
-				decoPart(
-					folder,
-					"CoreBand",
-					Vector3.new(G - 0.3, 0.5, G - 0.3),
-					CFrame.new(at + Vector3.new(0, y + lv - 2.4, 0)),
-					trimColor,
-					Enum.Material.SmoothPlastic
 				)
 				-- Level number facing outwards on both open sides.
 				for _, face in
@@ -208,7 +200,7 @@ local function core(model: Model, origin: Vector3)
 			decoPart(
 				folder,
 				"CoreBeam",
-				Vector3.new(0.8, 1, d - 0.4),
+				Vector3.new(0.8, 1, d - 2.2),
 				CFrame.new(origin + Vector3.new(c.x0 * G + i * G, top - 1.9, cz)),
 				beamColor,
 				Enum.Material.Metal
@@ -216,17 +208,17 @@ local function core(model: Model, origin: Vector3)
 		end
 		for _, e in
 			{
-				{ Vector3.new(w - 0.4, 0.6, 0.6), Vector3.new(0, 0, d / 2 - 0.5) },
-				{ Vector3.new(w - 0.4, 0.6, 0.6), Vector3.new(0, 0, -d / 2 + 0.5) },
-				{ Vector3.new(0.6, 0.6, d - 0.4), Vector3.new(w / 2 - 0.5, 0, 0) },
-				{ Vector3.new(0.6, 0.6, d - 0.4), Vector3.new(-w / 2 + 0.5, 0, 0) },
+				{ Vector3.new(w - 2 * G + 0.8, 1.1, 0.6), Vector3.new(0, 0, d / 2 - 0.5) },
+				{ Vector3.new(w - 2 * G + 0.8, 1.1, 0.6), Vector3.new(0, 0, -d / 2 + 0.5) },
+				{ Vector3.new(0.6, 1.1, d - 2 * G + 0.8), Vector3.new(w / 2 - 0.5, 0, 0) },
+				{ Vector3.new(0.6, 1.1, d - 2 * G + 0.8), Vector3.new(-w / 2 + 0.5, 0, 0) },
 			}
 		do
 			decoPart(
 				folder,
 				"CoreTrim",
 				e[1],
-				CFrame.new(origin + Vector3.new(cx, top - 1.7, cz) + e[2]),
+				CFrame.new(origin + Vector3.new(cx, top - 1.9, cz) + e[2]),
 				trimColor,
 				Enum.Material.DiamondPlate
 			)
