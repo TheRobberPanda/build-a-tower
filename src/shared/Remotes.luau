@@ -35,6 +35,8 @@ Remotes.Events = table.freeze({
 	"RoundReplay", -- server -> client { path, splits, ms } the builder's verify climb
 	"RoundResults", -- server -> all { { name, coins, valid, stars?, wins } }
 	"RoundVote", -- (stars 1-5) for the tower being shown
+	"Push", -- () shove the player in front of you
+	"Pushed", -- server -> client (direction) you were shoved
 	"SetMode", -- ("queue" | "free" | "lobby") join the round queue, free build, or go to the lobby
 	"Mode", -- server -> client (mode) your current lobby choice
 	"RoundDonate", -- (amount from Config.DONATE_AMOUNTS) to the tower's builder
@@ -57,6 +59,7 @@ Remotes.Functions = table.freeze({
 	"HostLiveRace", -- (ownerId) -> ok
 	"JoinLiveRace", -- (raceId) -> ok
 	"BuyTrail", -- (key) -> (ok, err); buys with Bricks if needed and equips
+	"BuyDecor", -- (typeId) -> (ok, err); a store decoration for your island, for Coins
 	"EquipTrail", -- (key or "") -> ok
 	"SetTheme", -- (key) -> ok; VIP only
 	"ContestInfo", -- () -> { id, theme, phase, endsIn, votesLeft, entered }?

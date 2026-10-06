@@ -1,7 +1,8 @@
 --!strict
--- Optional build camera: orbits the plot you are building on so your character
--- doesn't block the view (mainly for phones). Drag to rotate, scroll / pinch to
--- zoom; the target height follows the tower. Turns off when a run starts.
+-- Build camera, on by default while building: orbits the plot you are building
+-- on so your character doesn't block the view. Drag to rotate, scroll / pinch
+-- to zoom; the target height follows the tower. Everywhere else (lobby, runs,
+-- races, or with the Camera button off) the game is first person.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +18,7 @@ local player = Players.LocalPlayer
 local G = Config.GRID_STUDS
 
 local active = false
+local manualOff = false -- the player turned the build camera off for this build session
 local yaw = math.rad(200)
 local pitch = math.rad(35)
 local distance = 130
@@ -47,7 +49,15 @@ function CameraController.isActive(): boolean
 	return active
 end
 
+-- Building right now: your round tower in the build phase, or free building.
+local function building(): boolean
+	return State.mode == "build"
+		and (if State.inRound then State.roundPhase == "build" else State.lobbyMode == "free")
+end
+
 function CameraController.set(on: boolean)
+	-- First person whenever the orbit camera is off.
+	player.CameraMode = if on then Enum.CameraMode.Classic else Enum.CameraMode.LockFirstPerson
 	if on == active then
 		return
 	end
@@ -70,6 +80,7 @@ function CameraController.set(on: boolean)
 end
 
 function CameraController.toggle()
+	manualOff = active
 	CameraController.set(not active)
 end
 
@@ -129,12 +140,26 @@ function CameraController.start()
 		end
 	end)
 
-	-- A run or another mode needs the normal camera.
-	State.Changed:Connect(function()
-		if active and State.mode ~= "build" then
-			CameraController.set(false)
+	-- On while building (unless turned off), first person otherwise.
+	local wasBuilding = false
+	local function sync()
+		local now = building()
+		if now ~= wasBuilding then
+			manualOff = false -- each build session starts with the build camera
+			wasBuilding = now
 		end
+		CameraController.set(now and not manualOff)
+	end
+	State.Changed:Connect(sync)
+	player.CharacterAdded:Connect(function()
+		task.defer(function()
+			local camera = workspace.CurrentCamera
+			if active and camera then
+				camera.CameraType = Enum.CameraType.Scriptable -- a respawn resets it
+			end
+		end)
 	end)
+	sync()
 
 	RunService:BindToRenderStep("BuildCamera", Enum.RenderPriority.Camera.Value + 1, function()
 		local camera = workspace.CurrentCamera
@@ -146,12 +171,9 @@ function CameraController.start()
 		if typeof(origin) ~= "Vector3" then
 			return
 		end
-		local target = origin
-			+ Vector3.new(
-				Config.PLOT_CELLS_X * G / 2,
-				math.min(towerTop() * 0.6, 200),
-				Config.PLOT_CELLS_Z * G / 2
-			)
+		local size = p:GetAttribute("Size")
+		local half = (if type(size) == "number" then size else Config.PLOT_CELLS_X) * G / 2
+		local target = origin + Vector3.new(half, math.min(towerTop() * 0.6, 200), half)
 		local offset = CFrame.Angles(0, yaw, 0) * CFrame.Angles(-pitch, 0, 0) * Vector3.new(0, 0, distance)
 		camera.CFrame = CFrame.lookAt(target + offset, target)
 	end)

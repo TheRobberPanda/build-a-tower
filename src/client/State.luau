@@ -40,6 +40,7 @@ local State = {
 	roundPhase = "waiting", -- taking part in the current round (RoundController)
 	buildOwner = 0, -- userId whose plot you are building on; 0 = your own
 	plotSize = 16, -- home island cells per side (grows with expansions)
+	hotbarTab = "blocks", -- "blocks" | "decor"
 	Changed = changed.Event,
 }
 

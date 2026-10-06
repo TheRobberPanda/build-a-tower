@@ -15,5 +15,6 @@ Rule: paid calls pre-approved by Paulo (2026-10-05); log every charge, never exc
 | 2026-10-06 | Piece face textures (1 sheet, 9 tiles) → assets/textures/*.png | google/gemini-3.1-flash-image | $0.07 |
 | 2026-10-06 | Code review of RoundService | deepseek/deepseek-v4-pro:nitro | $0.02 |
 | 2026-10-06 | Review of round-mode server diff | deepseek/deepseek-v4-pro:nitro | $0.03 |
+| 2026-10-06 | Round explainer art, 3 panels (1 image) → assets/ui/step_1-3.png | google/gemini-3.1-flash-image | $0.07 |
 
-**Spent: $0.84 · Remaining: $9.16**
+**Spent: $0.91 · Remaining: $9.09**

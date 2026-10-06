@@ -914,6 +914,37 @@ local function onBuyMaterial(player: Player, key: any): (boolean, string?)
 	return onSetMaterial(player, def.key)
 end
 
+-- Store decorations: bought once with Coins, then placeable on any island.
+local function onBuyDecor(player: Player, t: any): (boolean, string?)
+	local data = DataService.get(player)
+	local def = if isInt(t, 1, 255) then PieceDefs.byId[t] else nil
+	if not data or not def or not def.asset or not queryLimiter:allow(player) then
+		return false, "bad request"
+	end
+	local key = "decor_" .. def.id
+	if data.unlocked[key] then
+		return true, nil
+	end
+	if not ProgressionService.spend(player, def.price or 0) then
+		return false, "Not enough Coins"
+	end
+	data.unlocked[key] = true
+	ProgressionService.refresh(player)
+	return true, nil
+end
+
+-- Gives a store decoration (round rewards, course trophies). False if owned.
+function TowerService.grantDecor(player: Player, t: number): boolean
+	local data = DataService.get(player)
+	local key = "decor_" .. t
+	if not data or data.unlocked[key] then
+		return false
+	end
+	data.unlocked[key] = true
+	ProgressionService.refresh(player)
+	return true
+end
+
 local function onReport(player: Player, ownerId: any): boolean
 	if not isInt(ownerId, 1, 2 ^ 53) or ownerId == player.UserId or not reportLimiter:allow(player) then
 		return false
@@ -1017,6 +1048,7 @@ function TowerService.init()
 	Remotes.func("SetMaterial").OnServerInvoke = onSetMaterial
 	Remotes.func("SwitchSlot").OnServerInvoke = onSwitchSlot
 	Remotes.func("BuyMaterial").OnServerInvoke = onBuyMaterial
+	Remotes.func("BuyDecor").OnServerInvoke = onBuyDecor
 end
 
 return TowerService

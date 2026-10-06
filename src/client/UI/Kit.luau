@@ -9,11 +9,14 @@ local Theme = require(script.Parent.Theme)
 
 local Kit = {}
 
--- Creates an instance, applies props, parents children.
+-- Creates an instance, applies props, parents children. FreeCursor = true tags a
+-- panel that needs the mouse: while it shows, first person frees the cursor.
 function Kit.new(className: string, props: { [string]: any }, children: { Instance }?): any
 	local inst = Instance.new(className)
 	for k, v in props do
-		if k ~= "Parent" then
+		if k == "FreeCursor" then
+			game:GetService("CollectionService"):AddTag(inst, "FreeCursor")
+		elseif k ~= "Parent" then
 			(inst :: any)[k] = v
 		end
 	end

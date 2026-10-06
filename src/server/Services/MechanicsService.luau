@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local PieceVisuals = require(ReplicatedStorage.Shared.PieceVisuals)
 local AntiCheat = require(script.Parent.AntiCheat)
@@ -202,7 +203,41 @@ local function onTrap(part: BasePart)
 	end)
 end
 
+-- Shoves the nearest player in front of you (not during runs: those are timed
+-- and AntiCheat-checked, and racers can't reach each other anyway).
+local lastPush: { [Player]: number } = {}
+local function onPush(player: Player)
+	local now = os.clock()
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if
+		not root
+		or not root:IsA("BasePart")
+		or now - (lastPush[player] or 0) < 0.9
+		or AntiCheat.isWatched(player)
+	then
+		return
+	end
+	lastPush[player] = now
+	local best: Player? = nil
+	local bestDist = 8
+	for _, other in Players:GetPlayers() do
+		local r = other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+		if r and r:IsA("BasePart") and not AntiCheat.isWatched(other) then
+			local offset = r.Position - root.Position
+			local d = offset.Magnitude
+			if d < bestDist and d > 0 and offset.Unit:Dot(root.CFrame.LookVector) > 0.3 then
+				best, bestDist = other, d
+			end
+		end
+	end
+	local target = best
+	if target then
+		Remotes.event("Pushed"):FireClient(target, root.CFrame.LookVector)
+	end
+end
+
 function MechanicsService.init()
+	Remotes.event("Push").OnServerEvent:Connect(onPush)
 	Players.RespawnTime = 1.5 -- traps and falls are part of play; get back quickly
 	CollectionService:GetInstanceAddedSignal("JumpPad"):Connect(function(inst)
 		if inst:IsA("BasePart") then
@@ -231,6 +266,7 @@ function MechanicsService.init()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		lastTeleport[player] = nil
+		lastPush[player] = nil
 	end)
 end
 

@@ -63,7 +63,8 @@ local function broadcast(newPhase: string, duration: number, extra: { [string]: 
 	phase = newPhase
 	state = extra or {}
 	state.phase = newPhase
-	state.endsAt = workspace:GetServerTimeNow() + duration
+	state.startedAt = workspace:GetServerTimeNow()
+	state.endsAt = state.startedAt + duration
 	state.players = #entries
 	local members = {}
 	for _, e in entries do

@@ -68,6 +68,10 @@ function AntiCheat.watch(player: Player, onFail: (string) -> ())
 	}
 end
 
+function AntiCheat.isWatched(player: Player): boolean
+	return watched[player] ~= nil
+end
+
 function AntiCheat.unwatch(player: Player)
 	watched[player] = nil
 end

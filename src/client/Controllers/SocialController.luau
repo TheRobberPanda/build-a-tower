@@ -119,6 +119,7 @@ function SocialController.init()
 	})
 
 	invitePanel = Kit.panel({
+		FreeCursor = true,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0.3),
 		Size = UDim2.fromScale(0.4, 0.16),
@@ -140,6 +141,7 @@ function SocialController.init()
 	end, { Position = UDim2.fromScale(0.53, 0.52), Size = UDim2.fromScale(0.42, 0.4), Parent = invitePanel })
 
 	playersPanel = Kit.panel({
+		FreeCursor = true,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(0.45, 0.6),

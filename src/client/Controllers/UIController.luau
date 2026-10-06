@@ -54,6 +54,7 @@ local gui: ScreenGui
 local buildLayer: Frame
 local runLayer: Frame
 local slots: { [number]: Frame } = {}
+local tabButtons: { [string]: TextButton } = {}
 local budgetLabel: TextLabel
 local pieceHint: TextLabel
 local levelLabel: TextLabel
@@ -103,6 +104,7 @@ end
 local function makeModal(name: string, title: string, sizeY: number): Frame
 	local panel = Kit.panel({
 		Name = name,
+		FreeCursor = true,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(0.5, sizeY),
@@ -254,12 +256,58 @@ local function buildHotbar()
 			TextXAlignment = Enum.TextXAlignment.Left,
 			Parent = slot,
 		})
+		-- Locked: level to reach, or (store decorations) the price.
+		local lock = Kit.new("Frame", {
+			Name = "Lock",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 0.45,
+			ZIndex = 3,
+			Visible = false,
+			Parent = slot,
+		}, { Kit.corner(0.18) })
+		Kit.label(
+			if def.asset then tostring(def.price or 0) .. " Coins" else "Lv " .. tostring(def.level or 1),
+			{
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.4),
+				Size = UDim2.fromScale(0.9, 0.34),
+				TextColor3 = if def.asset then Theme.Primary else Theme.Text,
+				ZIndex = 4,
+				Parent = lock,
+			}
+		)
 		slot.Activated:Connect(function()
 			Kit.pop(slot)
-			State.set({ selected = def.id, deleting = false })
+			if State.canUse(def.id) then
+				State.set({ selected = def.id, deleting = false })
+			elseif def.asset then
+				UIController.offerDecor(def.id)
+			else
+				SocialController.toast(
+					string.format("%s unlocks at level %d", SHORT_NAMES[def.name] or def.name, def.level or 1)
+				)
+			end
 		end)
 		slots[def.id] = slot
-		slot.Visible = Events.pieceAvailable(def.id, os.time()) -- limited-time pieces
+	end
+	-- Two tabs: building pieces, and decorations (free ones and store models).
+	local tabs = Kit.new("Frame", {
+		BackgroundTransparency = 1,
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromScale(0.1, 0.865),
+		Size = UDim2.fromScale(0.2, 0.045),
+		Parent = buildLayer,
+	})
+	Kit.new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0.04, 0),
+		Parent = tabs,
+	})
+	for _, t in { { "blocks", "Blocks" }, { "decor", "Decor" } } do
+		tabButtons[t[1]] = Kit.button(t[2], Theme.PanelLight, function()
+			State.set({ hotbarTab = t[1] })
+		end, { Size = UDim2.fromScale(0.48, 1), Parent = tabs })
 	end
 	local function sizeTiles()
 		local h = math.max(math.floor(bar.AbsoluteSize.Y * 0.9), 44)
@@ -498,6 +546,7 @@ local function buildTools()
 	-- Menu: a second column to the left of the tools.
 	local menu = Kit.new("Frame", {
 		Name = "Menu",
+		FreeCursor = true,
 		BackgroundTransparency = 1,
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.fromScale(0.83, 0.42),
@@ -537,6 +586,17 @@ local function buildTools()
 	menuItem(5, "Lobby", Theme.PanelLight, function()
 		Remotes.event("SetMode"):FireServer("lobby")
 	end)
+	menuItem(6, "Clear island", Theme.Danger, function()
+		UIController.confirm(
+			"Clear island",
+			"Delete every piece and decoration on this island? Undo brings them back.",
+			"Delete all",
+			Theme.Danger,
+			function()
+				Remotes.event("ClearTower"):FireServer()
+			end
+		)
+	end)
 
 	verifiedLabel = Kit.label("", {
 		AnchorPoint = Vector2.new(1, 0),
@@ -546,6 +606,71 @@ local function buildTools()
 		Font = Theme.BodyFont,
 		Parent = buildLayer,
 	})
+end
+
+---------------------------------------------------------------- confirm dialog
+
+local confirmText: TextLabel
+local confirmYes: TextButton
+local confirmAction: (() -> ())? = nil
+
+local function buildConfirm()
+	local body = makeModal("Confirm", "Are you sure?", 0.34)
+	confirmText = Kit.label("", {
+		Size = UDim2.fromScale(1, 0.5),
+		Font = Theme.BodyFont,
+		Parent = body,
+	})
+	confirmYes = Kit.button("Yes", Theme.Danger, function()
+		local action = confirmAction
+		confirmAction = nil
+		openModal(nil)
+		if action then
+			action()
+		end
+	end, { Position = UDim2.fromScale(0, 0.6), Size = UDim2.fromScale(0.47, 0.36), Parent = body })
+	Kit.button("Cancel", Theme.PanelLight, function()
+		confirmAction = nil
+		openModal(nil)
+	end, { Position = UDim2.fromScale(0.53, 0.6), Size = UDim2.fromScale(0.47, 0.36), Parent = body })
+end
+
+function UIController.confirm(title: string, text: string, yes: string, color: Color3, action: () -> ())
+	local panel = modals.Confirm
+	local titleLabel = panel:FindFirstChild("Title")
+	if titleLabel and titleLabel:IsA("TextLabel") then
+		titleLabel.Text = title
+	end
+	confirmText.Text = text
+	confirmYes.Text = yes
+	confirmYes.BackgroundColor3 = color
+	confirmAction = action
+	openModal("Confirm")
+end
+
+-- A store decoration you don't own yet: buy it with Coins.
+function UIController.offerDecor(typeId: number)
+	local def = PieceDefs.byId[typeId]
+	local price = def.price or 0
+	UIController.confirm(
+		def.hint or def.name,
+		string.format("Buy it for %d Coins? You have %d.", price, State.bricks),
+		"Buy",
+		Theme.Success,
+		function()
+			task.spawn(function()
+				local ok, bought, err = pcall(function()
+					return Remotes.func("BuyDecor"):InvokeServer(typeId)
+				end)
+				if ok and bought then
+					Sounds.play("LevelUp")
+					State.set({ selected = typeId, deleting = false })
+				else
+					SocialController.toast(if ok and type(err) == "string" then err else "Could not buy that")
+				end
+			end)
+		end
+	)
 end
 
 ---------------------------------------------------------------- run layer
@@ -570,6 +695,16 @@ local function buildRunHud()
 	timerLabel = Kit.label("0:00.000", {
 		Position = UDim2.fromScale(0.05, 0.35),
 		Size = UDim2.fromScale(0.9, 0.6),
+		Parent = top,
+	})
+	-- First person locks the mouse; Alt frees it for Quit / Restart.
+	Kit.label("Hold Alt to use the mouse", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 1.05),
+		Size = UDim2.fromScale(1, 0.25),
+		Font = Theme.BodyFont,
+		TextColor3 = Theme.TextDim,
+		Visible = game:GetService("UserInputService").KeyboardEnabled,
 		Parent = top,
 	})
 	Kit.button("Quit", Theme.Danger, function()
@@ -1177,11 +1312,21 @@ local function render()
 		and (if State.inRound then State.roundPhase == "build" else State.lobbyMode == "free")
 	runLayer.Visible = not isBuild
 
+	local now = os.time()
 	for id, slot in slots do
+		local def = PieceDefs.byId[id]
 		local stroke = slot:FindFirstChild("Select") :: UIStroke
 		local active = id == State.selected and not State.deleting
 		stroke.Color = if active then Theme.Primary else Theme.Stroke
 		stroke.Thickness = if active then 4 else 3
+		slot.Visible = (def.decor == true) == (State.hotbarTab == "decor") and Events.pieceAvailable(id, now)
+		local lock = slot:FindFirstChild("Lock")
+		if lock and lock:IsA("GuiObject") then
+			lock.Visible = not State.canUse(id)
+		end
+	end
+	for key, button in tabButtons do
+		button.BackgroundColor3 = if State.hotbarTab == key then Theme.Primary else Theme.PanelLight
 	end
 	local count = 0
 	for _, piece in if State.tower then State.tower.pieces else {} do
@@ -1287,6 +1432,7 @@ function UIController.init()
 	buildLeaderboard()
 	buildResults()
 	buildTowerMenu()
+	buildConfirm()
 	gui.Parent = player:WaitForChild("PlayerGui")
 	render()
 end

@@ -88,6 +88,7 @@ function LiveRaceController.init()
 		Parent = player:WaitForChild("PlayerGui"),
 	})
 	banner = Kit.panel({
+		FreeCursor = true,
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.fromScale(0.5, 0.77), -- above the hotbar and piece hint, clear of the run timer
 		Size = UDim2.fromScale(0.5, 0.07),
