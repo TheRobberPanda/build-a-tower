@@ -159,13 +159,17 @@ local function core(model: Model, origin: Vector3)
 					gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 					local label = Instance.new("TextLabel")
 					label.AnchorPoint = Vector2.new(0.5, 0)
-					label.Position = UDim2.fromScale(0.5, 1 - (y + lv * 0.55) / h)
-					label.Size = UDim2.fromScale(0.8, 2.2 / h)
+					label.Position = UDim2.fromScale(0.5, 1 - (y + lv * 0.75) / h)
+					label.Size = UDim2.fromScale(0.95, 4.5 / h)
 					label.BackgroundTransparency = 1
 					label.Font = Enum.Font.FredokaOne
 					label.TextScaled = true
 					label.Text = tostring(k + 1)
-					label.TextColor3 = floorColor
+					label.TextColor3 = Color3.new(1, 1, 1)
+					local stroke = Instance.new("UIStroke")
+					stroke.Thickness = 4
+					stroke.Color = floorColor
+					stroke.Parent = label
 					label.Parent = gui
 					gui.Parent = p
 				end
@@ -273,43 +277,31 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	scenery.Name = "Scenery"
 	local rng = Random.new(model.Name:len() * 7919)
 
-	-- Invisible walkable rim around the base and apron (the island mesh's own
-	-- collision is too coarse to stand on reliably).
 	local RIM = 12
 	local front = -apronDepth - RIM
 	local back = sizeZ + RIM
-	local function strip(name: string, x0: number, x1: number, z0: number, z1: number)
-		local p = part(
-			scenery,
-			name,
-			Vector3.new(x1 - x0, 1, z1 - z0),
-			CFrame.new(origin + Vector3.new((x0 + x1) / 2, -0.5, (z0 + z1) / 2)),
-			GRASS,
-			Enum.Material.SmoothPlastic
-		)
-		p.Transparency = 1
-	end
-	strip("RimLeft", -RIM, 0, front, back)
-	strip("RimRight", sizeX, sizeX + RIM, front, back)
-	strip("RimFront", 0, sizeX, front, -apronDepth)
-	strip("RimBack", 0, sizeX, sizeZ, back)
 	local islandX, islandZ = sizeX + RIM * 2, back - front
 
-	-- Island2 is one big grass-and-cliff mesh: flat top at 74.5% of its height,
-	-- with a raised plateau in its +Z half. Stretched so the flat part covers the
-	-- plot and the plateau ends up as a hill behind it.
-	local TOP, HILL = 0.745, 0.255
-	local meshSize = Vector3.new(islandX * 1.35, 90, islandZ * 2)
-	local meshCenterZ = back - islandZ * 0.1
-	local hillAt = origin + Vector3.new(sizeX / 2, meshSize.Y * HILL - 0.3, meshCenterZ + meshSize.Z * 0.25)
+	-- Island2 is one big grass-and-cliff mesh with a raised plateau in its +Z
+	-- half. Stretched so its top covers the plot and rim and the plateau ends up
+	-- as a hill behind it. Its top isn't flat, so it is lowered until no point of
+	-- the rim is above the grid, and every prop is dropped onto the surface. The
+	-- template is set to PreciseConvexDecomposition in Studio so players walk on it.
+	local meshSize = Vector3.new(islandX * 1.6, 100, islandZ * 3)
+	local meshCenterZ = back + 15 - meshSize.Z * 0.05
+	local hillAt = origin + Vector3.new(sizeX / 2, 0, meshCenterZ + meshSize.Z * 0.25)
 	local assets = game:GetService("ServerStorage"):FindFirstChild("SceneryAssets")
-	local island = assets and assets:FindFirstChild("Island2")
-	if island and island:IsA("Model") then
-		local m = island:Clone()
+	local template = assets and assets:FindFirstChild("Island2")
+	local ground: (Vector3) -> Vector3 = function(at)
+		return at
+	end
+	local islandModel: Model? = nil
+	if template and template:IsA("Model") then
+		local m = template:Clone()
 		m.Name = "Island"
 		local from, size = m:GetBoundingBox()
 		local k = meshSize / size
-		local to = CFrame.new(origin + Vector3.new(sizeX / 2, -0.3 - meshSize.Y * (TOP - 0.5), meshCenterZ))
+		local to = CFrame.new(origin + Vector3.new(sizeX / 2, -meshSize.Y * 0.245, meshCenterZ))
 		for _, d in m:GetDescendants() do
 			if d:IsA("BasePart") then
 				local rel = from:ToObjectSpace(d.CFrame)
@@ -317,9 +309,31 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 				d.CFrame = to * CFrame.new(rel.Position * k) * rel.Rotation
 				d.Anchored = true
 				d.CanTouch = false
+				d.CanQuery = true
 			end
 		end
-		m.Parent = scenery
+		m.Parent = workspace -- briefly, so it can be raycast
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { m }
+		local function surface(x: number, z: number): number?
+			local hit = workspace:Raycast(origin + Vector3.new(x, 200, z), Vector3.new(0, -400, 0), params)
+			return hit and hit.Position.Y
+		end
+		local top = -math.huge
+		for x = -RIM, sizeX + RIM, 4 do
+			for z = front, back, 4 do
+				top = math.max(top, surface(x, z) or -math.huge)
+			end
+		end
+		if top > -math.huge then
+			m:PivotTo(m:GetPivot() - Vector3.new(0, top - origin.Y + 0.2, 0))
+		end
+		ground = function(at: Vector3): Vector3
+			local y = surface(at.X - origin.X, at.Z - origin.Z)
+			return if y then Vector3.new(at.X, y, at.Z) else at
+		end
+		islandModel = m
 	end
 
 	-- A waterfall off the right edge into the clouds.
@@ -353,7 +367,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		local n = math.max(1, math.round(len / 11.5))
 		for i = 0, n - 1 do
 			local at = origin + a:Lerp(b, (i + 0.5) / n)
-			local f = prop(scenery, "Fence1", at, len / n / 11.5, rng)
+			local f = prop(scenery, "Fence1", ground(at), len / n / 11.5, rng)
 			if f then
 				f:PivotTo(
 					CFrame.lookAt(f:GetPivot().Position, f:GetPivot().Position + (b - a))
@@ -378,7 +392,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			Vector3.new(sizeX + 2, 0, sizeZ / 2),
 		}
 	do
-		prop(scenery, "Lamp1", origin + at, 1, rng)
+		prop(scenery, "Lamp1", ground(origin + at), 1, rng)
 	end
 
 	-- Trees, bushes, rocks, mushrooms and grass on the rim (outside the grid).
@@ -415,7 +429,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			prop(
 				scenery,
 				spec.names[rng:NextInteger(1, #spec.names)],
-				origin + rimSpot(spec.margin),
+				ground(origin + rimSpot(spec.margin)),
 				rng:NextNumber(spec.scale[1], spec.scale[2]),
 				rng
 			)
@@ -428,7 +442,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		prop(
 			scenery,
 			name,
-			hillAt + Vector3.new(math.cos(a) * r * 1.4, 0, math.sin(a) * r * 0.6),
+			ground(hillAt + Vector3.new(math.cos(a) * r * 1.4, 0, math.sin(a) * r * 0.6)),
 			rng:NextNumber(0.6, 1),
 			rng
 		)
@@ -445,7 +459,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		local color = petals[rng:NextInteger(1, #petals)]
 		for _ = 1, rng:NextInteger(2, 4) do
 			local at = c + Vector3.new(rng:NextNumber(-1.5, 1.5), 0, rng:NextNumber(-1.5, 1.5))
-			local flower = prop(scenery, "Flower1", at, rng:NextNumber(0.35, 0.5), rng)
+			local flower = prop(scenery, "Flower1", ground(at), rng:NextNumber(0.35, 0.5), rng)
 			if flower then
 				for _, d in flower:GetDescendants() do
 					if d:IsA("BasePart") and d.Name:find("Mesh35") then
@@ -472,6 +486,9 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 				end
 			end
 		end
+	end
+	if islandModel then
+		islandModel.Parent = scenery
 	end
 	noQuery(scenery)
 	scenery.Parent = model
