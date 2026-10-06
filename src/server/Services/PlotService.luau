@@ -126,6 +126,83 @@ local function pieceKey(piece: Piece): string
 	return key
 end
 
+-- The course trophy: a store decoration floating over the Finish of the tower
+-- being run (nil removes it). Finishing the course gives it (RunTimerService).
+function PlotService.setTrophy(player: Player, typeId: number?)
+	local plot = plots[player]
+	if not plot then
+		return
+	end
+	local old = plot.model:FindFirstChild("Trophy")
+	if old then
+		old:Destroy()
+	end
+	local pieces = plot.model:FindFirstChild("Pieces")
+	local finish = pieces and pieces:FindFirstChild("Finish")
+	if not typeId or not finish or not finish:IsA("BasePart") then
+		return
+	end
+	-- Floats over the flag (Finish keys are "t,x,y,z,r").
+	local key = finish:GetAttribute("Key")
+	local x, y, z = string.match(if type(key) == "string" then key else "", "^%d+,(%d+),(%d+),(%d+)")
+	if not x then
+		return
+	end
+	local part = PieceFactory.make({
+		t = typeId,
+		x = tonumber(x) :: number,
+		y = (tonumber(y) :: number) + 3,
+		z = tonumber(z) :: number,
+		r = 0,
+	}, plot.origin)
+	part.Name = "Trophy"
+	local glow = Instance.new("PointLight")
+	glow.Color = Color3.fromRGB(255, 220, 120)
+	glow.Range = 16
+	glow.Parent = part
+	part.Parent = plot.model
+end
+
+-- Coins at plot-relative spots (the builder's climb in a round race); touching
+-- one calls onCollect once. An empty list clears them.
+function PlotService.dropCoins(player: Player, spots: { Vector3 }, onCollect: (Player) -> ())
+	local plot = plots[player]
+	if not plot then
+		return
+	end
+	local old = plot.model:FindFirstChild("Coins")
+	if old then
+		old:Destroy()
+	end
+	if #spots == 0 then
+		return
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "Coins"
+	for _, at in spots do
+		local coin = Instance.new("Part")
+		coin.Name = "PathCoin"
+		coin.Shape = Enum.PartType.Cylinder
+		coin.Size = Vector3.new(0.4, 2.6, 2.6)
+		coin.CFrame = CFrame.new(plot.origin + at) -- the disc stands on its edge (cylinder axis = X)
+		coin.Color = Color3.fromRGB(255, 200, 40)
+		coin.Material = Enum.Material.Neon
+		coin.Anchored = true
+		coin.CanCollide = false
+		coin.CanQuery = false
+		game:GetService("CollectionService"):AddTag(coin, "PathCoin") -- clients spin it
+		coin.Touched:Connect(function(hit)
+			local character = player.Character
+			if coin.Parent and character and hit:IsDescendantOf(character) then
+				coin:Destroy()
+				onCollect(player)
+			end
+		end)
+		coin.Parent = folder
+	end
+	folder.Parent = plot.model
+end
+
 -- Breaks these pieces' parts into falling chunks (call before render removes them).
 function PlotService.shatter(player: Player, pieces: { Piece })
 	local folder = plots[player] and plots[player].model:FindFirstChild("Pieces")

@@ -12,9 +12,14 @@ if Controllers then
 	end
 end
 
-for _, controller in loaded do
+-- One controller failing to init must not stop the others (pieces would lose
+-- their client behaviour).
+for name, controller in loaded do
 	if typeof(controller.init) == "function" then
-		controller.init()
+		local ok, err = pcall(controller.init)
+		if not ok then
+			warn(string.format("[Client] %s.init failed: %s", name, tostring(err)))
+		end
 	end
 end
 

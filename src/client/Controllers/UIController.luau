@@ -243,13 +243,13 @@ local function buildHotbar()
 		icon.Position = UDim2.fromScale(0.5, 0.04)
 		icon.ZIndex = 2
 		icon.Parent = slot
-		Kit.label(SHORT_NAMES[def.name] or def.name, {
+		Kit.label(SHORT_NAMES[def.name] or (if def.asset then def.hint else nil) or def.name, {
 			Size = UDim2.fromScale(0.94, 0.26),
 			Position = UDim2.fromScale(0.03, 0.7),
 			Font = Theme.BodyFont,
 			Parent = slot,
 		})
-		Kit.label(tostring(def.id), {
+		Kit.label(if def.id <= 10 then tostring(def.id % 10) else "", { -- number-key shortcut
 			Size = UDim2.fromScale(0.25, 0.25),
 			Position = UDim2.fromScale(0.04, 0.03),
 			TextColor3 = Theme.TextDim,
@@ -1446,8 +1446,15 @@ function UIController.start()
 			if type(p.level) == "number" then
 				if knownLevel and p.level > knownLevel then
 					Sounds.play("LevelUp")
+					local unlocked = {}
+					for _, def in PieceDefs.list do
+						if def.level and def.level > knownLevel and def.level <= p.level then
+							table.insert(unlocked, SHORT_NAMES[def.name] or def.name)
+						end
+					end
 					SocialController.toast(
 						string.format("Level %d! Piece budget is now %d", p.level, tonumber(p.budget) or 0)
+							.. if #unlocked > 0 then ". Unlocked: " .. table.concat(unlocked, ", ") else ""
 					)
 				end
 				knownLevel = p.level

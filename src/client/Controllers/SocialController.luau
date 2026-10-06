@@ -187,6 +187,12 @@ function SocialController.init()
 end
 
 function SocialController.start()
+	Remotes.event("Reward").OnClientEvent:Connect(function(text)
+		if type(text) == "string" then
+			require(ReplicatedStorage.Shared.Sounds).play("LevelUp")
+			SocialController.toast("🎁 " .. text)
+		end
+	end)
 	Remotes.event("Inbox").OnClientEvent:Connect(function(messages)
 		if type(messages) ~= "table" then
 			return

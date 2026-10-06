@@ -15,12 +15,16 @@ local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local PathCodec = require(ReplicatedStorage.Shared.PathCodec)
+local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
+local Rewards = require(ReplicatedStorage.Shared.Rewards)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
 local DataService = require(script.Parent.DataService)
 local LiveRaceService = require(script.Parent.LiveRaceService)
+local MonetizationService = require(script.Parent.MonetizationService)
 local PlotService = require(script.Parent.PlotService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local RunTimerService = require(script.Parent.RunTimerService)
@@ -222,10 +226,27 @@ local function race(e: Entry, index: number, count: number): Entry?
 		count = count,
 	})
 	LiveRaceService.startRound(tower.owner, tower.name, racers, { e.player })
+	-- Coins along the route the builder climbed when verifying, for the racers.
+	local path = e.replay and PathCodec.decode(e.replay.path) or {}
+	for _, p in racers do
+		local spots = {}
+		for _ = 1, if #path > 20 then Config.PATH_COINS else 0 do
+			table.insert(spots, path[math.random(math.floor(#path * 0.15), #path - 2)])
+		end
+		PlotService.dropCoins(p, spots, function(collector: Player)
+			local entry = entryOf[collector]
+			if entry then
+				give(entry, Config.PATH_COIN_VALUE)
+				Remotes.event("Reward")
+					:FireClient(collector, string.format("+%d Coins", Config.PATH_COIN_VALUE))
+			end
+		end)
+	end
 	waitPhase(seconds(Config.RACE_SECONDS), function()
 		return raceWinner ~= nil
 	end)
 	for _, p in racers do
+		PlotService.dropCoins(p, {}, function() end)
 		RunTimerService.stop(
 			p,
 			if raceWinner then raceWinner.DisplayName .. " reached the top first" else "Time's up"
@@ -271,6 +292,28 @@ local function vote(e: Entry, winner: Entry?)
 	shown = nil
 end
 
+-- A random prize for everyone who played: a store decoration or a bigger island.
+local function reward(player: Player, won: boolean, stars: number?): string?
+	local data = DataService.get(player)
+	if not data then
+		return nil
+	end
+	local prize = Rewards.roll(won, stars, data.unlocked, data.plotSize, math.random(), math.random())
+	local text: string? = nil
+	if prize == "expand" then
+		data.plotSize += 2
+		MonetizationService.applyTheme(player) -- rebuilds the island at the new size
+		ProgressionService.refresh(player)
+		text = string.format("Island expansion! Your island is now %dx%d", data.plotSize, data.plotSize)
+	elseif type(prize) == "number" and TowerService.grantDecor(player, prize) then
+		text = "New decoration: " .. tostring(PieceDefs.byId[prize].hint)
+	end
+	if text then
+		Remotes.event("Reward"):FireClient(player, text)
+	end
+	return text
+end
+
 local function finishRound()
 	local results = {}
 	for _, e in entries do
@@ -280,10 +323,13 @@ local function finishRound()
 			total += s
 		end
 		local avg = if n > 0 then total / n else nil
-		table.insert(results, { name = e.name, coins = e.coins, valid = e.valid, stars = avg, wins = e.wins })
+		local row: { [string]: any } =
+			{ name = e.name, coins = e.coins, valid = e.valid, stars = avg, wins = e.wins }
+		table.insert(results, row)
 		if not present(e) then
 			continue
 		end
+		row.reward = reward(e.player, e.wins > 0, avg)
 		local roundTower = TowerService.leaveRound(e.player)
 		TowerService.setEditLocked(e.player, false)
 		-- Back to the lobby (still queued for the next round), or to their island

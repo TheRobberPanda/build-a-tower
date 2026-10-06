@@ -230,8 +230,13 @@ function MechanicsController.start()
 		addConveyor(inst)
 	end
 	CollectionService:GetInstanceAddedSignal("Conveyor"):Connect(addConveyor)
-	-- Belts scroll at the conveyor's speed.
-	game:GetService("RunService").RenderStepped:Connect(function()
+	-- Belts scroll at the conveyor's speed; path coins spin.
+	game:GetService("RunService").RenderStepped:Connect(function(dt)
+		for _, coin in CollectionService:GetTagged("PathCoin") do
+			if coin:IsA("BasePart") then
+				coin.CFrame = CFrame.new(coin.Position) * CFrame.Angles(0, dt * 3, 0) * coin.CFrame.Rotation
+			end
+		end
 		local offset = os.clock() * Config.CONVEYOR_SPEED
 		for _, inst in CollectionService:GetTagged("Conveyor") do
 			local belt = inst:FindFirstChild("Belt")

@@ -35,6 +35,7 @@ Remotes.Events = table.freeze({
 	"RoundReplay", -- server -> client { path, splits, ms } the builder's verify climb
 	"RoundResults", -- server -> all { { name, coins, valid, stars?, wins } }
 	"RoundVote", -- (stars 1-5) for the tower being shown
+	"Reward", -- server -> client (text) you got a decoration, an expansion or Coins
 	"Push", -- () shove the player in front of you
 	"Pushed", -- server -> client (direction) you were shoved
 	"SetMode", -- ("queue" | "free" | "lobby") join the round queue, free build, or go to the lobby

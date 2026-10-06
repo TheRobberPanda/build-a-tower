@@ -16,6 +16,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local PathCodec = require(ReplicatedStorage.Shared.PathCodec)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Rewards = require(ReplicatedStorage.Shared.Rewards)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
@@ -25,6 +26,7 @@ local AntiCheat = require(script.Parent.AntiCheat)
 local Badges = require(script.Parent.Badges)
 local MechanicsService = require(script.Parent.MechanicsService)
 local DataService = require(script.Parent.DataService)
+local ProgressionService = require(script.Parent.ProgressionService)
 local PlotService = require(script.Parent.PlotService)
 local SocialService = require(script.Parent.SocialService)
 local TowerService = require(script.Parent.TowerService)
@@ -71,6 +73,7 @@ local function restoreOwnTower(player: Player)
 	if data then
 		PlotService.render(player, data.tower.pieces, data.material, TowerService.isInRound(player))
 	end
+	PlotService.setTrophy(player, nil)
 end
 
 local function endRun(player: Player)
@@ -117,6 +120,19 @@ local function finish(player: Player, run: Run)
 		return
 	end
 
+	-- Someone else's course: take its trophy (or a few Coins if you have it).
+	local trophy = Rewards.trophyFor(run.hash)
+	if TowerService.grantDecor(player, trophy) then
+		Remotes.event("Reward"):FireClient(player, "Course trophy: " .. tostring(PieceDefs.byId[trophy].hint))
+	else
+		local data = DataService.get(player)
+		if data then
+			data.bricks += Config.TROPHY_COINS
+			ProgressionService.refresh(player)
+			Remotes.event("Reward")
+				:FireClient(player, string.format("+%d Coins (you have this trophy)", Config.TROPHY_COINS))
+		end
+	end
 	if roundSource(run.ownerId) then
 		-- Round towers have no leaderboard or likes; the round decides the winner.
 		Remotes.event("RunResult"):FireClient(player, true, ms, false)
@@ -309,6 +325,7 @@ local function startRun(player: Player, ownerId: number)
 		hash = tower.hash
 		towerName = tower.name
 		PlotService.render(player, tower.pieces, tower.mat, tower.core)
+		PlotService.setTrophy(player, Rewards.trophyFor(hash))
 	end
 
 	local run: Run = {

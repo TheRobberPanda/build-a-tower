@@ -648,6 +648,20 @@ step("decorations don't count toward the budget", function()
 	return ok and plant ~= nil and plant.CanCollide == false, "budget " .. tostring(before)
 end)
 
+step("store decoration shows its model, buying an unknown id is refused", function()
+	local ok = place(30, 12, 0, 8) -- Oak Tree (QA may place unowned pieces)
+	local part = partAt(12, 0, 8) or partAt(12, 1, 8)
+	local model = part and part:FindFirstChildWhichIsA("Model")
+	local _, bought = invoke("BuyDecor", 999)
+	return ok and model ~= nil and bought == false,
+		string.format(
+			"placed=%s part=%s model=%s",
+			tostring(ok),
+			part and part.Name or "nil",
+			tostring(model)
+		)
+end)
+
 step("progress carries the tutorial flag", function()
 	return progress ~= nil and type(progress.tutorialDone) == "boolean",
 		tostring(progress and progress.tutorialDone)

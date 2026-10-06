@@ -277,12 +277,13 @@ local function onResults(list: any)
 		table.insert(
 			lines,
 			string.format(
-				"%d. %s  +%d coins  %s%s",
+				"%d. %s  +%d coins  %s%s%s",
 				i,
 				tostring(r.name),
 				tonumber(r.coins) or 0,
 				if r.valid then "" else "(no valid tower) ",
-				if type(r.stars) == "number" then string.format("%.1f stars", r.stars) else ""
+				if type(r.stars) == "number" then string.format("%.1f stars", r.stars) else "",
+				if type(r.reward) == "string" then "  🎁 " .. r.reward else ""
 			)
 		)
 	end

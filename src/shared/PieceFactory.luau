@@ -162,7 +162,7 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 	local center = origin + Vector3.new(piece.x + sx / 2, piece.y + sy / 2, piece.z + sz / 2) * g
 	part.CFrame = CFrame.new(center) * CFrame.Angles(0, if turned then piece.r * math.pi / 2 else 0, 0)
 	part.Anchored = true
-	part.Color = COLORS[def.name]
+	part.Color = COLORS[def.name] or Color3.new(1, 1, 1) -- store decorations: an invisible box
 	part.Name = def.name
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part:SetAttribute("PieceType", piece.t)

@@ -156,6 +156,9 @@ local Config = {
 	COINS_VALID = 15, -- built and climbed your tower in time
 	COINS_PER_STAR = 4, -- builder gets this per star received
 	DONATE_AMOUNTS = table.freeze({ 10, 50 }),
+	TROPHY_COINS = 10, -- finishing a course whose trophy you already have
+	PATH_COINS = 8, -- coins dropped along the builder's verify climb, per race
+	PATH_COIN_VALUE = 5,
 	STARTER_COINS = 500, -- once per player, to buy island decorations
 
 	-- Runs

@@ -179,6 +179,62 @@ local list: { PieceDef } = {
 	},
 }
 
+-- Store decorations (ReplicatedStorage.DecorAssets, Creator Store models; see
+-- CREDITS.md): bought with Coins or won, no collision, outside the budget.
+-- { id, model, label, size, price }
+local STORE: { { any } } = {
+	{ 30, "OakTree", "Oak Tree", { 2, 4, 2 }, 60 },
+	{ 31, "RoundTree", "Round Tree", { 2, 4, 2 }, 60 },
+	{ 32, "PineTree", "Pine Tree", { 2, 5, 2 }, 80 },
+	{ 33, "PalmTree", "Palm Tree", { 2, 4, 2 }, 100 },
+	{ 34, "BlossomTree", "Blossom Tree", { 2, 3, 2 }, 120 },
+	{ 35, "DeadTree", "Dead Tree", { 2, 4, 2 }, 60 },
+	{ 36, "BigBush", "Big Bush", { 1, 1, 1 }, 25 },
+	{ 37, "SmallBush", "Small Bush", { 1, 1, 1 }, 20 },
+	{ 38, "Flower", "Flower", { 1, 1, 1 }, 15 },
+	{ 39, "Sunflower", "Sunflower", { 1, 2, 1 }, 30 },
+	{ 40, "Mushrooms", "Mushrooms", { 1, 1, 1 }, 25 },
+	{ 41, "BigMushroom", "Big Mushroom", { 1, 1, 1 }, 40 },
+	{ 42, "Boulder", "Boulder", { 1, 1, 1 }, 30 },
+	{ 43, "RockPile", "Rock Pile", { 2, 1, 1 }, 40 },
+	{ 44, "Pebbles", "Pebbles", { 1, 1, 1 }, 15 },
+	{ 45, "Cactus", "Cactus", { 1, 2, 1 }, 40 },
+	{ 46, "Log", "Log", { 2, 1, 1 }, 30 },
+	{ 47, "Stump", "Stump", { 1, 1, 1 }, 20 },
+	{ 48, "HayBales", "Hay Bales", { 2, 1, 2 }, 60 },
+	{ 49, "Bench", "Bench", { 2, 1, 1 }, 50 },
+	{ 50, "PicnicTable", "Picnic Table", { 2, 1, 2 }, 80 },
+	{ 51, "Crate", "Crate", { 1, 1, 1 }, 20 },
+	{ 52, "CrateStack", "Crate Stack", { 1, 1, 1 }, 50 },
+	{ 53, "Barrel", "Barrel", { 1, 1, 1 }, 30 },
+	{ 54, "Campfire", "Campfire", { 1, 1, 1 }, 80 },
+	{ 55, "Tent", "Tent", { 2, 2, 2 }, 120 },
+	{ 56, "Fountain", "Fountain", { 2, 2, 2 }, 200 },
+	{ 57, "Signpost", "Signpost", { 1, 1, 1 }, 25 },
+	{ 58, "Well", "Well", { 1, 1, 1 }, 100 },
+	{ 59, "StreetLantern", "Street Lantern", { 1, 3, 1 }, 70 },
+	{ 60, "Mailbox", "Mailbox", { 1, 1, 1 }, 40 },
+	{ 61, "Windmill", "Windmill", { 2, 6, 2 }, 300 },
+	{ 62, "TreasureChest", "Treasure Chest", { 1, 1, 1 }, 150 },
+	{ 63, "Crystal", "Crystal", { 1, 1, 1 }, 90 },
+	{ 64, "CandyCane", "Candy Cane", { 1, 2, 1 }, 60 },
+	{ 65, "Donut", "Donut", { 1, 1, 1 }, 50 },
+	{ 66, "Asteroid", "Space Rock", { 1, 1, 1 }, 70 },
+	{ 67, "Pumpkins", "Pumpkins", { 1, 1, 1 }, 40 },
+}
+for _, e in STORE do
+	table.insert(list, {
+		id = e[1],
+		name = e[2],
+		hint = e[3],
+		size = e[4],
+		props = {},
+		decor = true,
+		asset = e[2],
+		price = e[5],
+	})
+end
+
 local byId: { [number]: PieceDef } = {}
 for _, def in list do
 	table.freeze(def.size)
@@ -190,4 +246,5 @@ return table.freeze({
 	list = table.freeze(list),
 	byId = table.freeze(byId),
 	FINISH_ID = 8,
+	STORE_FIRST = 30, -- store decorations are ids 30.. (rewards pick from them)
 })

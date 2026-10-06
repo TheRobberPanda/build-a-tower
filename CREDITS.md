@@ -34,3 +34,43 @@
 | "Time Attack (sting)" (1837769261) | Roblox Creator Store, APMOfficial | Roblox licensed music | Sounds.RoundStart |
 | "Victory Fanfare Sting" (1836473422) | Roblox Creator Store, APMOfficial | Roblox licensed music | Sounds.Victory |
 | "Crowd Cheer And Applause 1" (9112766176) | Roblox Creator Store, ProSoundEffects | Roblox licensed SFX | Sounds.Cheer |
+| Low Poly Tree (OakTree, 4893246329, Abishpc) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low-Poly Tree. (RoundTree, 3287226226, akbarbinta) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low poly pine tree (PineTree, 5616880673, smartycar23) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Palm Tree (PalmTree, 10354687850, LoucDu44) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Aesthetic Pink Tree (BlossomTree (also CandyTree1), 5476735193, jsvxsophie165) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Dead Tree (DeadTree (also LavaTree1/2), 5575673162, Abby4leafclover) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low poly big bush (BigBush, 14720410685, Tanakob12345) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low-Poly Bush (SmallBush, 5003870763, Exp_p) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Flower (Flower, 16071638063, Dashon907AK) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Sunflower (Sunflower, 10054421156, luresouls) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Mushrooms (Mushrooms, 4644085527, CyrilTBFD) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low-Poly Mushroom V2 (BigMushroom (also SpacePlant1), 13411585468, DinosaurioLOCOOvd0s) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Rock (Boulder (also LavaRock2), 7299047040, linktimehero) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Rock Pack (RockPile, 2128776869, FracturedSkies) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Rocks (Pebbles, 14603612772, neervu) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low-Poly Cactus (Cactus, 5074211161, Exp_p) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Log (Log, 11312714034, osddxx) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low poly tree stump (Stump, 114044679678110, 1awesomesauce2) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Hay-Bales (HayBales, 5464985431, finnisep) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low poly Bench (Bench, 8924251735, I4supraa) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Classic Picnic Table (PicnicTable, 99727781057404, TTMicrowave) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Crate (Crate, 15225053029, CriticalIceOfficial) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Crate Stack (CrateStack, 15225061325, CriticalIceOfficial) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Barrel (Barrel, 111437377344338, imislandgoddd) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low-Poly Firepit (Campfire, 10829472497, doctorpepper129) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Tent (Tent, 16643637106, Balbojo) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low poly water fountain (Fountain, 11612927269, TechFixTuture) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low poly sign Text (Signpost, 12712225222, OFF6_6) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Well (Well, 8924283342, I4supraa) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low poly Street Lantern (StreetLantern, 8990192177, I4supraa) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Mailbox (Mailbox, 56449011, Roblox) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Windmill Prop (Windmill, 18828754732, Manestronomer) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Coin chest (TreasureChest, 9373662814, XboxAdityaDev) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Crystal (Crystal (also LavaCrystal1, SpaceCrystal1), 4740062139, fujicre) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Candy Cane (CandyCane (also CandyCane1), 15727991765, CosmicoCandy) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Donut (Donut, 134505370549170, YoPeazz) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Asteroid (Asteroid (also SpaceRock1), 16911713706, Unknow7702) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Low Poly Pumpkin Pack (Pumpkins, 131676664577808, Thomazelli_Plays) | Creator Store, free, verified creator, no scripts | Roblox free model | ReplicatedStorage.DecorAssets (store decorations) |
+| Lollipop1, Gumdrop1, Cupcake1 (candy theme) | Built from parts in Studio | Own | ServerStorage.SceneryAssets |
+| Conveyor belt chevrons, round explainer art | Own (PIL) / generated (google/gemini-3.1-flash-image) | Own / generated for this project | assets/textures/conveyor_belt.png, assets/ui/step_1-3.png |
