@@ -20,7 +20,7 @@
 | Low Poly Rock Pack (Rock2, 2128776869, FracturedSkies) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets |
 | Low poly big bush (Bush1, 14720410685, Tanakob12345) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets |
 | Low-Poly Bush (Bush2, 5003870763, Exp_p) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets |
-| Centaur's Low Poly Floating Island Asset (Island1, 138472723124278, Centaur2779) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, far islands |
+| Centaur's Low Poly Floating Island Asset (Island1, 138472723124278, Centaur2779) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, far islands and main island underside |
 | Low Poly Count Cloud Mesh 4 (Cloud1, 4862433614, FaVmIkE) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, sky clouds |
 | Low Poly Flower (Flower1, 16071638063, Dashon907AK) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot flowers |
 | Low-Poly Mountain (Hill1, 15610270923, crazeejakob) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, horizon mesas |

@@ -240,20 +240,33 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	strip("RimBack", 0, sizeX, sizeZ, back)
 	local islandX, islandZ = sizeX + RIM * 2, back - front
 	local islandCenter = origin + Vector3.new(sizeX / 2, 0, (front + back) / 2)
-	local top = -1.05
-	for i, depth in { 6, 10, 16, 22 } do
-		local shrink = (i - 1) * 10
-		decoPart(
-			scenery,
-			"Cliff",
-			Vector3.new(islandX - shrink, depth, islandZ - shrink),
-			CFrame.new(islandCenter + Vector3.new(0, top - depth / 2, 0)),
-			ROCK:Lerp(Color3.new(0, 0, 0), (i - 1) * 0.12),
-			Enum.Material.SmoothPlastic
-		)
-		top -= depth
+	-- Underside: the Island1 model (grass disc on a rock cone) stretched so its
+	-- disc covers the rectangle's corners, grass top just under the rim strips.
+	local assets = game:GetService("ServerStorage"):FindFirstChild("SceneryAssets")
+	local template = assets and assets:FindFirstChild("Island1")
+	if template and template:IsA("Model") then
+		local under = template:Clone()
+		under.Name = "Underside"
+		local from, size = under:GetBoundingBox()
+		local target = Vector3.new(islandX * 1.35, 60, islandZ * 1.35)
+		local k = target / size
+		local to = CFrame.new(islandCenter + Vector3.new(0, -1.05 - target.Y / 2, 0))
+		for _, d in under:GetDescendants() do
+			if d:IsA("BasePart") then
+				local rel = from:ToObjectSpace(d.CFrame)
+				d.Size *= k
+				d.CFrame = to * CFrame.new(rel.Position * k) * rel.Rotation
+				d.Anchored = true
+				local grass = d.Size.Y < 5
+				d.CanCollide = grass -- the disc reaches past the rim, so it must hold players
+				d.CanTouch = false
+				d.Color = if grass then GRASS else ROCK
+			elseif d:IsA("LuaSourceContainer") then
+				d:Destroy()
+			end
+		end
+		under.Parent = scenery
 	end
-
 	-- Trees, bushes and rocks on the rim, outside the buildable grid. Uses the free
 	-- Creator Store models in ServerStorage.SceneryAssets (see CREDITS.md) and
 	-- falls back to simple part-built ones when they are missing.
