@@ -4,7 +4,7 @@ S="$(dirname "$0")"
 sleep 2
 "$S/mcp_call.sh" execute_luau '{"code":"game.ServerStorage:SetAttribute(\"RunQA\", true)"}' >/dev/null
 "$S/mcp_call.sh" start_playtest '{"mode":"play"}'
-for i in $(seq 1 60); do r=$("$S/mcp_call.sh" get_playtest_output '{}'); echo "$r" | grep -q '"isRunning":false' && break; sleep 5; done
+for i in $(seq 1 110); do r=$("$S/mcp_call.sh" get_playtest_output '{}'); echo "$r" | grep -q '"isRunning":false' && break; sleep 5; done
 "$S/mcp_call.sh" execute_luau '{"code":"game.ServerStorage:SetAttribute(\"RunQA\", nil)"}' >/dev/null
 echo "$r" > /tmp/bat_qa.json
 python3 - <<PY

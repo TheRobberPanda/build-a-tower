@@ -24,6 +24,7 @@ LogService.MessageOut:Connect(function(message, messageType)
 end)
 
 ServerStorage:SetAttribute("RoundFast", true) -- play-mode copy only; Edit keeps its value
+ServerStorage:SetAttribute("QABuildSeconds", 200)
 local remote = Instance.new("RemoteEvent")
 remote.Name = "QAReport"
 remote.Parent = ReplicatedStorage

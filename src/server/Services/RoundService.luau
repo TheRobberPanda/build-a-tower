@@ -253,7 +253,8 @@ local function finishRound()
 		TowerService.setEditLocked(e.player, false)
 		-- Good towers are saved: valid, and rated 3+ stars (or nobody was there to rate).
 		local tower = e.tower
-		if tower and roundTower and (avg == nil or avg >= 3) then
+		local qa = RunService:IsStudio() and ServerStorage:GetAttribute("RunQA") == true
+		if tower and roundTower and not qa and (avg == nil or avg >= 3) then
 			task.spawn(TowerService.publishRound, e.player, roundTower, tower.name, tower.builderMs)
 		end
 	end
@@ -281,8 +282,11 @@ local function loop()
 		if not startBuild() then
 			continue
 		end
-		broadcast("build", seconds(Config.BUILD_SECONDS))
-		waitPhase(seconds(Config.BUILD_SECONDS))
+		-- QA harness needs a longer build phase than RoundFast gives.
+		local qaBuild = RunService:IsStudio() and ServerStorage:GetAttribute("QABuildSeconds")
+		local build = if type(qaBuild) == "number" then qaBuild else seconds(Config.BUILD_SECONDS)
+		broadcast("build", build)
+		waitPhase(build)
 		endBuild()
 		local valid = {}
 		for _, e in entries do

@@ -19,8 +19,6 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local player = Players.LocalPlayer
 local G = Config.GRID_STUDS
--- Rounds would swap the tower mid-test: sit out until the round steps at the end.
-Remotes.event("RoundSitOut"):FireServer(true)
 local round: any = { phase = "waiting" }
 local roundResults: any = nil
 Remotes.event("Round").OnClientEvent:Connect(function(s)
@@ -173,47 +171,36 @@ end
 
 ---------------------------------------------------------------- the run
 
-local originalSlot = 1
+local homeCount = -1
 step("profile loaded", function()
 	local ok = waitFor(function()
 		return tower ~= nil
 	end, 45) -- a stale session lock can delay the load
-	if progress then
-		originalSlot = progress.activeSlot or 1
-	end
-	return ok,
-		string.format(
-			"pieces=%d level=%s slot=%s",
-			count(),
-			tostring(progress and progress.level),
-			tostring(originalSlot)
-		)
+	homeCount = count()
+	return ok, string.format("pieces=%d level=%s", count(), tostring(progress and progress.level))
 end)
 
-local onSlot3 = false
-step("switch to slot 3", function()
-	if originalSlot == 3 then
-		return false, "already on slot 3; QA refuses to touch it"
-	end
-	local _, switched = invoke("SwitchSlot", 3)
-	onSlot3 = switched == true
-		and waitFor(function()
-			return progress ~= nil and progress.activeSlot == 3
-		end, 5)
-	return onSlot3, "pieces in slot 3: " .. count()
+-- Everything below edits the round tower only: the real tower is parked
+-- (data.roundStash) and comes back when the round ends.
+local inRound = false
+step("round: build phase starts with an empty round tower", function()
+	inRound = waitFor(function()
+		return round.phase == "build" and table.find(round.members or {}, player.UserId) ~= nil
+	end, 60) and waitFor(function()
+		return count() == 0
+	end, 5)
+	return inRound, string.format("phase=%s pieces=%d", tostring(round.phase), count())
 end)
--- Never edit a real tower: without slot 3 the run stops here.
-if not onSlot3 then
+if not inRound then
 	ReplicatedStorage:WaitForChild("QAReport"):FireServer({
 		passed = 0,
 		total = #results,
 		steps = results,
 		clientLog = clientLog,
-		aborted = "could not switch to slot 3",
+		aborted = "no round build phase with an empty tower",
 	})
 	return
 end
-clearTower()
 
 step("place a block", function()
 	return place(1, 2, 0, 2), count()
@@ -409,7 +396,7 @@ local function partAt(x: number, y: number, z: number): BasePart?
 			end
 		end
 	end
-	return if bestDist < 4 then best else nil
+	return if bestDist < G * 1.5 then best else nil -- 2x2 pieces sit a cell off-centre
 end
 
 -- Stand on top of a cell (outside runs, so moving the character is fine).
@@ -431,7 +418,8 @@ end)
 step("invisible platform is solid and invisible", function()
 	place(7, 14, 0, 14)
 	local part = partAt(14, 0, 14)
-	return part ~= nil and part.Transparency == 1 and part.CanCollide, part and part.Name
+	return part ~= nil and part.Transparency >= 0.85 and part.CanCollide, -- night shimmer: 0.85
+		part and string.format("%s t=%.2f collide=%s", part.Name, part.Transparency, tostring(part.CanCollide))
 end)
 
 step("crumble falls after landing and comes back", function()
@@ -572,38 +560,14 @@ step("sun and moon blocks follow the clock", function()
 		string.format("clock=%.1f sun=%s moon=%s", clock, tostring(sun.CanCollide), tostring(moon.CanCollide))
 end)
 
--- Leave slot 3 empty and go back.
-step("clean up and switch back", function()
-	clearTower()
-	task.wait(0.5)
-	if count() ~= 0 then
-		return false, "slot 3 not empty; staying on it so nothing else is touched"
-	end
-	local _, switched = invoke("SwitchSlot", originalSlot)
-	return switched == true and count() >= 0,
-		"back on slot " .. originalSlot .. " with " .. count() .. " pieces"
-end)
-
 ---------------------------------------------------------------- a solo round
--- (RoundFast: build phase 30 s.) Join, build a finish, climb it, check the
--- results and that the parked tower came back.
-local homeCount = count()
-step("round: joining starts a build phase with an empty tower", function()
-	task.wait(1)
-	Remotes.event("RoundSitOut"):FireServer(false)
-	local ok = waitFor(function()
-		return round.phase == "build" and table.find(round.members or {}, player.UserId) ~= nil
-	end, 40)
-	return ok and waitFor(function()
-		return count() == 0
-	end, 3),
-		string.format("phase=%s pieces=%d", tostring(round.phase), count())
-end)
+-- Climb the round tower, wait for the results, check the parked tower came back.
 step("round: publish refused during the round", function()
 	local _, ok, err = invoke("Publish", "QA")
 	return ok == false, tostring(err)
 end)
 step("round: build + climb verifies the round tower", function()
+	clearTower()
 	place(8, 8, 0, 3)
 	if not startRun() then
 		return false, "RunStarted never arrived"
@@ -623,7 +587,6 @@ step("round: results list a valid tower with coins", function()
 			else "none"
 end)
 step("round: home tower restored", function()
-	Remotes.event("RoundSitOut"):FireServer(true)
 	return waitFor(function()
 		return count() == homeCount
 	end, 5),
