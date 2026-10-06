@@ -240,32 +240,61 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	strip("RimBack", 0, sizeX, sizeZ, back)
 	local islandX, islandZ = sizeX + RIM * 2, back - front
 	local islandCenter = origin + Vector3.new(sizeX / 2, 0, (front + back) / 2)
-	-- Underside: the Island1 model (grass disc on a rock cone) stretched so its
-	-- disc covers the rectangle's corners, grass top just under the rim strips.
+	-- Underside: a thick dirt layer under the whole island, then the rock cone of
+	-- the Island1 model (its grass disc dropped) hanging below, plus boulders.
+	local DIRT = 8
+	decoPart(
+		scenery,
+		"Dirt",
+		Vector3.new(islandX, DIRT, islandZ),
+		CFrame.new(islandCenter - Vector3.new(0, 1 + DIRT / 2, 0)),
+		Color3.fromRGB(126, 88, 58),
+		Enum.Material.Ground
+	)
 	local assets = game:GetService("ServerStorage"):FindFirstChild("SceneryAssets")
 	local template = assets and assets:FindFirstChild("Island1")
 	if template and template:IsA("Model") then
 		local under = template:Clone()
 		under.Name = "Underside"
 		local from, size = under:GetBoundingBox()
-		local target = Vector3.new(islandX * 1.35, 60, islandZ * 1.35)
+		local target = Vector3.new(islandX * 1.05, 100, islandZ * 1.05)
 		local k = target / size
-		local to = CFrame.new(islandCenter + Vector3.new(0, -1.05 - target.Y / 2, 0))
+		local to = CFrame.new(islandCenter + Vector3.new(0, -1 - DIRT + 2 - target.Y / 2, 0))
 		for _, d in under:GetDescendants() do
 			if d:IsA("BasePart") then
+				if d.Size.Y < 5 then
+					d:Destroy() -- the grass disc stuck out past the rim as a tilted oval
+					continue
+				end
 				local rel = from:ToObjectSpace(d.CFrame)
 				d.Size *= k
 				d.CFrame = to * CFrame.new(rel.Position * k) * rel.Rotation
 				d.Anchored = true
-				local grass = d.Size.Y < 5
-				d.CanCollide = grass -- the disc reaches past the rim, so it must hold players
+				d.CanCollide = false
 				d.CanTouch = false
-				d.Color = if grass then GRASS else ROCK
+				d.Color = ROCK
+				d.Material = Enum.Material.Rock
 			elseif d:IsA("LuaSourceContainer") then
 				d:Destroy()
 			end
 		end
 		under.Parent = scenery
+	end
+	-- Chunky boulders hanging off the dirt edge so the outline isn't a clean box.
+	local brng = Random.new(42)
+	for i = 1, 18 do
+		local a = i / 18 * math.pi * 2
+		local s = brng:NextNumber(10, 18)
+		local at = islandCenter
+			+ Vector3.new(math.cos(a) * islandX * 0.47, -DIRT - s * 0.4, math.sin(a) * islandZ * 0.47)
+		decoPart(
+			scenery,
+			"Boulder",
+			Vector3.new(s, s * 1.3, s),
+			CFrame.new(at) * CFrame.Angles(brng:NextNumber(-0.4, 0.4), a, brng:NextNumber(-0.4, 0.4)),
+			if i % 3 == 0 then STONE_DARK else Color3.fromRGB(128, 98, 74),
+			Enum.Material.Rock
+		)
 	end
 	-- Trees, bushes and rocks on the rim, outside the buildable grid. Uses the free
 	-- Creator Store models in ServerStorage.SceneryAssets (see CREDITS.md) and
