@@ -19,7 +19,7 @@ local plot = workspace:FindFirstChild("Plots") and workspace.Plots:GetChildren()
 assert(plot, "no plot: start Play once so a plot exists, then pause")
 local cf, size = plot:GetBoundingBox()
 local cam = workspace.CurrentCamera
-cam.CameraType = Enum.CameraType.Scriptable
+cam.CameraType = Enum.CameraType.Fixed
 cam.FieldOfView = 60
 local foot = cf.Position - Vector3.new(0, size.Y / 2, 0)
 cam.CFrame = CFrame.lookAt(

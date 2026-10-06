@@ -96,7 +96,6 @@ local G = Config.GRID_STUDS
 local k = G / 4 -- views were tuned for 4-stud cells
 local center = origin + Vector3.new(Config.PLOT_CELLS_X * G / 2, 30 * k, Config.PLOT_CELLS_Z * G / 2)
 local cam = workspace.CurrentCamera
-cam.CameraType = Enum.CameraType.Scriptable
 cam.FieldOfView = 60
 local views = {
 	front = CFrame.lookAt(center + Vector3.new(-20, 25, -95) * k, center + Vector3.new(0, 5, 0) * k),
