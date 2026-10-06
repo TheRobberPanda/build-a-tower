@@ -13,7 +13,7 @@ PlotBuilder.ALTITUDE = 300
 local GRID_TEXTURE = "rbxassetid://139861751774533" -- assets/ui/grid_cell.png
 
 local G = Config.GRID_STUDS
-local GRASS = Color3.fromRGB(96, 196, 80)
+local GRASS = Color3.fromRGB(128, 196, 84) -- matches the Island2 mesh grass
 
 local function part(
 	parent: Instance,
@@ -292,6 +292,9 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	local hillAt = origin + Vector3.new(sizeX / 2, 0, meshCenterZ + meshSize.Z * 0.25)
 	local assets = game:GetService("ServerStorage"):FindFirstChild("SceneryAssets")
 	local template = assets and assets:FindFirstChild("Island2")
+	local surfaceAt: (number, number) -> number? = function()
+		return nil
+	end
 	local ground: (Vector3) -> Vector3 = function(at)
 		return at
 	end
@@ -329,6 +332,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		if top > -math.huge then
 			m:PivotTo(m:GetPivot() - Vector3.new(0, top - origin.Y + 0.2, 0))
 		end
+		surfaceAt = surface
 		ground = function(at: Vector3): Vector3
 			local y = surface(at.X - origin.X, at.Z - origin.Z)
 			return if y then Vector3.new(at.X, y, at.Z) else at
@@ -433,6 +437,41 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 				rng:NextNumber(spec.scale[1], spec.scale[2]),
 				rng
 			)
+		end
+	end
+	-- Meadow outside the fence: random spots on the island top (not the cliffs
+	-- or the hill) get trees, bushes, rocks, mushrooms, flowers and grass.
+	local outer = {
+		{ names = { "Tree1", "Tree2" }, count = 14, scale = { 0.6, 1 } },
+		{ names = { "Bush1", "Bush2" }, count = 20, scale = { 0.6, 1 } },
+		{ names = { "Rock1", "Rock2" }, count = 10, scale = { 0.3, 0.7 } },
+		{ names = { "Mushroom1" }, count = 10, scale = { 0.3, 0.6 } },
+		{ names = { "Flower1" }, count = 40, scale = { 0.35, 0.5 } },
+		{ names = { "Grass1" }, count = 120, scale = { 0.8, 1.4 } },
+	}
+	local halfX = meshSize.X / 2
+	for _, spec in outer do
+		local placed, tries = 0, 0
+		while placed < spec.count and tries < spec.count * 10 do
+			tries += 1
+			local x = rng:NextNumber(sizeX / 2 - halfX, sizeX / 2 + halfX)
+			local z = rng:NextNumber(meshCenterZ - meshSize.Z / 2, hillAt.Z - origin.Z - 30)
+			local inside = x > -RIM - 2 and x < sizeX + RIM + 2 and z > front - 2 and z < back + 2
+			local y = if inside then nil else surfaceAt(x, z)
+			if y and y > origin.Y - 6 and y < origin.Y + 1 then
+				local at = Vector3.new(origin.X + x, y, origin.Z + z)
+				if
+					prop(
+						scenery,
+						spec.names[rng:NextInteger(1, #spec.names)],
+						at,
+						rng:NextNumber(spec.scale[1], spec.scale[2]),
+						rng
+					)
+				then
+					placed += 1
+				end
+			end
 		end
 	end
 	-- A little wood on the hill behind the plot.
