@@ -9,22 +9,12 @@ local PieceVisuals = {}
 
 local G = Config.GRID_STUDS
 
--- Structural colour shifts with height so a tower reads as a colourful climb.
--- Fake walls and one-way walls use the same colour as blocks at that height.
-local BANDS = {
-	Color3.fromRGB(40, 120, 255), -- blue
-	Color3.fromRGB(255, 140, 30), -- orange
-	Color3.fromRGB(255, 205, 40), -- yellow
-	Color3.fromRGB(60, 200, 90), -- green
-	Color3.fromRGB(235, 60, 75), -- red
-	Color3.fromRGB(150, 80, 240), -- purple
-}
-PieceVisuals.BANDS = BANDS
-
-function PieceVisuals.heightColor(y: number): Color3
-	-- Vivid colour bands, a new colour every 4 rows (matches the core's rings).
-	return BANDS[(y // 4) % #BANDS + 1]
-end
+-- Chunky cartoon looks matching the hotbar icon sheet (assets/ui/piece_icons.png).
+local STONE = Color3.fromRGB(150, 156, 168)
+local BRICK = Color3.fromRGB(138, 144, 156) -- walls, fake walls and one-way walls must match
+local BLUE = Color3.fromRGB(60, 140, 235)
+local WOOD = Color3.fromRGB(176, 110, 62)
+local DARK = Color3.new(0, 0, 0)
 
 local function deco(
 	parent: BasePart,
@@ -92,56 +82,135 @@ local function pole(part: BasePart, flagColor: Color3)
 	deco(part, Vector3.new(0.1, 1.6, 2.4), top * CFrame.new(0, 4.1, 1.25), flagColor, Enum.Material.Fabric)
 end
 
--- name = piece type name; y/r = grid row and rotation; channelColor for linked pieces.
-function PieceVisuals.decorate(part: BasePart, name: string, y: number, r: number, channelColor: Color3?)
-	if name == "Block" or name == "FakeWall" or name == "OneWay" or name == "Wall" then
-		part.Color = PieceVisuals.heightColor(y)
-	elseif name == "Platform" or name == "BigFloor" then
-		part.Color = PieceVisuals.heightColor(y):Lerp(Color3.new(1, 1, 1), 0.25)
-	elseif name == "Ramp" then
-		part.Color = PieceVisuals.heightColor(y):Lerp(Color3.fromRGB(255, 200, 120), 0.35)
-	elseif name == "Crumble" then
-		part.Color = Color3.fromRGB(176, 138, 96)
-	elseif name == "JumpPad" then
-		-- Dark square pad with a glowing yellow frame (like the reference art).
-		part.Color = Color3.fromRGB(70, 74, 86)
-		part.Material = Enum.Material.SmoothPlastic
-		frame(part, Color3.fromRGB(255, 200, 40))
-		sparkles(part, Color3.fromRGB(255, 220, 90), 3)
-	elseif name == "Teleporter" then
-		-- A glowing archway: two posts, a lintel and a translucent portal pane.
-		local color = channelColor or Color3.fromRGB(170, 85, 255)
-		part.Color = Color3.fromRGB(60, 50, 80)
-		part.Material = Enum.Material.SmoothPlastic
-		part.Size = Vector3.new(part.Size.X, 0.6, part.Size.Z)
-		part.CFrame -= Vector3.new(0, (G - 0.6) / 2, 0)
-		local base = part.CFrame
-		local h = G - 0.6
-		for _, side in { -1, 1 } do
-			deco(
-				part,
-				Vector3.new(0.6, h, 0.6),
-				base * CFrame.new(side * (G / 2 - 0.5), 0.3 + h / 2, 0),
-				color:Lerp(Color3.new(1, 1, 1), 0.2)
-			)
+-- Darker strips on all 12 edges: the bevel and outline of the icon art. They fade
+-- with the piece (crumble, day/night ghosts).
+-- ponytail: 12 extra parts per bevelled piece; swap to a bevelled MeshPart if part count hurts.
+local function bevel(part: BasePart)
+	local s = part.Size
+	local t = 0.5
+	local color = part.Color:Lerp(DARK, 0.45)
+	local strips: { BasePart } = {}
+	for axis = 1, 3 do
+		for _, a in { -1, 1 } do
+			for _, b in { -1, 1 } do
+				local size, offset
+				if axis == 1 then
+					size = Vector3.new(s.X + 0.06, t, t)
+					offset = Vector3.new(0, a * (s.Y - t) / 2 + a * 0.03, b * (s.Z - t) / 2 + b * 0.03)
+				elseif axis == 2 then
+					size = Vector3.new(t, s.Y + 0.06, t)
+					offset = Vector3.new(a * (s.X - t) / 2 + a * 0.03, 0, b * (s.Z - t) / 2 + b * 0.03)
+				else
+					size = Vector3.new(t, t, s.Z + 0.06)
+					offset = Vector3.new(a * (s.X - t) / 2 + a * 0.03, b * (s.Y - t) / 2 + b * 0.03, 0)
+				end
+				local strip = deco(part, size, part.CFrame * CFrame.new(offset), color)
+				strip.Name = "Bevel"
+				table.insert(strips, strip)
+			end
 		end
+	end
+	part:GetPropertyChangedSignal("Transparency"):Connect(function()
+		for _, strip in strips do
+			strip.Transparency = part.Transparency
+		end
+	end)
+end
+
+-- A flat arrowhead (two bars) lying in `cf`'s XZ plane, pointing toward -Z.
+local function chevron(part: BasePart, cf: CFrame, color: Color3, scale: number)
+	for _, side in { -1, 1 } do
 		deco(
 			part,
-			Vector3.new(G - 0.4, 0.6, 0.6),
-			base * CFrame.new(0, 0.3 + h - 0.3, 0),
-			color:Lerp(Color3.new(1, 1, 1), 0.2)
-		)
-		local pane = deco(
-			part,
-			Vector3.new(G - 1.6, h - 0.6, 0.2),
-			base * CFrame.new(0, 0.3 + (h - 0.6) / 2, 0),
+			Vector3.new(0.4, 0.15, 1.6) * Vector3.new(scale, 1, scale),
+			cf * CFrame.new(side * 0.55 * scale, 0, 0.55 * scale) * CFrame.Angles(0, side * math.rad(45), 0),
 			color,
 			Enum.Material.Neon
 		)
-		pane.Transparency = 0.35
+	end
+end
+
+local function disc(
+	part: BasePart,
+	diameter: number,
+	height: number,
+	cf: CFrame,
+	color: Color3,
+	material: Enum.Material?
+): Part
+	local p = deco(
+		part,
+		Vector3.new(height, diameter, diameter),
+		cf * CFrame.Angles(0, 0, math.pi / 2),
+		color,
+		material
+	)
+	p.Shape = Enum.PartType.Cylinder
+	return p
+end
+
+-- name = piece type name; r = rotation; channelColor for linked pieces.
+function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: number, channelColor: Color3?)
+	local top = part.CFrame * CFrame.new(0, part.Size.Y / 2, 0)
+	if name == "Block" then
+		part.Color = STONE
+		bevel(part)
+	elseif name == "Wall" or name == "FakeWall" or name == "OneWay" then
+		part.Color = BRICK
+		part.Material = Enum.Material.Brick -- the tower material cosmetic may override it
+		bevel(part)
+	elseif name == "Platform" then
+		part.Color = BLUE
+		bevel(part)
+	elseif name == "BigFloor" then
+		part.Color = Color3.fromRGB(120, 190, 240)
+		bevel(part)
+		-- 3x3 tile grooves on top
+		local line = part.Color:Lerp(DARK, 0.3)
+		for _, k in { -1, 1 } do
+			deco(part, Vector3.new(0.2, 0.06, part.Size.Z), top * CFrame.new(k * part.Size.X / 6, 0, 0), line)
+			deco(part, Vector3.new(part.Size.X, 0.06, 0.2), top * CFrame.new(0, 0, k * part.Size.Z / 6), line)
+		end
+	elseif name == "Ramp" then
+		part.Color = WOOD
+		part.Material = Enum.Material.WoodPlanks
+	elseif name == "Crumble" then
+		part.Color = Color3.fromRGB(205, 165, 105)
+		part.Material = Enum.Material.Sandstone
+		bevel(part)
+		local crack = Color3.fromRGB(110, 80, 45)
+		deco(part, Vector3.new(0.18, 0.06, part.Size.Z * 0.8), top * CFrame.Angles(0, 0.3, 0), crack)
+		deco(part, Vector3.new(part.Size.X * 0.7, 0.06, 0.18), top * CFrame.Angles(0, -0.2, 0), crack)
+	elseif name == "JumpPad" then
+		-- Grey base, glowing orange top plate with an arrow.
+		part.Color = Color3.fromRGB(110, 115, 128)
+		part.Material = Enum.Material.Metal
+		local plate = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.1, 0)
+		deco(
+			part,
+			Vector3.new(part.Size.X - 0.5, 0.2, part.Size.Z - 0.5),
+			plate,
+			Color3.fromRGB(255, 160, 20),
+			Enum.Material.Neon
+		)
+		chevron(part, plate * CFrame.new(0, 0.1, -0.2), Color3.fromRGB(255, 240, 200), 1)
+		sparkles(part, Color3.fromRGB(255, 200, 90), 3)
+	elseif name == "Teleporter" then
+		-- Purple pad with a glowing swirl disc and a faint light column.
+		local color = channelColor or Color3.fromRGB(170, 85, 255)
+		part.Color = color:Lerp(DARK, 0.5)
+		part.Material = Enum.Material.SmoothPlastic
+		part.Size = Vector3.new(part.Size.X, 0.6, part.Size.Z)
+		part.CFrame -= Vector3.new(0, (G - 0.6) / 2, 0)
+		local pad = part.CFrame * CFrame.new(0, 0.35, 0)
+		disc(part, G - 0.8, 0.12, pad, color, Enum.Material.Neon)
+		disc(part, G - 2, 0.14, pad, color:Lerp(Color3.new(1, 1, 1), 0.5), Enum.Material.Neon)
+		disc(part, G - 3, 0.16, pad, color, Enum.Material.Neon)
+		disc(part, G - 1, G - 0.6, pad * CFrame.new(0, (G - 0.6) / 2, 0), color, Enum.Material.Neon).Transparency =
+			0.85
 		sparkles(part, color, 8)
 	elseif name == "Finish" then
-		-- Glowing green pad with a light beam, like the top of the thumbnail tower.
+		-- Glowing green pad, light beam and a big green flag.
 		part.Color = Color3.fromRGB(40, 60, 50)
 		part.Material = Enum.Material.SmoothPlastic
 		frame(part, Color3.fromRGB(60, 255, 120))
@@ -153,12 +222,12 @@ function PieceVisuals.decorate(part: BasePart, name: string, y: number, r: numbe
 			Enum.Material.Neon
 		)
 		beam.Transparency = 0.82
-		pole(part, Color3.fromRGB(255, 255, 255))
+		pole(part, Color3.fromRGB(60, 200, 80))
 		sparkles(part, Color3.fromRGB(120, 255, 160), 8)
 	elseif name == "Checkpoint" then
 		pole(part, Color3.fromRGB(0, 210, 220))
 	elseif name == "Conveyor" then
-		-- Side rails along the belt direction (rotation 0/2 runs along Z, 1/3 along X).
+		-- Dark belt, yellow side rails, glowing chevrons pointing the way it carries you.
 		local alongX = r % 2 == 1
 		for _, side in { -1, 1 } do
 			local offset = if alongX
@@ -169,15 +238,78 @@ function PieceVisuals.decorate(part: BasePart, name: string, y: number, r: numbe
 				else Vector3.new(0.4, 0.6, part.Size.Z)
 			deco(part, size, part.CFrame * offset, Color3.fromRGB(255, 200, 40), Enum.Material.Metal)
 		end
+		local facing = CFrame.new(top.Position + Vector3.new(0, 0.05, 0))
+			* CFrame.Angles(0, r * math.pi / 2, 0)
+		for _, z in { -2.2, 0, 2.2 } do
+			chevron(part, facing * CFrame.new(0, 0, z), Color3.fromRGB(255, 200, 40), 1)
+		end
 	elseif name == "Button" then
-		local base = part.CFrame * CFrame.new(0, -part.Size.Y / 2 - 0.1, 0)
+		local base = part.CFrame * CFrame.new(0, -part.Size.Y / 2 + 0.15, 0)
+		disc(part, part.Size.X + 1.2, 0.3, base, Color3.fromRGB(140, 145, 155), Enum.Material.Metal)
+		disc(part, part.Size.X + 0.2, part.Size.Y, part.CFrame, part.Color, Enum.Material.Neon)
+		part.Transparency = 1 -- the round cap shows instead of the square hitbox
+	elseif name == "Door" then
+		-- Wooden door in a frame of its channel colour (the frame stays when it opens).
+		local color = channelColor or part.Color
+		part.Color = WOOD
+		local s = part.Size
+		for _, side in { -1, 1 } do
+			deco(
+				part,
+				Vector3.new(0.5, s.Y + 0.2, s.Z + 0.3),
+				part.CFrame * CFrame.new(side * (s.X / 2 + 0.1), 0.1, 0),
+				color
+			)
+		end
 		deco(
 			part,
-			Vector3.new(part.Size.X + 1, 0.3, part.Size.Z + 1),
-			base,
-			Color3.fromRGB(90, 90, 100),
+			Vector3.new(s.X + 0.7, 0.5, s.Z + 0.3),
+			part.CFrame * CFrame.new(0, s.Y / 2 + 0.2, 0),
+			color
+		)
+	elseif name == "Plant" then
+		deco(
+			part,
+			Vector3.new(G - 0.4, 0.4, G - 0.4),
+			part.CFrame * CFrame.new(0, -G / 2 + 0.2, 0),
+			Color3.fromRGB(80, 140, 60)
+		)
+	elseif name == "Lamp" then
+		-- Grey post with a glowing lantern on top.
+		part.Color = Color3.fromRGB(120, 125, 135)
+		part.Material = Enum.Material.Metal
+		local head = part.CFrame * CFrame.new(0, part.Size.Y / 2 - 0.9, 0)
+		deco(part, Vector3.new(1.4, 1.4, 1.4), head, Color3.fromRGB(255, 200, 110), Enum.Material.Neon)
+		deco(
+			part,
+			Vector3.new(1.8, 0.3, 1.8),
+			head * CFrame.new(0, 0.85, 0),
+			Color3.fromRGB(90, 95, 105),
 			Enum.Material.Metal
 		)
+	elseif name == "Flag" then
+		-- White pole down the cloth's edge to the ground.
+		local h = part.Size.Y * 2
+		deco(
+			part,
+			Vector3.new(0.3, h, 0.3),
+			part.CFrame * CFrame.new(-part.Size.X / 2 - 0.15, part.Size.Y / 2 - h / 2, 0),
+			Color3.fromRGB(235, 235, 240),
+			Enum.Material.Metal
+		)
+	elseif name == "Pumpkin" then
+		deco(
+			part,
+			Vector3.new(0.4, 0.8, 0.4),
+			part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.2, 0),
+			Color3.fromRGB(110, 75, 35)
+		)
+	elseif name == "SunBlock" then
+		part.Color = Color3.fromRGB(255, 195, 40)
+		bevel(part)
+	elseif name == "MoonBlock" then
+		part.Color = Color3.fromRGB(50, 80, 200)
+		bevel(part)
 	end
 end
 

@@ -11,5 +11,6 @@ Rule: paid calls pre-approved by Paulo (2026-10-05); log every charge, never exc
 | 2026-10-05 | Store icon variant B (secret wall) → marketing/raw/icon_b.png | google/gemini-3.1-flash-image | $0.07 |
 | 2026-10-05 | Game pass + Bricks icons (3) → marketing/raw/pass_*.png, bricks.png | google/gemini-3.1-flash-image | $0.20 |
 | 2026-10-05 | Badge icon sheet (11 badges) → marketing/raw/badge_sheet.png | google/gemini-3.1-flash-image | $0.07 |
+| 2026-10-06 | Piece icons 9-25 (3 calls) → assets/ui/piece_icons.png | google/gemini-3.1-flash-image | $0.20 |
 
-**Spent: $0.52 · Remaining: $9.48**
+**Spent: $0.72 · Remaining: $9.28**

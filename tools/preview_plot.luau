@@ -4,6 +4,7 @@
 -- workspace.Preview:Destroy() (tools/preview_cleanup).
 local VIEW = VIEW or "front"
 local SHOWCASE = SHOWCASE
+local ALL = ALL -- true: one of every piece type in a grid (VIEW is ignored)
 local cache = {}
 local function load(module)
 	if cache[module] ~= nil then
@@ -72,6 +73,16 @@ if SHOWCASE then
 		P(15, 15, 0, 15),
 	}
 end
+if ALL then
+	pieces = {}
+	for i = 0, 24 do
+		local p = if i + 1 == 4
+			then { power = 2 }
+			elseif i + 1 == 5 or i + 1 == 12 or i + 1 == 13 or i + 1 == 17 then { ch = 1 }
+			else nil
+		table.insert(pieces, { t = i + 1, x = 1 + i % 5 * 3, y = 0, z = 1 + i // 5 * 4, r = 0, p = p })
+	end
+end
 local folder = Instance.new("Folder")
 folder.Name = "Pieces"
 local made = 0
@@ -103,5 +114,7 @@ local views = {
 	top = CFrame.lookAt(center + Vector3.new(0, 140, -60) * k, center - Vector3.new(0, 30, 0) * k),
 	close = CFrame.lookAt(center + Vector3.new(-14, -16, -40) * k, center + Vector3.new(0, -20, 0) * k),
 }
-cam.CFrame = views[VIEW]
+cam.CFrame = if ALL
+	then CFrame.lookAt(origin + Vector3.new(8, 9, -6) * G, origin + Vector3.new(8, 0, 9) * G)
+	else views[VIEW]
 return string.format("preview built: %d/%d pieces, view %s", made, #pieces, VIEW)
