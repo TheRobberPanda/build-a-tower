@@ -8,7 +8,7 @@ Round-based party game for 6 players. The home place is the player's own island
 1. Matchmaking: MemoryStore queue in the home place; 6 players teleport to a reserved server of the round place.
 2. Build + verify, one shared 5:00 clock: build, then climb your own tower. You can go back to building after a failed climb. If the clock runs out before you reach your top, your tower is invalid and you are out of the race (you lose).
 3. Race: valid towers are played in order. All players run the same copy with no collision between players and see each other as ghosts. Time limit 2:30 (Config.RACE_SECONDS, about half the build clock). The first player to reach the top wins. If nobody reaches it, everyone loses and the builder wins.
-4. Replay and vote: the winner's run is replayed (server-recorded path, PathCodec). The others rate the tower 1-5 stars and can donate coins or gift a Medal to the builder.
+4. Replay and vote: the builder's own verify climb from the build phase is replayed (server-recorded path, PathCodec; RunTimerService already saves it on verify), not the race winner's run. So a builder can hide a secret route, but then must verify by another route: climbing through the secret shows it to everyone. The others rate the tower 1-5 stars and can donate coins or gift a Medal to the builder.
 5. Save: winning towers are saved automatically and feed "Most popular" (ranked by stars). Invalid towers are discarded.
 
 **Economy**
@@ -22,7 +22,7 @@ Round-based party game for 6 players. The home place is the player's own island
 | R1 | Round place + RoundService state machine (Lobby, Build, Race xN, Replay/Vote, Results), slots for 6 towers | PlotService, TowerService, RunTimerService |
 | R2 | Matchmaking queue + teleport, home island stays as is | MemoryStore, TeleportService |
 | R3 | Race: shared tower copy, players don't collide, ghosts, 2:30 limit, builder wins if nobody finishes | LiveRaceService, AntiCheat |
-| R4 | Winner replay + 1-5 star vote, auto-save winning towers, Most popular list | PathCodec, PublishedStore |
+| R4 | Builder's verify-climb replay + 1-5 star vote, auto-save winning towers, Most popular list | PathCodec, PublishedStore |
 | R5 | Coins: donations, piece shop | ProgressionService (Bricks becomes Coins) |
 | R6 | Medals: random drops, rarities, trade-in for coins, gifting. Replaces Roblox badges in Badges.luau | DataService (schema bump) |
 | R7 | Pass: special pieces gated behind the Game Pass | MonetizationService |

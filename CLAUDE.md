@@ -3,7 +3,7 @@
 Round-based party game (see ROADMAP.md "Core concept"): 6 matchmade players share a
 5:00 clock to build a tower and climb it themselves (unclimbed = invalid, out of the round).
 Then everyone races each valid tower (2:30, ghosts, no collision). First to the top wins,
-and if nobody gets there the builder wins. After the race: winner replay, 1-5 star vote,
+and if nobody gets there the builder wins. After the race: replay of the builder's own verify climb (so using a secret to verify reveals it), 1-5 star vote,
 coin donations, Medal gifts. Winning towers are saved. Players also have a home island
 for free building. Secrets (fake walls, invisible platforms, jump
 pads, teleporters) are core: anyone who finds them may use them.
