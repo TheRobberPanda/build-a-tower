@@ -14,5 +14,6 @@ Rule: paid calls pre-approved by Paulo (2026-10-05); log every charge, never exc
 | 2026-10-06 | Piece icons 9-25 (3 calls) → assets/ui/piece_icons.png | google/gemini-3.1-flash-image | $0.20 |
 | 2026-10-06 | Piece face textures (1 sheet, 9 tiles) → assets/textures/*.png | google/gemini-3.1-flash-image | $0.07 |
 | 2026-10-06 | Code review of RoundService | deepseek/deepseek-v4-pro:nitro | $0.02 |
+| 2026-10-06 | Review of round-mode server diff | deepseek/deepseek-v4-pro:nitro | $0.03 |
 
-**Spent: $0.81 · Remaining: $9.19**
+**Spent: $0.84 · Remaining: $9.16**
