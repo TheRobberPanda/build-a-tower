@@ -13,16 +13,22 @@ local TutorialController = {}
 local player = Players.LocalPlayer
 
 local PAGES = {
-	{ "Build", "Pick a piece from the bar at the bottom and tap the grid to place it. Build upwards!" },
+	{
+		"5 minutes",
+		"Every round, everyone builds a tower on the same clock. Pick a piece from the bar and tap the grid. Build upwards!",
+	},
+	{
+		"Climb it",
+		"Put a Finish on top and press Test Run. If you don't reach your own top before time runs out, you're out.",
+	},
+	{
+		"Race",
+		"Then everyone races each tower. First to the top wins. If nobody makes it, the builder wins!",
+	},
 	{
 		"Hide secrets",
-		"Fake walls, invisible platforms, teleporters and hidden doors. Anyone who finds a secret may use it.",
+		"Fake walls, invisible platforms, teleporters. But careful: your climb is replayed to everyone after the race.",
 	},
-	{
-		"Prove it",
-		"Add a Finish on top and press Test Run. Climb your own tower to unlock Menu → Publish.",
-	},
-	{ "Race", "Menu → Browse to race other towers, beat the record ghost, or press Live to race friends." },
 }
 
 local panel: Frame
