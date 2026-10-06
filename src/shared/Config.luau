@@ -73,11 +73,11 @@ local Config = {
 		WallWalker = 4295287596393535, -- went through a fake wall in a race
 		GhostStep = 3145026699510500, -- stood on an invisible platform
 		PortalHopper = 4196301637642163, -- used a teleporter
-		Launched = 0, -- used a jump pad
-		Doorman = 0, -- opened a door with a button
-		SecretHunter = 0, -- 10 secrets found in total
-		RecordHolder = 0, -- best time on any tower
-		FeaturedPodium = 0, -- top 3 on the weekly featured tower
+		Launched = 1993541554624605, -- used a jump pad
+		Doorman = 4380317943630227, -- opened a door with a button
+		SecretHunter = 20121175002839, -- 10 secrets found in total
+		RecordHolder = 1990899061187345, -- best time on any tower
+		FeaturedPodium = 3418646324776591, -- top 3 on the weekly featured tower
 		ContestWinner = 0, -- top 3 in a build contest
 	}),
 	SECRET_BADGES = table.freeze({
