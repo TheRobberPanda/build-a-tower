@@ -1,5 +1,38 @@
 # Build a Tower — full game feature plan
 
+## Core concept (Paulo, 2026-10-06) — supersedes the plot/publish loop below
+Round-based party game for 6 players. The home place is the player's own island
+(free building, same as today). From there they queue for a round.
+
+**Round flow**
+1. Matchmaking: MemoryStore queue in the home place; 6 players teleport to a reserved server of the round place.
+2. Build + verify, one shared 5:00 clock: build, then climb your own tower. You can go back to building after a failed climb. If the clock runs out before you reach your top, your tower is invalid and you are out of the race (you lose).
+3. Race: valid towers are played in order. All players run the same copy with no collision between players and see each other as ghosts. Time limit 2:30 (Config.RACE_SECONDS, about half the build clock). The first player to reach the top wins. If nobody reaches it, everyone loses and the builder wins.
+4. Replay and vote: the winner's run is replayed (server-recorded path, PathCodec). The others rate the tower 1-5 stars and can donate coins or gift a Medal to the builder.
+5. Save: winning towers are saved automatically and feed "Most popular" (ranked by stars). Invalid towers are discarded.
+
+**Economy**
+- Medals (not Roblox badges): random drops while playing, with rarities. Trade them in for coins.
+- Coins: buy more pieces, donate to builders.
+- Pass: one-time Game Pass that unlocks special pieces (portals, jump pads and similar).
+
+## Round-mode milestones (build in order)
+| # | Feature | Reuses |
+|---|---|---|
+| R1 | Round place + RoundService state machine (Lobby, Build, Race xN, Replay/Vote, Results), slots for 6 towers | PlotService, TowerService, RunTimerService |
+| R2 | Matchmaking queue + teleport, home island stays as is | MemoryStore, TeleportService |
+| R3 | Race: shared tower copy, players don't collide, ghosts, 2:30 limit, builder wins if nobody finishes | LiveRaceService, AntiCheat |
+| R4 | Winner replay + 1-5 star vote, auto-save winning towers, Most popular list | PathCodec, PublishedStore |
+| R5 | Coins: donations, piece shop | ProgressionService (Bricks becomes Coins) |
+| R6 | Medals: random drops, rarities, trade-in for coins, gifting. Replaces Roblox badges in Badges.luau | DataService (schema bump) |
+| R7 | Pass: special pieces gated behind the Game Pass | MonetizationService |
+
+Open: "winning towers" is read as towers whose round produced a winner (any valid raced tower). Confirm.
+
+---
+
+## Legacy plan (built; parts get reworked by R1-R7)
+
 V1 (see RELEASE.md) ships the core loop: build → verify by climbing → publish → others race.
 Everything below comes after V1 and stays out of the codebase until V1 is public.
 Each milestone is shippable on its own. Sizes: S ≈ 1 day, M ≈ 2–4 days, L ≈ 1–2 weeks.
