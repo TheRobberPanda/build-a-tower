@@ -271,6 +271,7 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 		or def.name == "Conveyor"
 		or def.name == "OneWay"
 		or def.name == "Button"
+		or def.name == "Door"
 		or def.name == "SunBlock"
 		or def.name == "MoonBlock"
 		or def.name == "Lamp"

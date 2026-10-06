@@ -81,9 +81,93 @@ local function onSecret(inst: Instance, color: Color3)
 	e.EmissionDirection = Enum.NormalId.Top
 	e.Rate = 4
 	e.Parent = inst
+	-- A glowing outline so the builder always knows which piece is the secret.
+	local box = Instance.new("SelectionBox")
+	box.Adornee = inst
+	box.Color3 = color
+	box.LineThickness = 0.08
+	box.SurfaceTransparency = 0.85
+	box.SurfaceColor3 = color
+	box.Parent = inst
+	if inst.Name == "FakeWall" then
+		inst.LocalTransparencyModifier = 0.45 -- see-through for the builder only
+		for _, c in inst:GetChildren() do
+			if c:IsA("Decal") then
+				c.LocalTransparencyModifier = 0.45
+			end
+		end
+	end
+end
+
+-- Stacked pieces with outline gaps read as ladder rungs to Roblox's auto-climb,
+-- letting players scale any wall. Towers have stairs and ramps; no climbing.
+local function noClimb(character: Model)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if humanoid and humanoid:IsA("Humanoid") then
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+	end
+end
+
+-- Cables from each button to the doors it opens (same channel, same tower).
+local rewirePending: { [Instance]: boolean } = {}
+local function rewire(folder: Instance)
+	rewirePending[folder] = nil
+	for _, c in folder:GetDescendants() do
+		if c.Name == "Cable" then
+			c:Destroy()
+		end
+	end
+	for _, button in folder:GetChildren() do
+		if not (button:IsA("BasePart") and button.Name == "Button") then
+			continue
+		end
+		for _, door in folder:GetChildren() do
+			if
+				door:IsA("BasePart")
+				and door.Name == "Door"
+				and door:GetAttribute("ch") == button:GetAttribute("ch")
+			then
+				local a0 = Instance.new("Attachment")
+				a0.Name = "Cable"
+				a0.Parent = button
+				local a1 = Instance.new("Attachment")
+				a1.Name = "Cable"
+				a1.Position = Vector3.new(0, -door.Size.Y / 2 + 0.3, 0)
+				a1.Parent = door
+				local beam = Instance.new("Beam")
+				beam.Name = "Cable"
+				beam.Attachment0 = a0
+				beam.Attachment1 = a1
+				beam.Color = ColorSequence.new(button.Color)
+				beam.LightEmission = 0.6
+				beam.Width0 = 0.25
+				beam.Width1 = 0.25
+				beam.FaceCamera = true
+				beam.Parent = button
+			end
+		end
+	end
+end
+local function wireLater(inst: Instance)
+	local folder = inst.Parent
+	if folder and not rewirePending[folder] then
+		rewirePending[folder] = true
+		task.delay(0.2, rewire, folder) -- a tower arrives part by part; wire once
+	end
 end
 
 function MechanicsController.start()
+	for _, tag in { "Button", "Door" } do
+		CollectionService:GetInstanceAddedSignal(tag):Connect(wireLater)
+		CollectionService:GetInstanceRemovedSignal(tag):Connect(wireLater)
+		for _, inst in CollectionService:GetTagged(tag) do
+			wireLater(inst)
+		end
+	end
+	player.CharacterAdded:Connect(noClimb)
+	if player.Character then
+		task.spawn(noClimb, player.Character)
+	end
 	for tag, color in SECRET_FX do
 		for _, inst in CollectionService:GetTagged(tag) do
 			onSecret(inst, color)

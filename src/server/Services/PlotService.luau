@@ -185,6 +185,9 @@ function PlotService.render(player: Player, pieces: { Piece }, mat: string?)
 			glow.Size = part.Size + Vector3.one * 0.3
 			glow.CFrame = part.CFrame
 			glow.Parent = part
+			if d >= Config.COLLAPSE_HOPS then
+				PieceVisuals.tremble(part, Config.COLLAPSE_DELAY) -- TowerService drops it then
+			end
 		end
 	end
 end

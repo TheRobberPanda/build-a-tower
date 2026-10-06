@@ -44,12 +44,14 @@ return function()
 				p(1, x + 1, 1, z), -- one hop out
 				p(1, x + 2, 1, z), -- two hops out
 				p(1, x, 5, z), -- floating
+				p(16, x, 9, z), -- floating lamp: decor never collapses
 			})
 			expect(d[1]).to.equal(0)
 			expect(d[2]).to.equal(0)
 			expect(d[3]).to.equal(1)
 			expect(d[4]).to.equal(2)
 			expect(d[5]).to.equal(math.huge)
+			expect(d[6]).to.equal(0)
 		end)
 		it("validates props and fills defaults", function()
 			expect(TowerCodec.validatePiece(p(4, 0, 0, 0, 0, { power = 9 }))).never.to.be.ok()

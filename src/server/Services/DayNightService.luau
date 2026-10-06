@@ -1,7 +1,7 @@
 --!strict
 -- Day/night cycle. The server drives Lighting.ClockTime (it replicates) and
 -- flips the tagged pieces when day turns to night: SunBlocks are solid by day,
--- MoonBlocks at night, Lamps light up at night.
+-- MoonBlocks at night, Lamps light up and invisible platforms shimmer at night.
 
 local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
@@ -16,7 +16,10 @@ function DayNightService.isDay(clock: number): boolean
 end
 
 local function apply(inst: Instance, day: boolean)
-	if inst:IsA("BasePart") and inst.Name ~= "Lamp" then
+	if inst:IsA("BasePart") and inst.Name == "InvisiblePlatform" then
+		inst.Transparency = if day then 1 else 0.85 -- a faint shimmer at night is the only hint
+		inst.Material = Enum.Material.Neon
+	elseif inst:IsA("BasePart") and inst.Name ~= "Lamp" then
 		local solid = (inst.Name == "SunBlock") == day
 		inst.CanCollide = solid
 		inst.Transparency = if solid then 0 else 0.8
@@ -30,7 +33,7 @@ end
 
 function DayNightService.init()
 	local day = DayNightService.isDay(Lighting.ClockTime)
-	for _, tag in { "SunBlock", "MoonBlock", "Lamp" } do
+	for _, tag in { "SunBlock", "MoonBlock", "Lamp", "InvisiblePlatform" } do
 		for _, inst in CollectionService:GetTagged(tag) do
 			apply(inst, day)
 		end
@@ -43,7 +46,7 @@ function DayNightService.init()
 		local now = DayNightService.isDay(Lighting.ClockTime)
 		if now ~= day then
 			day = now
-			for _, tag in { "SunBlock", "MoonBlock", "Lamp" } do
+			for _, tag in { "SunBlock", "MoonBlock", "Lamp", "InvisiblePlatform" } do
 				for _, inst in CollectionService:GetTagged(tag) do
 					apply(inst, day)
 				end

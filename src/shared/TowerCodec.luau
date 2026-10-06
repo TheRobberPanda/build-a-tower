@@ -132,7 +132,7 @@ export type PlaceState = {
 -- budget defaults to the largest any player can have (used when loading stored towers).
 -- Structural support per piece: 0 = stands on the ground or the tower frame (or on
 -- a chain of pieces that does), +1 per sideways hop away from such a chain.
--- math.huge = floating. Decorations neither need nor give support. Visual only.
+-- math.huge = floating. Decorations neither need nor give support (always 0). Visual only.
 function TowerCodec.support(pieces: { Piece }): { number }
 	local owner: { [number]: number } = {}
 	for i, piece in pieces do
@@ -148,6 +148,7 @@ function TowerCodec.support(pieces: { Piece }): { number }
 		dist[i] = math.huge
 		edges[i] = {}
 		if PieceDefs.byId[piece.t].decor then
+			dist[i] = 0 -- never glows or collapses
 			continue
 		end
 		local sx, sy, sz = TowerCodec.extent(piece)

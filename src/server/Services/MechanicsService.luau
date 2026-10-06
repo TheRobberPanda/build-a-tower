@@ -120,6 +120,7 @@ local function onCrumble(part: BasePart)
 			return
 		end
 		busy = true
+		PieceVisuals.tremble(part, Config.CRUMBLE_DELAY)
 		task.delay(Config.CRUMBLE_DELAY, function()
 			if not part.Parent then
 				return
@@ -150,6 +151,15 @@ local function setDoors(folder: Instance, ch: any, open: boolean)
 	end
 end
 
+-- The round cap (decoration) sinks while the button holds its doors open.
+local function pressCap(part: BasePart, down: boolean)
+	for _, c in part:GetChildren() do
+		if c:IsA("BasePart") and c.Material == Enum.Material.Neon then
+			c.CFrame += Vector3.new(0, if down then -0.25 else 0.25, 0)
+		end
+	end
+end
+
 local function onButton(part: BasePart)
 	part.Touched:Connect(function(hit)
 		local folder = part.Parent
@@ -161,6 +171,7 @@ local function onButton(part: BasePart)
 		local untilTime = os.clock() + Config.DOOR_OPEN_SECONDS
 		if not openUntil[part] then
 			Sounds.play("Door", part) -- only when the doors actually open
+			pressCap(part, true)
 		end
 		openUntil[part] = untilTime
 		setDoors(folder, ch, true)
@@ -169,6 +180,7 @@ local function onButton(part: BasePart)
 				openUntil[part] = nil
 				if part.Parent then
 					setDoors(folder, ch, false)
+					pressCap(part, false)
 				end
 			end
 		end)

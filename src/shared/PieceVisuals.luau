@@ -163,6 +163,40 @@ function PieceVisuals.shatter(part: BasePart)
 	end
 end
 
+-- Shakes a part (and its decoration) sideways for `seconds`, harder toward the
+-- end: the warning before a crumble or collapse. Restores the original spot.
+function PieceVisuals.tremble(part: BasePart, seconds: number)
+	if part:GetAttribute("Trembling") then
+		return
+	end
+	part:SetAttribute("Trembling", true)
+	local parts: { BasePart } = { part }
+	for _, d in part:GetDescendants() do
+		if d:IsA("BasePart") then
+			table.insert(parts, d)
+		end
+	end
+	local base: { CFrame } = {}
+	for i, p in parts do
+		base[i] = p.CFrame
+	end
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < seconds and part.Parent do
+			local k = 0.1 + 0.25 * (os.clock() - t0) / seconds
+			local off = Vector3.new(math.random() - 0.5, 0, math.random() - 0.5) * k
+			for i, p in parts do
+				p.CFrame = base[i] + off
+			end
+			task.wait(0.05)
+		end
+		for i, p in parts do
+			p.CFrame = base[i]
+		end
+		part:SetAttribute("Trembling", nil)
+	end)
+end
+
 -- Bits falling off the bottom, like the crumble icon's debris.
 local function debris(part: BasePart)
 	local e = Instance.new("ParticleEmitter")
@@ -252,14 +286,30 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		part.Color = Color3.fromRGB(190, 195, 205)
 		part.Material = Enum.Material.Metal
 		local plate = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.15, 0)
-		deco(
-			part,
-			Vector3.new(part.Size.X - 0.8, 0.3, part.Size.Z - 0.8),
-			plate,
-			Color3.fromRGB(255, 140, 20)
-		)
+		local cushion = Color3.fromRGB(255, 140, 20)
+		local w = part.Size.X - 1.4
+		deco(part, Vector3.new(w, 0.5, w), plate, cushion)
+		-- Rounded edges and corners: cylinders along each side, balls in the corners.
+		for _, side in { -1, 1 } do
+			for _, turn in { 0, math.pi / 2 } do
+				local edge = deco(
+					part,
+					Vector3.new(w, 0.6, 0.6),
+					plate * CFrame.Angles(0, turn, 0) * CFrame.new(0, 0, side * w / 2),
+					cushion
+				)
+				edge.Shape = Enum.PartType.Cylinder
+				local ball = deco(
+					part,
+					Vector3.one * 0.6,
+					plate * CFrame.Angles(0, turn, 0) * CFrame.new(side * w / 2, 0, side * w / 2),
+					cushion
+				)
+				ball.Shape = Enum.PartType.Ball
+			end
+		end
 		local arrow = Color3.fromRGB(255, 240, 200)
-		local up = plate * CFrame.new(0, 0.16, 0) * CFrame.Angles(0, math.pi, 0)
+		local up = plate * CFrame.new(0, 0.3, 0) * CFrame.Angles(0, math.pi, 0)
 		chevron(part, up * CFrame.new(0, 0, -0.6), arrow, 1.3)
 		deco(part, Vector3.new(0.7, 0.15, 2.2), up * CFrame.new(0, 0, 0.8), arrow, Enum.Material.Neon)
 		sparkles(part, Color3.fromRGB(255, 200, 90), 3)
@@ -271,9 +321,31 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		part.Size = Vector3.new(part.Size.X, 0.6, part.Size.Z)
 		part.CFrame -= Vector3.new(0, (G - 0.6) / 2, 0)
 		local pad = part.CFrame * CFrame.new(0, 0.35, 0)
-		disc(part, G - 0.8, 0.12, pad, color, Enum.Material.Neon)
-		disc(part, G - 2, 0.14, pad, color:Lerp(Color3.new(1, 1, 1), 0.5), Enum.Material.Neon)
-		disc(part, G - 3, 0.16, pad, color, Enum.Material.Neon)
+		-- Gradient rings (dark rim -> white core) with three spiral arms on top, like the icon.
+		for i = 0, 3 do
+			disc(
+				part,
+				(G - 0.8) * (1 - i * 0.22),
+				0.1 + i * 0.03,
+				pad,
+				color:Lerp(Color3.new(1, 1, 1), i * 0.22),
+				Enum.Material.SmoothPlastic -- flat rings so the neon arms read as a swirl
+			)
+		end
+		local white = color:Lerp(Color3.new(1, 1, 1), 0.7)
+		for arm = 0, 2 do
+			for k = 1, 6 do
+				local a = arm * math.pi * 2 / 3 + k * 0.45
+				local rad = 0.25 + k * 0.28
+				deco(
+					part,
+					Vector3.new(0.18, 0.08, 0.7),
+					pad * CFrame.new(math.cos(a) * rad, 0.24, math.sin(a) * rad) * CFrame.Angles(0, -a, 0),
+					white:Lerp(color, k / 6),
+					Enum.Material.Neon
+				)
+			end
+		end
 		deco(
 			part,
 			Vector3.new(G - 0.2, 0.3, G - 0.2),
@@ -293,16 +365,42 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 			Color3.fromRGB(200, 170, 120),
 			Enum.Material.Wood
 		)
+		local green = Color3.fromRGB(60, 200, 70)
 		deco(
 			part,
-			Vector3.new(G * 1.2, G * 0.8, 0.15),
-			base * CFrame.new(G * 0.62, h - G * 0.45, 0),
-			Color3.fromRGB(60, 200, 70),
+			Vector3.new(G * 0.6, G * 0.8, 0.15),
+			base * CFrame.new(G * 0.32, h - G * 0.45, 0) * CFrame.Angles(0, 0.2, 0),
+			green,
 			Enum.Material.Fabric
+		)
+		deco(
+			part,
+			Vector3.new(G * 0.65, G * 0.7, 0.15),
+			base * CFrame.new(G * 0.9, h - G * 0.5, -0.25) * CFrame.Angles(0, -0.25, 0.08),
+			green:Lerp(DARK, 0.15),
+			Enum.Material.Fabric
+		)
+		local knob = deco(
+			part,
+			Vector3.one * 0.9,
+			base * CFrame.new(0, h + 0.3, 0),
+			Color3.fromRGB(255, 205, 60),
+			Enum.Material.Metal
+		)
+		knob.Shape = Enum.PartType.Ball
+		disc(
+			part,
+			2.2,
+			0.5,
+			base * CFrame.new(0, 0.25, 0),
+			Color3.fromRGB(120, 120, 130),
+			Enum.Material.Slate
 		)
 		sparkles(part, Color3.fromRGB(120, 255, 160), 8)
 	elseif name == "Checkpoint" then
-		pole(part, Color3.fromRGB(0, 210, 220))
+		part.Material = Enum.Material.Glass
+		part.Color = Color3.fromRGB(90, 200, 205)
+		pole(part, Color3.fromRGB(80, 190, 200))
 		sparkles(part, Color3.fromRGB(120, 255, 255), 3)
 	elseif name == "Conveyor" then
 		-- Dark belt, yellow side rails, glowing chevrons pointing the way it carries you.
@@ -323,14 +421,16 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		for _, e in { -1, 1 } do
 			local roller = deco(
 				part,
-				Vector3.new(wide - 0.2, part.Size.Y + 0.3, part.Size.Y + 0.3),
-				along * CFrame.new(0, 0, e * (len / 2 - part.Size.Y / 2)),
+				Vector3.new(wide - 0.3, part.Size.Y + 0.1, part.Size.Y + 0.1),
+				along * CFrame.new(0, 0, e * (len / 2 - 0.1)),
 				Color3.fromRGB(40, 40, 48),
 				Enum.Material.Metal
 			)
 			roller.Shape = Enum.PartType.Cylinder
 		end
-		local facing = CFrame.new(top.Position + Vector3.new(0, 0.05, 0))
+		part.Material = Enum.Material.SmoothPlastic
+		part.Color = Color3.fromRGB(35, 35, 42)
+		local facing = CFrame.new(top.Position + Vector3.new(0, 0.12, 0))
 			* CFrame.Angles(0, r * math.pi / 2, 0)
 		for _, z in { -2.2, 0, 2.2 } do
 			chevron(part, facing * CFrame.new(0, 0, z), Color3.fromRGB(255, 200, 40), 1.4)
@@ -360,17 +460,12 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		for _, side in { -1, 1 } do
 			deco(
 				part,
-				Vector3.new(0.5, s.Y + 0.2, s.Z + 0.3),
-				part.CFrame * CFrame.new(side * (s.X / 2 + 0.1), 0.1, 0),
+				Vector3.new(0.8, s.Y + 0.5, s.Z + 0.8),
+				part.CFrame * CFrame.new(side * (s.X / 2 - 0.3), 0.25, 0),
 				color
 			)
 		end
-		deco(
-			part,
-			Vector3.new(s.X + 0.7, 0.5, s.Z + 0.3),
-			part.CFrame * CFrame.new(0, s.Y / 2 + 0.2, 0),
-			color
-		)
+		deco(part, Vector3.new(s.X + 0.2, 0.8, s.Z + 1), part.CFrame * CFrame.new(0, s.Y / 2 + 0.1, 0), color)
 	elseif name == "Plant" then
 		-- Leafy bush: a cluster of balls on a dark soil square.
 		part.Color = Color3.fromRGB(70, 150, 55)
