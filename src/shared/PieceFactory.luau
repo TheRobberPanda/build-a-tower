@@ -47,8 +47,17 @@ local COMPOUND: { [string]: (BasePart) -> () } = {
 				"Stairs",
 				Vector3.new(size.X, h, run),
 				CFrame.new(0, -size.Y / 2 + h / 2, -size.Z / 2 + run * (i - 0.5)),
-				if i % 2 == 0 then ORANGE else ORANGE:Lerp(YELLOW, 0.3)
+				ORANGE
 			)
+			local tread = child(
+				root,
+				"Tread",
+				Vector3.new(size.X - 0.8, 0.1, run - 0.3),
+				CFrame.new(0, -size.Y / 2 + h + 0.05, -size.Z / 2 + run * (i - 0.5)),
+				YELLOW
+			)
+			tread.CanCollide = false
+			tread.CanQuery = false
 		end
 	end,
 	Beam = function(root)
@@ -226,6 +235,7 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 	end
 	local ch = piece.p and piece.p.ch
 	PieceVisuals.decorate(part, def.name, piece.y, piece.r, if ch then TELEPORTER_COLORS[ch] else nil)
+	part:SetAttribute("BaseMat", part.Material.Name) -- restored when the tower material is the default
 	if
 		def.name == "JumpPad"
 		or def.name == "Teleporter"

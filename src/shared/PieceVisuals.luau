@@ -70,16 +70,23 @@ local function sparkles(part: BasePart, color: Color3, rate: number)
 	e.Parent = part
 end
 
-local function pole(part: BasePart, flagColor: Color3)
+local function pole(part: BasePart, flagColor: Color3, scale: number?)
+	local k = scale or 1
 	local top = part.CFrame * CFrame.new(-part.Size.X / 2 + 0.4, part.Size.Y / 2, -part.Size.Z / 2 + 0.4)
 	deco(
 		part,
-		Vector3.new(0.3, 5, 0.3),
-		top * CFrame.new(0, 2.5, 0),
+		Vector3.new(0.3 * k, 5 * k, 0.3 * k),
+		top * CFrame.new(0, 2.5 * k, 0),
 		Color3.fromRGB(230, 230, 235),
 		Enum.Material.Metal
 	)
-	deco(part, Vector3.new(0.1, 1.6, 2.4), top * CFrame.new(0, 4.1, 1.25), flagColor, Enum.Material.Fabric)
+	deco(
+		part,
+		Vector3.new(0.1, 1.6 * k, 2.4 * k),
+		top * CFrame.new(0, 4.1 * k, 1.25 * k),
+		flagColor,
+		Enum.Material.Fabric
+	)
 end
 
 -- Darker strips on all 12 edges: the bevel and outline of the icon art. They fade
@@ -89,7 +96,6 @@ local function bevel(part: BasePart)
 	local s = part.Size
 	local t = 0.5
 	local color = part.Color:Lerp(DARK, 0.45)
-	local strips: { BasePart } = {}
 	for axis = 1, 3 do
 		for _, a in { -1, 1 } do
 			for _, b in { -1, 1 } do
@@ -106,13 +112,14 @@ local function bevel(part: BasePart)
 				end
 				local strip = deco(part, size, part.CFrame * CFrame.new(offset), color)
 				strip.Name = "Bevel"
-				table.insert(strips, strip)
 			end
 		end
 	end
 	part:GetPropertyChangedSignal("Transparency"):Connect(function()
-		for _, strip in strips do
-			strip.Transparency = part.Transparency
+		for _, c in part:GetChildren() do
+			if c.Name == "Bevel" and c:IsA("BasePart") then
+				c.Transparency = part.Transparency
+			end
 		end
 	end)
 end
@@ -154,6 +161,7 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 	local top = part.CFrame * CFrame.new(0, part.Size.Y / 2, 0)
 	if name == "Block" then
 		part.Color = STONE
+		part.Material = Enum.Material.Slate
 		bevel(part)
 	elseif name == "Wall" or name == "FakeWall" or name == "OneWay" then
 		part.Color = BRICK
@@ -193,7 +201,9 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 			Color3.fromRGB(255, 160, 20),
 			Enum.Material.Neon
 		)
-		chevron(part, plate * CFrame.new(0, 0.1, -0.2), Color3.fromRGB(255, 240, 200), 1)
+		local arrow = Color3.fromRGB(255, 240, 200)
+		chevron(part, plate * CFrame.new(0, 0.1, -0.9), arrow, 1.2)
+		deco(part, Vector3.new(0.6, 0.15, 2.4), plate * CFrame.new(0, 0.1, 0.6), arrow, Enum.Material.Neon)
 		sparkles(part, Color3.fromRGB(255, 200, 90), 3)
 	elseif name == "Teleporter" then
 		-- Purple pad with a glowing swirl disc and a faint light column.
@@ -222,7 +232,7 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 			Enum.Material.Neon
 		)
 		beam.Transparency = 0.82
-		pole(part, Color3.fromRGB(60, 200, 80))
+		pole(part, Color3.fromRGB(60, 200, 80), 1.8)
 		sparkles(part, Color3.fromRGB(120, 255, 160), 8)
 	elseif name == "Checkpoint" then
 		pole(part, Color3.fromRGB(0, 210, 220))
@@ -304,12 +314,35 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 			part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.2, 0),
 			Color3.fromRGB(110, 75, 35)
 		)
-	elseif name == "SunBlock" then
-		part.Color = Color3.fromRGB(255, 195, 40)
+		local glow = Color3.fromRGB(255, 220, 90)
+		local face = part.CFrame * CFrame.new(0, 0, -part.Size.Z / 2 + 0.25)
+		for _, side in { -1, 1 } do
+			deco(
+				part,
+				Vector3.new(0.8, 0.8, 0.6),
+				face * CFrame.new(side * 0.9, 0.6, 0) * CFrame.Angles(0, 0, math.rad(45)),
+				glow,
+				Enum.Material.Neon
+			)
+		end
+		deco(part, Vector3.new(2.2, 0.5, 0.6), face * CFrame.new(0, -0.8, 0), glow, Enum.Material.Neon)
+	elseif name == "SunBlock" or name == "MoonBlock" then
+		local sun = name == "SunBlock"
+		part.Color = if sun then Color3.fromRGB(255, 195, 40) else Color3.fromRGB(50, 80, 200)
 		bevel(part)
-	elseif name == "MoonBlock" then
-		part.Color = Color3.fromRGB(50, 80, 200)
-		bevel(part)
+		-- A sun (disc) or crescent (disc with a block-coloured bite) on each side face.
+		local symbol = if sun then Color3.fromRGB(255, 240, 150) else Color3.fromRGB(255, 225, 130)
+		for i = 0, 3 do
+			local face = part.CFrame
+				* CFrame.Angles(0, i * math.pi / 2, 0)
+				* CFrame.new(0, 0, -part.Size.Z / 2 - 0.04)
+			disc(part, 2.4, 0.06, face * CFrame.Angles(math.pi / 2, 0, 0), symbol, Enum.Material.Neon).Name =
+				"Bevel"
+			if not sun then
+				local bite = face * CFrame.new(0.7, 0.4, -0.03) * CFrame.Angles(math.pi / 2, 0, 0)
+				disc(part, 2.1, 0.06, bite, part.Color).Name = "Bevel"
+			end
+		end
 	end
 end
 

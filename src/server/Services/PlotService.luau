@@ -119,7 +119,11 @@ function PlotService.render(player: Player, pieces: { Piece }, mat: string?)
 	local def = Cosmetics.byKey[mat or Cosmetics.DEFAULT] or Cosmetics.byKey[Cosmetics.DEFAULT]
 	for _, part in folder:GetChildren() do
 		if part:IsA("BasePart") and Cosmetics.structural[part.Name] then
-			part.Material = def.material
+			-- The default keeps each piece's own (icon) material.
+			local base = part:GetAttribute("BaseMat")
+			part.Material = if def.key == Cosmetics.DEFAULT and type(base) == "string"
+				then (Enum.Material :: any)[base]
+				else def.material
 		end
 	end
 end
