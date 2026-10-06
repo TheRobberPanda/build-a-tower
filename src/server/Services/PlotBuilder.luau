@@ -7,6 +7,9 @@ local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 
 local PlotBuilder = {}
 
+-- Plots float this high above the ocean (sea level is about y -60), up in the clouds.
+PlotBuilder.ALTITUDE = 300
+
 local GRID_TEXTURE = "rbxassetid://139861751774533" -- assets/ui/grid_cell.png
 
 local G = Config.GRID_STUDS
@@ -296,6 +299,40 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			Enum.Material.Rock
 		)
 	end
+	-- A stream on the back rim pouring off the edge into the clouds below.
+	local WATER = Color3.fromRGB(70, 170, 255)
+	local wx = sizeX * 0.7
+	local pond = decoPart(
+		scenery,
+		"Stream",
+		Vector3.new(6, 0.3, RIM),
+		CFrame.new(origin + Vector3.new(wx, -0.1, sizeZ + RIM / 2)),
+		WATER,
+		Enum.Material.Glass
+	)
+	pond.Transparency = 0.2
+	local fallH = 160
+	local fall = decoPart(
+		scenery,
+		"Waterfall",
+		Vector3.new(6, fallH, 1.5),
+		CFrame.new(origin + Vector3.new(wx, -fallH / 2, back + 0.8)),
+		WATER,
+		Enum.Material.Glass
+	)
+	fall.Transparency = 0.3
+	fall.CastShadow = false
+	local spray = Instance.new("ParticleEmitter")
+	spray.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	spray.Color = ColorSequence.new(Color3.new(1, 1, 1))
+	spray.Size = NumberSequence.new(4, 14)
+	spray.Transparency = NumberSequence.new(0.5, 1)
+	spray.Lifetime = NumberRange.new(2, 3)
+	spray.Rate = 25
+	spray.Speed = NumberRange.new(20, 30)
+	spray.EmissionDirection = Enum.NormalId.Bottom
+	spray.LightInfluence = 0.5
+	spray.Parent = fall
 	-- Trees, bushes and rocks on the rim, outside the buildable grid. Uses the free
 	-- Creator Store models in ServerStorage.SceneryAssets (see CREDITS.md) and
 	-- falls back to simple part-built ones when they are missing.
@@ -433,7 +470,7 @@ end
 -- saturated colours. Lives in code so every server (and the preview) matches.
 function PlotBuilder.lighting()
 	local Lighting = game:GetService("Lighting")
-	Lighting.ClockTime = 14.5
+	Lighting.ClockTime = 16.3
 	Lighting.GeographicLatitude = 30
 	Lighting.Brightness = 3
 	Lighting.Ambient = Color3.fromRGB(120, 130, 150)
@@ -466,7 +503,7 @@ function PlotBuilder.lighting()
 	bloom.Size = 30
 	bloom.Threshold = 1.6
 	local rays = get("SunRaysEffect") :: SunRaysEffect
-	rays.Intensity = 0.05
+	rays.Intensity = 0.12
 	rays.Spread = 0.6
 	local dof = Lighting:FindFirstChildOfClass("DepthOfFieldEffect")
 	if dof then
@@ -492,16 +529,21 @@ end
 -- islands and puffy clouds all around the plot row (plots run along +X).
 function PlotBuilder.buildWorld()
 	PlotBuilder.lighting()
+	local ALT = PlotBuilder.ALTITUDE
+	local X0, X1 = -500, 2100 -- plot row spans about x 0..1600
+	local mid = Vector3.new((X0 + X1) / 2, 0, 0)
 	local terrain = workspace.Terrain
-	terrain:FillBlock(CFrame.new(800, -70, 0), Vector3.new(4000, 20, 2000), Enum.Material.Water)
-	terrain.WaterColor = Color3.fromRGB(25, 95, 175)
-	terrain.WaterWaveSize = 0.15
-	terrain.WaterTransparency = 0.15
-	terrain.WaterReflectance = 0.6
+	-- ponytail: one big water slab; split into chunks if FillBlock stalls startup
+	terrain:FillBlock(CFrame.new(mid.X, -64, 0), Vector3.new(7000, 8, 7000), Enum.Material.Water)
+	terrain.WaterColor = Color3.fromRGB(20, 110, 190)
+	terrain.WaterWaveSize = 0.3
+	terrain.WaterWaveSpeed = 8
+	terrain.WaterTransparency = 0.2
+	terrain.WaterReflectance = 0.8
 	if not terrain:FindFirstChildOfClass("Clouds") then
 		local clouds = Instance.new("Clouds")
-		clouds.Cover = 0.45
-		clouds.Density = 0.5
+		clouds.Cover = 0.5
+		clouds.Density = 0.6
 		clouds.Color = Color3.fromRGB(255, 255, 255)
 		clouds.Parent = terrain
 	end
@@ -511,28 +553,34 @@ function PlotBuilder.buildWorld()
 	local world = Instance.new("Folder")
 	world.Name = "World"
 	local rng = Random.new(20261006)
-	local X0, X1 = -500, 2100 -- plot row spans about x 0..1600
-	-- Grassy mesas on the far horizon (Hill1, about 43 studs wide), half sunk in the sea.
-	for _, side in { -1, 1 } do
-		local x = X0 - 400
-		while x < X1 + 400 do
-			local scale = rng:NextNumber(5, 11)
-			local sink = 22 * scale * rng:NextNumber(0.4, 0.6)
-			skyProp(world, "Hill1", Vector3.new(x, -60 - sink, side * rng:NextNumber(1300, 1500)), scale, rng)
-			x += 43 * scale * rng:NextNumber(0.6, 0.9)
-		end
+	local function around(r0: number, r1: number): Vector3
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(r0, r1)
+		return mid + Vector3.new(math.cos(a) * r * 1.4, 0, math.sin(a) * r) -- stretched along the plot row
 	end
-	-- Floating islands (Island1, about 29 studs wide) with a tree or two on top.
-	for _ = 1, 26 do
+	-- Mountains rising out of the ocean all around (Hill1, about 43 studs wide).
+	for _ = 1, 40 do
+		local scale = rng:NextNumber(5, 10)
+		skyProp(world, "Hill1", around(1600, 2600) - Vector3.new(0, 64 + 22 * scale * 0.3, 0), scale, rng)
+	end
+	-- Rocky islets in the sea far below.
+	for _ = 1, 25 do
+		skyProp(world, "Rock2", around(500, 1500) - Vector3.new(0, 66, 0), rng:NextNumber(1, 3), rng)
+	end
+	-- Floating islands (Island1, about 29 studs wide) at plot height, with trees.
+	for _ = 1, 34 do
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		local at =
-			Vector3.new(rng:NextNumber(X0, X1), rng:NextNumber(-60, 130), side * rng:NextNumber(260, 700))
-		local scale = rng:NextNumber(1, 2.4)
+		local at = Vector3.new(
+			rng:NextNumber(X0, X1),
+			ALT + rng:NextNumber(-140, 160),
+			side * rng:NextNumber(260, 900)
+		)
+		local scale = rng:NextNumber(1.2, 3.5)
 		local island = skyProp(world, "Island1", at, scale, rng)
 		if island then
 			local cf, size = island:GetBoundingBox()
 			local top = cf.Position + Vector3.new(0, size.Y / 2, 0)
-			for _ = 1, rng:NextInteger(1, 2) do
+			for _ = 1, rng:NextInteger(1, 3) do
 				local a = rng:NextNumber(0, math.pi * 2)
 				local d = rng:NextNumber(0, size.X * 0.25)
 				local treeName = if rng:NextInteger(1, 2) == 1 then "Tree1" else "Tree2"
@@ -546,16 +594,20 @@ function PlotBuilder.buildWorld()
 			end
 		end
 	end
-	-- Low-poly clouds (Cloud1): some low beside the plots, most high around the towers.
-	for _ = 1, 60 do
+	-- A sea of clouds (Cloud1) below the plots, and scattered ones above.
+	for _ = 1, 140 do
+		local at =
+			Vector3.new(rng:NextNumber(X0, X1), ALT - rng:NextNumber(90, 160), rng:NextNumber(-900, 900))
+		skyProp(world, "Cloud1", at, rng:NextNumber(3, 7), rng)
+	end
+	for _ = 1, 45 do
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		skyProp(
-			world,
-			"Cloud1",
-			Vector3.new(rng:NextNumber(X0, X1), rng:NextNumber(40, 320), side * rng:NextNumber(170, 800)),
-			rng:NextNumber(1.5, 4),
-			rng
+		local at = Vector3.new(
+			rng:NextNumber(X0, X1),
+			ALT + rng:NextNumber(20, 300),
+			side * rng:NextNumber(170, 800)
 		)
+		skyProp(world, "Cloud1", at, rng:NextNumber(1.5, 4), rng)
 	end
 	world.Parent = workspace
 end

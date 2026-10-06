@@ -126,7 +126,7 @@ end
 
 local function onPlayerAdded(player: Player)
 	local slot = freeSlot()
-	local origin = Vector3.new(slot * PLOT_SPACING, 0, 0)
+	local origin = Vector3.new(slot * PLOT_SPACING, PlotBuilder.ALTITUDE, 0)
 	local model = Instance.new("Model")
 	model.Name = "Plot_" .. player.UserId
 	model:SetAttribute("OwnerId", player.UserId)

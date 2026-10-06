@@ -34,8 +34,9 @@ local folder = Instance.new("Folder")
 folder.Name = "EditorPreview"
 local plot = Instance.new("Model")
 plot.Name = "Plot_Preview"
-PlotBuilder.base(plot, Vector3.zero, 16)
-PlotBuilder.build(plot, Vector3.zero, 16)
+local origin = Vector3.new(0, PlotBuilder.ALTITUDE, 0)
+PlotBuilder.base(plot, origin, 16)
+PlotBuilder.build(plot, origin, 16)
 plot.Parent = folder
 PlotBuilder.buildWorld()
 workspace.World.Parent = folder
