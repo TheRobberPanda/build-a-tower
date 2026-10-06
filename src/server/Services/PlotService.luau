@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local PieceFactory = require(game:GetService("ReplicatedStorage").Shared.PieceFactory)
 local PieceVisuals = require(ReplicatedStorage.Shared.PieceVisuals)
+local AntiCheat = require(script.Parent.AntiCheat)
 local PlotBuilder = require(script.Parent.PlotBuilder)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -21,7 +22,9 @@ local APRON_DEPTH = 16
 local plotsFolder = Instance.new("Folder")
 plotsFolder.Name = "Plots"
 
-type Plot = { slot: number, origin: Vector3, model: Model }
+-- size = buildable cells in X and Z, theme = Cosmetics theme key, core = the
+-- round tower frame is standing (only while a round tower is shown).
+type Plot = { slot: number, origin: Vector3, model: Model, size: number, theme: string, core: boolean }
 local plots: { [Player]: Plot } = {}
 
 local function freeSlot(): number
@@ -36,19 +39,56 @@ local function freeSlot(): number
 	return slot
 end
 
--- During a run, respawn here instead of the plot spawn (nil = plot spawn).
+-- During a run, respawn here instead of the home spawn (nil = home spawn).
 local respawnAt: { [Player]: CFrame } = {}
 function PlotService.setRespawn(player: Player, cf: CFrame?)
 	respawnAt[player] = cf
 end
 
--- VIP plot theme: recolours the plot base.
-function PlotService.setTheme(player: Player, color: Color3, material: Enum.Material)
+-- Home = where you (re)spawn outside runs: the lobby, or your island while free
+-- building or playing a round. RoundService decides.
+local atPlot: { [Player]: boolean } = {}
+function PlotService.setHome(player: Player, plot: boolean)
+	atPlot[player] = if plot then true else nil
+end
+
+function PlotService.homeCFrame(player: Player): CFrame?
+	return if atPlot[player] then PlotService.spawnCFrame(player) else PlotBuilder.lobbySpawn()
+end
+
+-- Back home now (round over, chose free build...).
+function PlotService.sendHome(player: Player)
+	local cf = PlotService.homeCFrame(player)
+	local character = player.Character
+	if cf and character then
+		AntiCheat.expectTeleport(player, cf.Position)
+		character:PivotTo(cf)
+	end
+end
+
+-- Rebuilds the island scenery (theme or size changed). Pieces are kept.
+local function rebuild(plot: Plot)
+	for _, name in { "Base", "Apron", "Scenery", "Core" } do
+		local old = plot.model:FindFirstChild(name)
+		if old then
+			old:Destroy()
+		end
+	end
+	PlotBuilder.base(plot.model, plot.origin, APRON_DEPTH, plot.size, plot.theme)
+	PlotBuilder.build(plot.model, plot.origin, APRON_DEPTH, plot.size, plot.theme)
+	if plot.core then
+		PlotBuilder.core(plot.model, plot.origin)
+	end
+	plot.model:SetAttribute("Size", plot.size)
+end
+
+-- Plot theme (whole island) and size (expansions). No-op when nothing changed.
+function PlotService.configure(player: Player, theme: string, size: number)
 	local plot = plots[player]
-	local base = plot and plot.model:FindFirstChild("Base")
-	if base and base:IsA("BasePart") then
-		base.Color = color
-		base.Material = material
+	if plot and (plot.theme ~= theme or plot.size ~= size) then
+		plot.theme = theme
+		plot.size = size
+		rebuild(plot)
 	end
 end
 
@@ -67,7 +107,7 @@ function PlotService.spawnCFrame(player: Player): CFrame?
 	end
 	local g = Config.GRID_STUDS
 	-- On the apron, facing the tower
-	local pos = plot.origin + Vector3.new(Config.PLOT_CELLS_X * g / 2, 3, -APRON_DEPTH / 2)
+	local pos = plot.origin + Vector3.new(plot.size * g / 2, 3, -APRON_DEPTH / 2)
 	return CFrame.lookAt(pos, pos + Vector3.zAxis)
 end
 
@@ -104,12 +144,22 @@ function PlotService.shatter(player: Player, pieces: { Piece })
 	end
 end
 
--- Makes the plot show exactly `pieces`. Only changed parts are destroyed or
--- created, so an edit replicates one part instead of the whole tower.
-function PlotService.render(player: Player, pieces: { Piece }, mat: string?)
+-- Makes the plot show exactly `pieces` (with the round frame if `core`). Only
+-- changed parts are destroyed or created, so an edit replicates one part.
+function PlotService.render(player: Player, pieces: { Piece }, mat: string?, core: boolean?)
 	local plot = plots[player]
 	if not plot then
 		return
+	end
+	if plot.core ~= (core == true) then
+		plot.core = core == true
+		local old = plot.model:FindFirstChild("Core")
+		if old then
+			old:Destroy()
+		end
+		if plot.core then
+			PlotBuilder.core(plot.model, plot.origin)
+		end
 	end
 	local folder = plot.model:FindFirstChild("Pieces")
 	if not folder then
@@ -160,7 +210,7 @@ function PlotService.render(player: Player, pieces: { Piece }, mat: string?)
 			byKey[key] = part
 		end
 	end
-	local support = TowerCodec.support(pieces)
+	local support = TowerCodec.support(pieces, plot.core)
 	for i, piece in pieces do
 		local part = byKey[pieceKey(piece)]
 		if not part or not part:IsA("BasePart") then
@@ -199,15 +249,22 @@ local function onPlayerAdded(player: Player)
 	model.Name = "Plot_" .. player.UserId
 	model:SetAttribute("OwnerId", player.UserId)
 	model:SetAttribute("Origin", origin) -- clients convert world <-> grid with this
-	PlotBuilder.base(model, origin, APRON_DEPTH)
-	PlotBuilder.build(model, origin, APRON_DEPTH)
+	local plot: Plot = {
+		slot = slot,
+		origin = origin,
+		model = model,
+		size = Config.PLOT_CELLS_X,
+		theme = Cosmetics.DEFAULT_THEME,
+		core = false,
+	}
+	rebuild(plot)
 	model.Parent = plotsFolder
-	plots[player] = { slot = slot, origin = origin, model = model }
+	plots[player] = plot
 
-	-- Everyone spawns at their own plot (or their run checkpoint).
+	-- Spawn at home (lobby or island), or the run checkpoint.
 	local function onCharacter(character: Model)
 		task.defer(function()
-			local cf = respawnAt[player] or PlotService.spawnCFrame(player)
+			local cf = respawnAt[player] or PlotService.homeCFrame(player)
 			if cf and character.Parent then
 				character:PivotTo(cf)
 			end
@@ -221,6 +278,7 @@ end
 
 local function onPlayerRemoving(player: Player)
 	respawnAt[player] = nil
+	atPlot[player] = nil
 	local plot = plots[player]
 	if plot then
 		plot.model:Destroy()
@@ -234,12 +292,46 @@ function PlotService.init()
 		preview:Destroy()
 	end
 	PlotBuilder.buildWorld()
+	PlotBuilder.lobby()
 	plotsFolder.Parent = workspace
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	for _, p in Players:GetPlayers() do
 		onPlayerAdded(p)
 	end
 	Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+	-- Fell off an island (or slipped under one): straight back to the checkpoint
+	-- or home instead of a long fall to the sea. Plots and the lobby sit at
+	-- ALTITUDE; island tops dip a few studs below it, so 25 is out of reach.
+	task.spawn(function()
+		while true do
+			task.wait(0.5)
+			for _, player in Players:GetPlayers() do
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+				if not root or not root:IsA("BasePart") or not humanoid or humanoid.Health <= 0 then
+					continue
+				end
+				local pos = root.Position
+				local plot = plots[player]
+				local underGrid = plot ~= nil
+					and pos.Y < plot.origin.Y - 4
+					and pos.X > plot.origin.X
+					and pos.X < plot.origin.X + plot.size * Config.GRID_STUDS
+					and pos.Z > plot.origin.Z
+					and pos.Z < plot.origin.Z + plot.size * Config.GRID_STUDS
+				if pos.Y < PlotBuilder.ALTITUDE - 25 or underGrid then
+					local cf = respawnAt[player] or PlotService.homeCFrame(player)
+					if cf then
+						AntiCheat.expectTeleport(player, cf.Position)
+						root.AssemblyLinearVelocity = Vector3.zero
+						character:PivotTo(cf)
+					end
+				end
+			end
+		end
+	end)
 end
 
 return PlotService

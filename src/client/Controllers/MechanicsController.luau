@@ -108,7 +108,30 @@ local function noClimb(character: Model)
 	end
 end
 
--- Cables from each button to the doors it opens (same channel, same tower).
+local function cable(from: BasePart, to: BasePart, color: Color3, toOffset: Vector3)
+	local a0 = Instance.new("Attachment")
+	a0.Name = "Cable"
+	a0.Parent = from
+	local a1 = Instance.new("Attachment")
+	a1.Name = "Cable"
+	a1.Position = toOffset
+	a1.Parent = to
+	local beam = Instance.new("Beam")
+	beam.Name = "Cable"
+	beam.Attachment0 = a0
+	beam.Attachment1 = a1
+	beam.Color = ColorSequence.new(color)
+	beam.LightEmission = 0.6
+	beam.Width0 = 0.25
+	beam.Width1 = 0.25
+	beam.FaceCamera = true
+	beam.CurveSize0 = 2 -- a slack cable rather than a laser
+	beam.CurveSize1 = -2
+	beam.Parent = from
+end
+
+-- Cables from each button to the doors it opens, and between teleporters on the
+-- same channel (same tower), so builders see what is linked.
 local rewirePending: { [Instance]: boolean } = {}
 local function rewire(folder: Instance)
 	rewirePending[folder] = nil
@@ -127,24 +150,33 @@ local function rewire(folder: Instance)
 				and door.Name == "Door"
 				and door:GetAttribute("ch") == button:GetAttribute("ch")
 			then
-				local a0 = Instance.new("Attachment")
-				a0.Name = "Cable"
-				a0.Parent = button
-				local a1 = Instance.new("Attachment")
-				a1.Name = "Cable"
-				a1.Position = Vector3.new(0, -door.Size.Y / 2 + 0.3, 0)
-				a1.Parent = door
-				local beam = Instance.new("Beam")
-				beam.Name = "Cable"
-				beam.Attachment0 = a0
-				beam.Attachment1 = a1
-				beam.Color = ColorSequence.new(button.Color)
-				beam.LightEmission = 0.6
-				beam.Width0 = 0.25
-				beam.Width1 = 0.25
-				beam.FaceCamera = true
-				beam.Parent = button
+				cable(button, door, button.Color, Vector3.new(0, -door.Size.Y / 2 + 0.3, 0))
 			end
+		end
+	end
+	-- Teleporters on a channel send you to the next one, lowest first
+	-- (MechanicsService.channelPeers): cable them in that order.
+	local byChannel: { [any]: { BasePart } } = {}
+	for _, tp in folder:GetChildren() do
+		if tp:IsA("BasePart") and tp.Name == "Teleporter" then
+			local ch = tp:GetAttribute("ch") or 1
+			byChannel[ch] = byChannel[ch] or {}
+			table.insert(byChannel[ch], tp)
+		end
+	end
+	for _, list in byChannel do
+		table.sort(list, function(a, b)
+			local pa, pb = a.Position, b.Position
+			if pa.Y ~= pb.Y then
+				return pa.Y < pb.Y
+			end
+			if pa.X ~= pb.X then
+				return pa.X < pb.X
+			end
+			return pa.Z < pb.Z
+		end)
+		for i = 1, #list - 1 do
+			cable(list[i], list[i + 1], list[i].Color:Lerp(Color3.new(1, 1, 1), 0.4), Vector3.zero)
 		end
 	end
 end
@@ -157,7 +189,7 @@ local function wireLater(inst: Instance)
 end
 
 function MechanicsController.start()
-	for _, tag in { "Button", "Door" } do
+	for _, tag in { "Button", "Door", "Teleporter" } do
 		CollectionService:GetInstanceAddedSignal(tag):Connect(wireLater)
 		CollectionService:GetInstanceRemovedSignal(tag):Connect(wireLater)
 		for _, inst in CollectionService:GetTagged(tag) do
@@ -198,6 +230,17 @@ function MechanicsController.start()
 		addConveyor(inst)
 	end
 	CollectionService:GetInstanceAddedSignal("Conveyor"):Connect(addConveyor)
+	-- Belts scroll at the conveyor's speed.
+	game:GetService("RunService").RenderStepped:Connect(function()
+		local offset = os.clock() * Config.CONVEYOR_SPEED
+		for _, inst in CollectionService:GetTagged("Conveyor") do
+			local belt = inst:FindFirstChild("Belt")
+			local tex = belt and belt:FindFirstChild("Belt")
+			if tex and tex:IsA("Texture") then
+				tex.OffsetStudsV = offset % tex.StudsPerTileV
+			end
+		end
+	end)
 	game:GetService("RunService").Heartbeat:Connect(updateOneWays)
 
 	for _, part in CollectionService:GetTagged("JumpPad") do

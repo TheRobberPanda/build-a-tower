@@ -7,8 +7,9 @@ local Config = {
 	GRID_STUDS = 6, -- bigger cells = faster building (a block is still jumpable)
 	PLOT_CELLS_X = 16, -- valid x: 0..PLOT_CELLS_X-1
 	PLOT_CELLS_Z = 16,
+	PLOT_CELLS_MAX = 24, -- home island after every expansion (+2 cells per expansion)
 	PLOT_CELLS_Y = 64, -- valid y: 0..PLOT_CELLS_Y-1
-	-- Fixed tower frame in the middle of every plot (cells; x0/z0 inclusive, x1/z1
+	-- Round towers only (home islands are empty): fixed tower frame in the middle (cells; x0/z0 inclusive, x1/z1
 	-- exclusive): four corner pillars and an unremovable floor every `level` rows,
 	-- hollow in between so players can build inside it as well as around it.
 	CORE = table.freeze({ x0 = 5, x1 = 11, z0 = 5, z1 = 11, level = 6, levels = 5, height = 30 }),
@@ -46,9 +47,11 @@ local Config = {
 	DS_MAX_DELAY = 16,
 
 	-- Mechanics (shared so client launch and server allowance match)
-	JUMP_PAD_SPEED = table.freeze({ 70, 95, 120 }), -- by power 1..3, studs/s upward
+	-- by power 1..3, studs/s upward. v = sqrt(2 * 196.2 * h): power 1 clears one
+	-- tower level (CORE.level cells = 36 studs) with room to land, 2 and 3 more.
+	JUMP_PAD_SPEED = table.freeze({ 128, 150, 172 }),
 	TELEPORT_COOLDOWN = 1.5,
-	CONVEYOR_SPEED = 12, -- studs/s; walk 16 + 12 stays under the AntiCheat horizontal limit
+	CONVEYOR_SPEED = 26, -- studs/s; AntiCheat adds this to the horizontal limit
 	CRUMBLE_DELAY = 0.9,
 	CRUMBLE_RESPAWN = 3,
 	COLLAPSE_DELAY = 3, -- red (badly supported) pieces crumble this long after an edit
@@ -61,6 +64,7 @@ local Config = {
 	AC_MAX_RISE_SPEED = 60, -- normal jump peaks ~53 studs/s
 	AC_SPEED_FACTOR = 1.5, -- allowed horizontal speed = WalkSpeed * factor + slack
 	AC_SPEED_SLACK = 6,
+	SPRINT_SPEED = 26, -- WalkSpeed while sprinting (walk is 16); AntiCheat assumes it
 	AC_TELEPORT_RADIUS = 10,
 	AC_FLAGS_TO_FAIL = 3,
 	AC_HOVER_SECONDS = 1.2, -- airborne without descending for longer than this = hover
@@ -152,6 +156,7 @@ local Config = {
 	COINS_VALID = 15, -- built and climbed your tower in time
 	COINS_PER_STAR = 4, -- builder gets this per star received
 	DONATE_AMOUNTS = table.freeze({ 10, 50 }),
+	STARTER_COINS = 500, -- once per player, to buy island decorations
 
 	-- Runs
 	MAX_RUN_MS = 60 * 60 * 1000,

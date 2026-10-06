@@ -4,6 +4,8 @@
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local ServerStorage = game:GetService("ServerStorage")
 local TextService = game:GetService("TextService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -33,7 +35,7 @@ local budgetFor: (Player, PlayerData) -> number
 
 local states: { [Player]: TowerCodec.PlaceState } = {}
 -- Undo history per tower owner: most recent last.
-type Action = { kind: "place" | "remove" | "fill", piece: Types.Piece, pieces: { Types.Piece }? }
+type Action = { kind: "place" | "remove" | "fill" | "clear", piece: Types.Piece, pieces: { Types.Piece }? }
 local history: { [Player]: { Action } } = {}
 local HISTORY_MAX = 30
 
@@ -68,7 +70,7 @@ end
 local buildersOf: (Player) -> { Player }
 
 local function pushTower(player: Player, data: PlayerData)
-	PlotService.render(player, data.tower.pieces, data.material)
+	PlotService.render(player, data.tower.pieces, data.material, inRound[player])
 	for _, builder in buildersOf(player) do
 		Remotes.event("TowerChanged"):FireClient(builder, data.tower, data.verifiedHash ~= nil)
 	end
@@ -131,7 +133,38 @@ function TowerService.buildTargetOf(player: Player): Player?
 	return buildTarget[player]
 end
 
--- True if the piece's cells overlap any character (you can't build inside a player).
+-- Where the owner's tower may have pieces: the round frame and round size in a
+-- round, the (possibly expanded) empty island otherwise.
+local function rulesFor(owner: Player, data: PlayerData): TowerCodec.Rules
+	if inRound[owner] then
+		return { core = true, size = Config.PLOT_CELLS_X }
+	end
+	return { size = data.plotSize }
+end
+TowerService.rulesFor = rulesFor
+
+-- Unlocked by level; asset decorations must be owned (bought or won).
+local function canUse(data: PlayerData, t: number): boolean
+	local def = PieceDefs.byId[t]
+	if not def or not Events.pieceAvailable(t, os.time()) then
+		return false
+	end
+	if RunService:IsStudio() and ServerStorage:GetAttribute("RunQA") ~= nil then
+		return true -- the QA harness tests every piece whatever the test account's level
+	end
+	if def.asset then
+		return data.unlocked["decor_" .. t] == true
+	end
+	return ProgressionService.level(data) >= (def.level or 1)
+end
+
+-- The round tower's Finish sits on the frame's roof and can't be moved.
+local function locked(owner: Player, piece: Types.Piece): boolean
+	return inRound[owner] == true and piece.t == PieceDefs.FINISH_ID
+end
+
+-- True if the piece's cells overlap a character's body (you can't build inside a
+-- player). Only root parts count: hats and hair used to block whole cells.
 local overlap = OverlapParams.new()
 overlap.FilterType = Enum.RaycastFilterType.Include
 local function hitsCharacter(owner: Player, piece: Types.Piece): boolean
@@ -141,8 +174,9 @@ local function hitsCharacter(owner: Player, piece: Types.Piece): boolean
 	end
 	local chars = {}
 	for _, p in Players:GetPlayers() do
-		if p.Character then
-			table.insert(chars, p.Character)
+		local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart")
+		if root then
+			table.insert(chars, root)
 		end
 	end
 	overlap.FilterDescendantsInstances = chars
@@ -175,10 +209,10 @@ local function scheduleCollapse(owner: Player)
 			return
 		end
 		local pieces = data.tower.pieces
-		local support = TowerCodec.support(pieces)
+		local support = TowerCodec.support(pieces, inRound[owner])
 		local fallen = {}
 		for i = #pieces, 1, -1 do
-			if support[i] >= Config.COLLAPSE_HOPS then
+			if support[i] >= Config.COLLAPSE_HOPS and not locked(owner, pieces[i]) then
 				table.insert(fallen, pieces[i])
 				TowerCodec.remove(state, pieces[i])
 				table.remove(pieces, i)
@@ -213,10 +247,11 @@ local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p
 	if p ~= nil and type(p) ~= "table" then
 		return
 	end
-	local piece = TowerCodec.validatePiece({ t = t, x = x, y = y, z = z, r = r, p = p })
+	local piece =
+		TowerCodec.validatePiece({ t = t, x = x, y = y, z = z, r = r, p = p }, rulesFor(owner, data))
 	if
 		not piece
-		or not Events.pieceAvailable(piece.t, os.time())
+		or not canUse(data, piece.t)
 		or not TowerCodec.canAdd(state, piece)
 		or hitsCharacter(owner, piece)
 	then
@@ -259,8 +294,9 @@ local function onPlaceArea(
 	if not isInt(t, 1, 255) or not isInt(r, 0, 3) or (p ~= nil and type(p) ~= "table") then
 		return
 	end
+	local rules = rulesFor(owner, data)
 	local probe = TowerCodec.validatePiece({ t = t, x = x0, y = y0, z = z0, r = r, p = p })
-	if not probe or not Events.pieceAvailable(probe.t, os.time()) then
+	if not probe or not canUse(data, probe.t) then
 		return
 	end
 	local sx, sy, sz = TowerCodec.extent(probe)
@@ -280,7 +316,7 @@ local function onPlaceArea(
 	for _, y in ys do
 		for _, x in xs do
 			for _, z in zs do
-				local piece = TowerCodec.validatePiece({ t = t, x = x, y = y, z = z, r = r, p = p })
+				local piece = TowerCodec.validatePiece({ t = t, x = x, y = y, z = z, r = r, p = p }, rules)
 				if piece and TowerCodec.canAdd(state, piece) and not hitsCharacter(owner, piece) then
 					TowerCodec.add(state, piece)
 					table.insert(data.tower.pieces, piece)
@@ -304,33 +340,83 @@ local function onPlaceArea(
 	Analytics.step(player, "PlacedPiece")
 end
 
+-- True if any cell of the piece is inside the box (inclusive cell corners).
+local function inBox(piece: Types.Piece, lo: Vector3, hi: Vector3): boolean
+	local sx, sy, sz = TowerCodec.extent(piece)
+	return piece.x <= hi.X
+		and piece.x + sx - 1 >= lo.X
+		and piece.y <= hi.Y
+		and piece.y + sy - 1 >= lo.Y
+		and piece.z <= hi.Z
+		and piece.z + sz - 1 >= lo.Z
+end
+
+-- Removes every (unlocked) piece touching the box as one undo step.
+local function removeWhere(owner: Player, data: PlayerData, lo: Vector3, hi: Vector3)
+	local state = states[owner]
+	if not state then
+		return
+	end
+	local removed = {}
+	local pieces = data.tower.pieces
+	for i = #pieces, 1, -1 do
+		local piece = pieces[i]
+		if inBox(piece, lo, hi) and not locked(owner, piece) then
+			TowerCodec.remove(state, piece)
+			table.remove(pieces, i)
+			table.insert(removed, piece)
+		end
+	end
+	if #removed == 0 then
+		return
+	end
+	data.verifiedHash = nil
+	local list = history[owner] or {}
+	history[owner] = list
+	if #removed == 1 then
+		table.insert(list, { kind = "remove", piece = removed[1] })
+	else
+		table.insert(list, { kind = "clear", piece = removed[1], pieces = removed })
+	end
+	if #list > HISTORY_MAX then
+		table.remove(list, 1)
+	end
+	pushTower(owner, data)
+	scheduleCollapse(owner)
+end
+
 local function onRemove(player: Player, x: any, y: any, z: any)
 	local owner, data = editable(player)
-	local state = owner and states[owner]
-	if not owner or not data or not state then
+	if not owner or not data then
 		return
 	end
 	if not (isInt(x, 0, 255) and isInt(y, 0, 255) and isInt(z, 0, 255)) then
 		return
 	end
-	for i, piece in data.tower.pieces do
-		local sx, sy, sz = TowerCodec.extent(piece)
-		if
-			x >= piece.x
-			and x < piece.x + sx
-			and y >= piece.y
-			and y < piece.y + sy
-			and z >= piece.z
-			and z < piece.z + sz
-		then
-			TowerCodec.remove(state, piece)
-			table.remove(data.tower.pieces, i)
-			data.verifiedHash = nil
-			remember(owner, "remove", piece)
-			pushTower(owner, data)
-			scheduleCollapse(owner)
+	local cell = Vector3.new(x, y, z)
+	removeWhere(owner, data, cell, cell)
+end
+
+-- Bulk delete: everything touching the box between two cells.
+local function onRemoveArea(player: Player, x0: any, y0: any, z0: any, x1: any, y1: any, z1: any)
+	local owner, data = editable(player)
+	if not owner or not data then
+		return
+	end
+	for _, n in { x0, y0, z0, x1, y1, z1 } do
+		if not isInt(n, 0, 255) then
 			return
 		end
+	end
+	local a, b = Vector3.new(x0, y0, z0), Vector3.new(x1, y1, z1)
+	removeWhere(owner, data, a:Min(b), a:Max(b))
+end
+
+-- Clears the whole island (one undo step brings it back).
+local function onClearTower(player: Player)
+	local owner, data = editable(player)
+	if owner and data then
+		removeWhere(owner, data, Vector3.zero, Vector3.one * 255)
 	end
 end
 
@@ -358,7 +444,8 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	if not okFilter then
 		return false, "filter unavailable"
 	end
-	local ok, result = published:publish(player.UserId, filtered, data.tower, data.material, data.verifiedMs)
+	local ok, result =
+		published:publish(player.UserId, filtered, data.tower, data.material, data.verifiedMs, false)
 	if not ok then
 		return false, result
 	end
@@ -678,6 +765,15 @@ function TowerService.enterRound(player: Player): boolean
 	}
 	inRound[player] = true
 	data.tower = TowerCodec.empty()
+	-- The goal waits on the frame's roof: build up to it.
+	local c = Config.CORE
+	table.insert(data.tower.pieces, {
+		t = PieceDefs.FINISH_ID,
+		x = (c.x0 + c.x1) // 2 - 1,
+		y = c.height,
+		z = (c.z0 + c.z1) // 2 - 1,
+		r = 0,
+	})
 	data.towerName = player.DisplayName .. "'s round tower"
 	data.verifiedHash = nil
 	data.verifiedMs = nil
@@ -719,7 +815,7 @@ function TowerService.publishRound(player: Player, tower: Types.Tower, name: str
 	if not data then
 		return false
 	end
-	local ok = published:publish(player.UserId, name, tower, data.material, ms)
+	local ok = published:publish(player.UserId, name, tower, data.material, ms, true)
 	if ok then
 		data.publishedHash = TowerCodec.hash(tower)
 		towerCache[player.UserId] = nil
@@ -738,7 +834,14 @@ local function onUndo(player: Player)
 		return
 	end
 	local action = table.remove(list) :: Action
-	if action.kind == "fill" then
+	if action.kind == "clear" then
+		for _, piece in action.pieces or {} do
+			if TowerCodec.canAdd(state, piece) then
+				TowerCodec.add(state, piece)
+				table.insert(data.tower.pieces, piece)
+			end
+		end
+	elseif action.kind == "fill" then
 		for _, piece in action.pieces or {} do
 			local i = table.find(data.tower.pieces, piece)
 			if i then
@@ -748,7 +851,7 @@ local function onUndo(player: Player)
 		end
 	elseif action.kind == "place" then
 		local i = table.find(data.tower.pieces, action.piece)
-		if i then
+		if i and not locked(owner, action.piece) then
 			TowerCodec.remove(state, action.piece)
 			table.remove(data.tower.pieces, i)
 		end
@@ -786,7 +889,7 @@ local function onSetMaterial(player: Player, key: any): (boolean, string?)
 	end
 	data.material = key
 	if not editLocked[player] then
-		PlotService.render(player, data.tower.pieces, data.material)
+		PlotService.render(player, data.tower.pieces, data.material, inRound[player])
 	end
 	return true, nil
 end
@@ -903,6 +1006,8 @@ function TowerService.init()
 	Remotes.event("PlacePiece").OnServerEvent:Connect(onPlace)
 	Remotes.event("PlaceArea").OnServerEvent:Connect(onPlaceArea)
 	Remotes.event("RemovePiece").OnServerEvent:Connect(onRemove)
+	Remotes.event("RemoveArea").OnServerEvent:Connect(onRemoveArea)
+	Remotes.event("ClearTower").OnServerEvent:Connect(onClearTower)
 	Remotes.event("Undo").OnServerEvent:Connect(onUndo)
 	Remotes.func("Publish").OnServerInvoke = onPublish
 	Remotes.func("Browse").OnServerInvoke = onBrowse

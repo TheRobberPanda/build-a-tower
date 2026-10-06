@@ -4,8 +4,11 @@
 -- tower) -> for each valid tower: Race (everyone else, first to the top wins,
 -- builder wins if nobody does) then Vote (replay of the builder's verify climb,
 -- 1-5 stars, donations) -> Results (coins, good towers get published).
--- Players who join mid-round build freely on their own plot until the next one.
+-- Everyone starts in the lobby and picks a mode: "queue" (play every round
+-- until they leave the queue) or "free" (build on their own island). Rounds only
+-- take queued players; queued players wait in the lobby between rounds.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -46,7 +49,8 @@ local roundTowers: { [number]: Types.PublishedTower } = {}
 local shown: Entry? = nil -- tower being raced or voted on
 local raceWinner: Player? = nil
 local limiter = RateLimiter.new(4, 1)
-local sitOut: { [Player]: boolean } = {}
+export type Mode = "lobby" | "queue" | "free"
+local modeOf: { [Player]: Mode } = {}
 
 local function seconds(s: number): number
 	if RunService:IsStudio() and ServerStorage:GetAttribute("RoundFast") == true then
@@ -106,7 +110,7 @@ end
 local function loadedPlayers(): { Player }
 	local list = {}
 	for _, p in Players:GetPlayers() do
-		if DataService.get(p) and p.Character and not sitOut[p] then
+		if DataService.get(p) and p.Character and modeOf[p] == "queue" then
 			table.insert(list, p)
 		end
 	end
@@ -129,11 +133,8 @@ local function addEntry(p: Player)
 	}
 	table.insert(entries, e)
 	entryOf[p] = e
-	local spawn = PlotService.spawnCFrame(p)
-	local character = p.Character
-	if spawn and character then
-		character:PivotTo(spawn)
-	end
+	PlotService.setHome(p, true)
+	PlotService.sendHome(p) -- to their island
 end
 
 local function startBuild(): boolean
@@ -147,11 +148,11 @@ end
 
 -- Joined (or stopped sitting out) early in a build phase: still in time to play.
 local LATE_JOIN_SECONDS = 120
-local function tryLateJoin(p: Player)
+local function tryLateJoin(p: Player): boolean
 	if
 		phase == "build"
 		and not entryOf[p]
-		and not sitOut[p]
+		and modeOf[p] == "queue"
 		and DataService.get(p)
 		and p.Character
 		and state.endsAt - workspace:GetServerTimeNow() > seconds(LATE_JOIN_SECONDS)
@@ -164,7 +165,9 @@ local function tryLateJoin(p: Player)
 		end
 		state.members = members
 		Remotes.event("Round"):FireAllClients(state)
+		return true
 	end
+	return false
 end
 
 local function endBuild()
@@ -189,6 +192,7 @@ local function endBuild()
 				publishedAt = 0,
 				mat = data.material,
 				builderMs = data.verifiedMs,
+				core = true,
 			}
 			e.tower = tower
 			roundTowers[p.UserId] = tower
@@ -247,7 +251,7 @@ local function vote(e: Entry, winner: Entry?)
 	})
 	for _, other in entries do
 		if present(other) then
-			PlotService.render(other.player, tower.pieces, tower.mat)
+			PlotService.render(other.player, tower.pieces, tower.mat, true)
 			Remotes.event("RoundReplay"):FireClient(other.player, e.replay)
 		end
 	end
@@ -281,12 +285,10 @@ local function finishRound()
 		end
 		local roundTower = TowerService.leaveRound(e.player)
 		TowerService.setEditLocked(e.player, false)
-		-- Back to the spawn so nobody ends up inside their restored tower.
-		local spawn = PlotService.spawnCFrame(e.player)
-		local character = e.player.Character
-		if spawn and character then
-			character:PivotTo(spawn)
-		end
+		-- Back to the lobby (still queued for the next round), or to their island
+		-- if they switched to free building during the round.
+		PlotService.setHome(e.player, modeOf[e.player] == "free")
+		PlotService.sendHome(e.player)
 		-- Good towers are saved: valid, and rated 3+ stars (or nobody was there to rate).
 		local tower = e.tower
 		local qa = RunService:IsStudio() and ServerStorage:GetAttribute("RunQA") ~= nil
@@ -387,6 +389,22 @@ function RoundService.inRound(player: Player): boolean
 	return entryOf[player] ~= nil
 end
 
+-- Lobby choices. Queueing during a build phase still joins it if there is time.
+local function setMode(player: Player, mode: Mode)
+	if modeOf[player] == mode or not DataService.get(player) then
+		return
+	end
+	modeOf[player] = mode
+	Remotes.event("Mode"):FireClient(player, mode)
+	if entryOf[player] then
+		return -- mid-round: takes effect when the round ends
+	end
+	PlotService.setHome(player, mode == "free")
+	if mode ~= "queue" or not tryLateJoin(player) then
+		PlotService.sendHome(player)
+	end
+end
+
 function RoundService.init()
 	RunTimerService.setRoundSource(function(ownerId: number)
 		return roundTowers[ownerId]
@@ -409,25 +427,43 @@ function RoundService.init()
 	end)
 	Remotes.event("RoundVote").OnServerEvent:Connect(onVote)
 	Remotes.event("RoundDonate").OnServerEvent:Connect(onDonate)
-	-- Sitting out takes effect from the next round (the current one keeps you).
-	Remotes.event("RoundSitOut").OnServerEvent:Connect(function(player: Player, on: any)
-		if type(on) == "boolean" and limiter:allow(player) then
-			sitOut[player] = if on then true else nil
-			if not on then
-				tryLateJoin(player)
-			end
+	Remotes.event("SetMode").OnServerEvent:Connect(function(player: Player, mode: any)
+		if (mode == "lobby" or mode == "queue" or mode == "free") and limiter:allow(player) then
+			setMode(player, mode)
 		end
 	end)
-	DataService.Loaded:Connect(function(player: Player)
-		Remotes.event("Round"):FireClient(player, state)
-		if not player.Character then
-			player.CharacterAdded:Wait()
+	local padCooldown: { [Player]: number } = {}
+	local function onPad(pad: Instance)
+		if not pad:IsA("BasePart") then
+			return
 		end
-		tryLateJoin(player)
+		pad.Touched:Connect(function(hit)
+			local model = hit:FindFirstAncestorOfClass("Model")
+			local player = model and Players:GetPlayerFromCharacter(model)
+			local mode = pad:GetAttribute("Mode")
+			if
+				player
+				and (mode == "queue" or mode == "free")
+				and os.clock() - (padCooldown[player] or 0) > 1
+			then
+				padCooldown[player] = os.clock()
+				setMode(player, mode)
+			end
+		end)
+	end
+	for _, pad in CollectionService:GetTagged("LobbyPad") do
+		onPad(pad)
+	end
+	CollectionService:GetInstanceAddedSignal("LobbyPad"):Connect(onPad)
+	DataService.Loaded:Connect(function(player: Player)
+		modeOf[player] = "lobby"
+		Remotes.event("Mode"):FireClient(player, "lobby")
+		Remotes.event("Round"):FireClient(player, state)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		entryOf[player] = nil
-		sitOut[player] = nil
+		modeOf[player] = nil
+		padCooldown[player] = nil
 		limiter:forget(player)
 	end)
 	task.spawn(loop)

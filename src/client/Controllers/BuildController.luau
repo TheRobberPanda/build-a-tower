@@ -23,21 +23,16 @@ local G = Config.GRID_STUDS
 local ghost: Part
 local outline: SelectionBox
 local countTag: BillboardGui
-local ghostTarget: CFrame? = nil -- the ghost glides here (visual only)
 local FILL_MAX = 64 -- matches the server's PlaceArea cap
--- Drag state: press on a face, drag across the plane of that face, release to
--- fill the rectangle (ground = floor, wall face = wall). A plain click = one piece.
-type Drag = { cell: Vector3, normal: Vector3, ended: Vector3, at: Vector3, n: Vector3 }
-local drag: Drag? = nil
-local tapStart: Drag? = nil -- touch Fill mode: first tap sets the corner
-local painting = false
-local lastPainted: Vector3? = nil
-local lastPaintAt = 0
+-- Fill mode (button or G): the first click/tap sets a corner, the second fills
+-- the box between them (with Delete on: deletes everything in it).
+type Corner = { cell: Vector3 }
+local corner: Corner? = nil
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Include
 
-type Target =
-	{ cell: Vector3, removeCell: Vector3?, valid: boolean, normal: Vector3, at: Vector3, n: Vector3 }
+-- cell = the empty cell a click would build in; removeCell = the piece cell hit.
+type Target = { cell: Vector3, removeCell: Vector3?, valid: boolean }
 
 local function myPlot(): Model?
 	local plots = workspace:FindFirstChild("Plots")
@@ -62,7 +57,43 @@ local function selectedPiece(cell: Vector3): TowerCodec.Piece
 	}
 end
 
--- Raycasts onto the player's own plot. `viewport` = coordinates include the top-bar
+-- Same rules as the server (TowerService.rulesFor); the server still decides.
+local function rules(): TowerCodec.Rules
+	if State.inRound then
+		return { core = true, size = Config.PLOT_CELLS_X }
+	end
+	return { size = State.plotSize }
+end
+
+-- Occupied cells of the tower being edited, rebuilt when it changes.
+local placeState = TowerCodec.newPlaceState()
+local function refreshPlaceState()
+	placeState = TowerCodec.newPlaceState()
+	for _, piece in if State.tower then State.tower.pieces else {} do
+		TowerCodec.add(placeState, piece)
+	end
+end
+
+local function canPlace(piece: TowerCodec.Piece): boolean
+	local clean = TowerCodec.validatePiece(piece, rules())
+	if not clean or not State.canUse(clean.t) then
+		return false
+	end
+	return (TowerCodec.canAdd(placeState, clean))
+end
+
+-- The main axis of a surface normal, with its sign (a ramp slope counts as up).
+local function axisOf(n: Vector3): Vector3
+	local ax, ay, az = math.abs(n.X), math.abs(n.Y), math.abs(n.Z)
+	if ay >= ax and ay >= az then
+		return Vector3.new(0, math.sign(n.Y), 0)
+	elseif ax >= az then
+		return Vector3.new(math.sign(n.X), 0, 0)
+	end
+	return Vector3.new(0, 0, math.sign(n.Z))
+end
+
+-- Raycasts onto the plot being edited. `viewport` = coordinates include the top-bar
 -- inset (GetMouseLocation); otherwise they are GUI coordinates (input.Position, taps).
 local function targetAt(screenPos: Vector2, viewport: boolean): Target?
 	local plot = myPlot()
@@ -78,52 +109,27 @@ local function targetAt(screenPos: Vector2, viewport: boolean): Target?
 	local ray = if viewport
 		then camera:ViewportPointToRay(screenPos.X, screenPos.Y)
 		else camera:ScreenPointToRay(screenPos.X, screenPos.Y)
-	local hit = workspace:Raycast(ray.Origin, ray.Direction * 500, rayParams)
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 600, rayParams)
 	if not hit or hit.Instance.Name == "Apron" then
 		return nil
 	end
-	-- Nudge along the normal: outwards = the empty cell to build in, inwards = the piece hit.
-	local cell = toCell(origin, hit.Position + hit.Normal * (G / 2))
-	local removeCell = if hit.Instance.Name ~= "Base"
-		then toCell(origin, hit.Position - hit.Normal * (G / 2))
-		else nil
-	local valid = TowerCodec.validatePiece(selectedPiece(cell)) ~= nil
-	local n = hit.Normal
-	local axis = if math.abs(n.Y) >= math.abs(n.X) and math.abs(n.Y) >= math.abs(n.Z)
-		then Vector3.yAxis
-		elseif math.abs(n.X) >= math.abs(n.Z) then Vector3.xAxis
-		else Vector3.zAxis
-	return { cell = cell, removeCell = removeCell, valid = valid, normal = axis, at = hit.Position, n = n }
+	local pieces = plot:FindFirstChild("Pieces")
+	local cell: Vector3
+	local removeCell: Vector3? = nil
+	if pieces and hit.Instance:IsDescendantOf(pieces) then
+		-- Step inwards to the piece's cell, then one whole cell out of the face hit.
+		-- (Stepping out from the hit point landed back inside thin pieces like
+		-- jump pads and buttons, so nothing could go on top of them.)
+		removeCell = toCell(origin, hit.Position - hit.Normal * 0.05)
+		cell = (removeCell :: Vector3) + axisOf(hit.Normal)
+	else
+		cell = toCell(origin, hit.Position + hit.Normal * (G / 2))
+	end
+	return { cell = cell, removeCell = removeCell, valid = canPlace(selectedPiece(cell)) }
 end
 
--- The cell under the pointer on the plane the drag started on.
-local function cellOnPlane(screenPos: Vector2, viewport: boolean, d: Drag): Vector3
-	local plot = myPlot()
-	local camera = workspace.CurrentCamera
-	local origin = plot and plot:GetAttribute("Origin")
-	if not camera or typeof(origin) ~= "Vector3" then
-		return d.cell
-	end
-	local ray = if viewport
-		then camera:ViewportPointToRay(screenPos.X, screenPos.Y)
-		else camera:ScreenPointToRay(screenPos.X, screenPos.Y)
-	-- Intersect the clicked face itself (not the cell centre half a cell above it:
-	-- at shallow camera angles that plane lands cells away and a click became a fill).
-	local denom = ray.Direction:Dot(d.n)
-	if math.abs(denom) < 1e-3 then
-		return d.cell
-	end
-	local t = (d.at - ray.Origin):Dot(d.n) / denom
-	if t < 0 or t > 800 then
-		return d.cell
-	end
-	local c = toCell(origin, ray.Origin + ray.Direction * t + d.n * (G / 2))
-	local keep = d.cell * d.normal -- stay on the starting layer/wall
-	return c * (Vector3.one - d.normal) + keep
-end
-
--- Snaps a drag box to whole pieces and the fill cap. Returns start, end
--- (both piece origins) and the piece count.
+-- Snaps a box to whole pieces and the fill cap. Returns start, end (both piece
+-- origins) and the piece count.
 local function fillBox(a: Vector3, b: Vector3): (Vector3, Vector3, number)
 	local sx, sy, sz = TowerCodec.extent(selectedPiece(a))
 	local ext = { sx, sy, sz }
@@ -180,9 +186,9 @@ local function setPreview(piece: TowerCodec.Piece?, origin: Vector3?)
 			d.CanTouch = false
 			d.CastShadow = false
 			d.Transparency = math.max(d.Transparency, 0.45)
-		elseif d:IsA("Decal") then
-			d.Transparency = 0.45
-		elseif d:IsA("ParticleEmitter") or d:IsA("Light") then
+		elseif d:IsA("Decal") or d:IsA("Texture") then
+			d.Transparency = math.max(d.Transparency, 0.45)
+		elseif d:IsA("ParticleEmitter") or d:IsA("Light") or d:IsA("LuaSourceContainer") then
 			d:Destroy()
 		end
 	end
@@ -191,10 +197,7 @@ local function setPreview(piece: TowerCodec.Piece?, origin: Vector3?)
 end
 
 local function showGhost(cf: CFrame, size: Vector3, color: Color3, count: number)
-	if ghost.Parent == nil or not ghostTarget then
-		ghost.CFrame = cf -- appear in place, then glide
-	end
-	ghostTarget = cf
+	ghost.CFrame = cf
 	ghost.Size = size
 	ghost.Color = color
 	outline.Color3 = color
@@ -207,6 +210,8 @@ local function showGhost(cf: CFrame, size: Vector3, color: Color3, count: number
 	ghost.Parent = workspace
 end
 
+local RED = Color3.fromRGB(235, 70, 80)
+
 local function updateGhost(target: Target?)
 	local plot = myPlot()
 	if State.mode ~= "build" or not target or not plot or State.deleting then
@@ -214,80 +219,83 @@ local function updateGhost(target: Target?)
 	end
 	if State.mode ~= "build" or not target or not plot then
 		ghost.Parent = nil
-		ghostTarget = nil
 		return
 	end
 	local origin = plot:GetAttribute("Origin") :: Vector3
 	if State.deleting then
-		if not target.removeCell then
+		local c = target.removeCell
+		if not c then
 			ghost.Parent = nil
 			return
 		end
-		local pos = origin + (target.removeCell + Vector3.one * 0.5) * G
-		showGhost(CFrame.new(pos), Vector3.one * (G + 0.2), Color3.fromRGB(235, 70, 80), 1)
+		local a = if corner then corner.cell else c
+		local lo, hi = a:Min(c), a:Max(c) + Vector3.one
+		local n = (hi - lo)
+		showGhost(
+			CFrame.new(origin + (lo + hi) / 2 * G),
+			n * G + Vector3.one * 0.2,
+			RED,
+			if corner then n.X * n.Y * n.Z else 1
+		)
 		return
 	end
-	local a = target.cell
-	local b = target.cell
-	local d = drag or tapStart
-	if d then
-		a, b = d.cell, d.ended
-	end
-	local first, last, count = fillBox(a, b)
+	local a = if corner then corner.cell else target.cell
+	local first, last, count = fillBox(a, target.cell)
 	local sx, sy, sz = TowerCodec.extent(selectedPiece(first))
-	local ext = Vector3.new(sx, sy, sz)
 	local lo = first:Min(last)
-	local hi = last:Max(first) + ext
-	local valid = TowerCodec.validatePiece(selectedPiece(first)) ~= nil
+	local hi = last:Max(first) + Vector3.new(sx, sy, sz)
+	local valid = count > 1 or target.valid
 	setPreview(if valid and count == 1 then selectedPiece(first) else nil, origin)
 	ghost.Transparency = if preview then 1 else 0.6 -- the outline stays around the real shape
 	showGhost(
 		CFrame.new(origin + (lo + hi) / 2 * G),
 		(hi - lo) * G,
-		if valid then Color3.fromRGB(80, 200, 255) else Color3.fromRGB(235, 70, 80),
+		if valid then Color3.fromRGB(80, 200, 255) else RED,
 		count
 	)
 end
 
+-- One click or tap on the plot.
 local function act(target: Target?)
-	if State.mode ~= "build" then
+	if State.mode ~= "build" or not target then
 		return
 	end
-	if not target then
+	local cell = if State.deleting then target.removeCell else target.cell
+	if not cell then
 		return
+	end
+	if State.fill then
+		local c = corner
+		if not c then
+			corner = { cell = cell }
+			return
+		end
+		corner = nil
+		if State.deleting then
+			Remotes.event("RemoveArea"):FireServer(c.cell.X, c.cell.Y, c.cell.Z, cell.X, cell.Y, cell.Z)
+			return
+		end
+		local first, last, count = fillBox(c.cell, cell)
+		if count > 1 then
+			Remotes.event("PlaceArea"):FireServer(
+				State.selected,
+				first.X,
+				first.Y,
+				first.Z,
+				last.X,
+				last.Y,
+				last.Z,
+				State.rotation,
+				State.selectedProps()
+			)
+			return
+		end
 	end
 	if State.deleting then
-		local c = target.removeCell
-		if c then
-			Remotes.event("RemovePiece"):FireServer(c.X, c.Y, c.Z)
-		end
+		Remotes.event("RemovePiece"):FireServer(cell.X, cell.Y, cell.Z)
 	elseif target.valid then
-		local c = target.cell
 		Remotes.event("PlacePiece")
-			:FireServer(State.selected, c.X, c.Y, c.Z, State.rotation, State.selectedProps())
-	end
-end
-
-local function fill(a: Vector3, b: Vector3)
-	if State.mode ~= "build" or State.deleting then
-		return
-	end
-	local first, last, count = fillBox(a, b)
-	if count <= 1 then
-		Remotes.event("PlacePiece")
-			:FireServer(State.selected, first.X, first.Y, first.Z, State.rotation, State.selectedProps())
-	else
-		Remotes.event("PlaceArea"):FireServer(
-			State.selected,
-			first.X,
-			first.Y,
-			first.Z,
-			last.X,
-			last.Y,
-			last.Z,
-			State.rotation,
-			State.selectedProps()
-		)
+			:FireServer(State.selected, cell.X, cell.Y, cell.Z, State.rotation, State.selectedProps())
 	end
 end
 
@@ -346,25 +354,23 @@ function BuildController.init()
 end
 
 function BuildController.start()
+	State.Changed:Connect(function()
+		if not State.fill then
+			corner = nil
+		end
+	end)
+	Remotes.event("TowerChanged").OnClientEvent:Connect(function()
+		task.defer(refreshPlaceState) -- after UIController stored the new tower
+	end)
+
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if processed then
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			local target = targetAt(Vector2.new(input.Position.X, input.Position.Y), false)
-			if State.deleting then
-				act(target)
-				painting = true
-				lastPainted = target and target.removeCell
-			elseif target and target.valid and State.mode == "build" then
-				drag = {
-					cell = target.cell,
-					normal = target.normal,
-					ended = target.cell,
-					at = target.at,
-					n = target.n,
-				}
-			end
+			-- One click = one action (holding no longer paints: it deleted the piece
+			-- behind the one just removed).
+			act(targetAt(UserInputService:GetMouseLocation(), true))
 		elseif input.UserInputType == Enum.UserInputType.Keyboard and State.mode == "build" then
 			local piece = KEY_TO_PIECE[input.KeyCode]
 			if piece and PieceDefs.byId[piece] then
@@ -379,6 +385,8 @@ function BuildController.start()
 				State.set({ deleting = not State.deleting })
 			elseif input.KeyCode == Enum.KeyCode.G then
 				State.set({ fill = not State.fill })
+			elseif input.KeyCode == Enum.KeyCode.Escape then
+				corner = nil
 			end
 		end
 	end)
@@ -386,77 +394,20 @@ function BuildController.start()
 	-- Touch: a tap (not a drag/camera swipe) places or deletes.
 	UserInputService.TouchTap:Connect(function(positions, processed)
 		if not processed and positions[1] then
-			local pos = Vector2.new(positions[1].X, positions[1].Y)
-			local target = targetAt(pos, false)
-			if State.fill and not State.deleting and State.mode == "build" then
-				-- Fill mode: first tap = one corner, second tap = the other corner.
-				if tapStart then
-					local d = tapStart
-					d.ended = cellOnPlane(pos, false, d)
-					tapStart = nil
-					fill(d.cell, d.ended)
-				elseif target and target.valid then
-					tapStart = {
-						cell = target.cell,
-						normal = target.normal,
-						ended = target.cell,
-						at = target.at,
-						n = target.n,
-					}
-				end
-				updateGhost(target)
-				return
-			end
-			updateGhost(target)
+			local target = targetAt(Vector2.new(positions[1].X, positions[1].Y), false)
 			act(target)
+			updateGhost(target)
 		end
 	end)
 
-	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			painting = false
-			lastPainted = nil
-			local d = drag
-			drag = nil
-			if d then
-				fill(d.cell, d.ended)
-			end
-		end
-	end)
-	State.Changed:Connect(function()
-		if not State.fill then
-			tapStart = nil
-		end
-	end)
-
-	-- Desktop hover preview; holding the mouse button paints along the drag.
+	-- Desktop hover preview (the ghost follows the mouse, no smoothing lag).
 	RunService.RenderStepped:Connect(function()
 		if UserInputService.MouseEnabled and State.mode == "build" then
-			local mouse = UserInputService:GetMouseLocation()
-			local target = targetAt(mouse, true)
-			local d = drag
-			if d then
-				d.ended = cellOnPlane(mouse, true, d)
-			end
-			updateGhost(
-				if d then { cell = d.cell, valid = true, normal = d.normal, at = d.at, n = d.n } else target
-			)
-			if painting and target then
-				local cell = if State.deleting then target.removeCell else target.cell
-				if cell and cell ~= lastPainted and os.clock() - lastPaintAt > 0.08 then
-					lastPainted = cell
-					lastPaintAt = os.clock()
-					act(target)
-				end
-			end
+			updateGhost(targetAt(UserInputService:GetMouseLocation(), true))
 		elseif State.mode ~= "build" then
 			ghost.Parent = nil
-			drag = nil
+			corner = nil
 			setPreview(nil)
-		end
-		local goal = ghostTarget
-		if goal and ghost.Parent then
-			ghost.CFrame = ghost.CFrame:Lerp(goal, 0.45)
 		end
 	end)
 end

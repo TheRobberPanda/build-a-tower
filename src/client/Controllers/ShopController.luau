@@ -24,7 +24,7 @@ local passes: { [string]: boolean } = {}
 
 local PASS_TEXT: { [string]: string } = {
 	BuilderPass = "Builder Pass: +100 pieces, 2 more tower slots, Glass and Foil",
-	VIP = "VIP: plot themes (Lava, Space, Candy)",
+	VIP = "VIP: island themes (Lava, Space, Candy)",
 }
 
 local function header(text: string, order: number)

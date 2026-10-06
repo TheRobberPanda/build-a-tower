@@ -93,10 +93,11 @@ function AntiCheat.init()
 				local last = w.last
 				if last then
 					local reason = MovementCheck.check(last, pos, now - w.lastAt, now, w.allow, {
-						walkSpeed = humanoid.WalkSpeed,
+						-- Sprint is client-side and conveyors push on top of it.
+						walkSpeed = math.max(humanoid.WalkSpeed, Config.SPRINT_SPEED),
 						maxRiseSpeed = Config.AC_MAX_RISE_SPEED,
 						speedFactor = Config.AC_SPEED_FACTOR,
-						speedSlack = Config.AC_SPEED_SLACK,
+						speedSlack = Config.AC_SPEED_SLACK + Config.CONVEYOR_SPEED,
 						teleportRadius = Config.AC_TELEPORT_RADIUS,
 					}) or MovementCheck.hover(
 						w.hover,

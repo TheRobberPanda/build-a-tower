@@ -38,8 +38,11 @@ end
 local origin = Vector3.new(3000, 0, 0)
 local model = Instance.new("Model")
 model.Name = "Preview"
-PlotBuilder.base(model, origin, 16)
-PlotBuilder.build(model, origin, 16)
+PlotBuilder.base(model, origin, 16, nil, THEME)
+PlotBuilder.build(model, origin, 16, nil, THEME)
+if CORE or SHOWCASE then
+	PlotBuilder.core(model, origin) -- the round tower frame
+end
 local raw = game:GetService("DataStoreService"):GetDataStore("Players_v1"):GetAsync("u_757790113")
 local slot = raw and raw.data and raw.data.slots and raw.data.slots["1"]
 local pieces = if ACTIVE and raw then raw.data.tower.pieces elseif slot then slot.tower.pieces else {}
@@ -75,12 +78,14 @@ if SHOWCASE then
 end
 if ALL then
 	pieces = {}
-	for i = 0, 24 do
-		local p = if i + 1 == 4
-			then { power = 2 }
-			elseif i + 1 == 5 or i + 1 == 12 or i + 1 == 13 or i + 1 == 17 then { ch = 1 }
-			else nil
-		table.insert(pieces, { t = i + 1, x = 1 + i % 5 * 3, y = 0, z = 1 + i // 5 * 4, r = 0, p = p })
+	local PieceDefs = load(game.ReplicatedStorage.Shared.PieceDefs)
+	for i, def in PieceDefs.list do
+		local p = nil
+		for key, range in def.props do
+			p = { [key] = if key == "power" then 2 else range[1] }
+		end
+		local n = i - 1
+		table.insert(pieces, { t = def.id, x = n % 6 * 4, y = 0, z = 1 + n // 6 * 4, r = 0, p = p })
 	end
 end
 local folder = Instance.new("Folder")
@@ -115,6 +120,6 @@ local views = {
 	close = CFrame.lookAt(center + Vector3.new(-14, -16, -40) * k, center + Vector3.new(0, -20, 0) * k),
 }
 cam.CFrame = if ALL
-	then CFrame.lookAt(origin + Vector3.new(8, 9, -6) * G, origin + Vector3.new(8, 0, 9) * G)
+	then CFrame.lookAt(origin + Vector3.new(11, 11, -7) * G, origin + Vector3.new(11, 0, 10) * G)
 	else views[VIEW]
 return string.format("preview built: %d/%d pieces, view %s", made, #pieces, VIEW)

@@ -25,8 +25,9 @@ function TowerCodec.extent(piece: Piece): (number, number, number)
 	return sx, sy, sz
 end
 
+local SPAN = Config.PLOT_CELLS_MAX
 local function cellIndex(x: number, y: number, z: number): number
-	return x + z * Config.PLOT_CELLS_X + y * Config.PLOT_CELLS_X * Config.PLOT_CELLS_Z
+	return x + z * SPAN + y * SPAN * SPAN
 end
 
 local function forEachCell(piece: Piece, fn: (number) -> ())
@@ -55,8 +56,12 @@ function TowerCodec.inCore(x: number, y: number, z: number): boolean
 	return edgeX and edgeZ -- pillar
 end
 
+-- Where a piece may go: `core` = the round tower frame is there (rounds only;
+-- home islands are empty), `size` = buildable cells in X and Z (island expansions).
+export type Rules = { core: boolean?, size: number? }
+
 -- Checks a single untrusted value and returns a clean copy (unknown fields dropped).
-function TowerCodec.validatePiece(raw: any): (Piece?, string?)
+function TowerCodec.validatePiece(raw: any, rules: Rules?): (Piece?, string?)
 	if type(raw) ~= "table" then
 		return nil, "piece not a table"
 	end
@@ -72,14 +77,11 @@ function TowerCodec.validatePiece(raw: any): (Piece?, string?)
 	end
 	local piece: Piece = { t = raw.t, x = raw.x, y = raw.y, z = raw.z, r = raw.r }
 	local sx, sy, sz = TowerCodec.extent(piece)
-	if
-		piece.x + sx > Config.PLOT_CELLS_X
-		or piece.y + sy > Config.PLOT_CELLS_Y
-		or piece.z + sz > Config.PLOT_CELLS_Z
-	then
+	local size = rules and rules.size or Config.PLOT_CELLS_X
+	if piece.x + sx > size or piece.y + sy > Config.PLOT_CELLS_Y or piece.z + sz > size then
 		return nil, "out of bounds"
 	end
-	for dy = 0, sy - 1 do
+	for dy = 0, if rules and rules.core then sy - 1 else -1 do
 		for dz = 0, sz - 1 do
 			for dx = 0, sx - 1 do
 				if TowerCodec.inCore(piece.x + dx, piece.y + dy, piece.z + dz) then
@@ -133,7 +135,7 @@ export type PlaceState = {
 -- Structural support per piece: 0 = stands on the ground or the tower frame (or on
 -- a chain of pieces that does), +1 per sideways hop away from such a chain.
 -- math.huge = floating. Decorations neither need nor give support (always 0). Visual only.
-function TowerCodec.support(pieces: { Piece }): { number }
+function TowerCodec.support(pieces: { Piece }, core: boolean?): { number }
 	local owner: { [number]: number } = {}
 	for i, piece in pieces do
 		if not PieceDefs.byId[piece.t].decor then
@@ -153,7 +155,7 @@ function TowerCodec.support(pieces: { Piece }): { number }
 		end
 		local sx, sy, sz = TowerCodec.extent(piece)
 		local function look(x: number, y: number, z: number, cost: number)
-			if y < 0 or TowerCodec.inCore(x, y, z) then
+			if y < 0 or (core and TowerCodec.inCore(x, y, z)) then
 				dist[i] = math.min(dist[i], cost)
 				return
 			end
@@ -254,6 +256,8 @@ function TowerCodec.empty(): Tower
 	return { v = Config.SCHEMA_VERSION, pieces = {} }
 end
 
+local LOAD_RULES: Rules = { size = Config.PLOT_CELLS_MAX } -- the largest island; placement checks the real one
+
 -- Lenient load path: keeps every valid piece, drops bad ones and anything past the
 -- budget. Returns the clean tower and how many pieces were dropped. Returns nil
 -- for data written by a newer schema so the caller can refuse to overwrite it.
@@ -269,7 +273,7 @@ function TowerCodec.sanitize(raw: any): (Tower?, number)
 	local tower = TowerCodec.empty()
 	local state = TowerCodec.newPlaceState()
 	for _, rawPiece in ipairs(raw.pieces) do
-		local piece = TowerCodec.validatePiece(rawPiece)
+		local piece = TowerCodec.validatePiece(rawPiece, LOAD_RULES)
 		if piece and TowerCodec.canAdd(state, piece) then
 			TowerCodec.add(state, piece)
 			table.insert(tower.pieces, piece)

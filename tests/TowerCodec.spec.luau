@@ -21,12 +21,19 @@ return function()
 		end)
 		it("keeps pieces out of the frame's pillars and floors, but not its hollow middle", function()
 			local c = Config.CORE
-			expect(TowerCodec.validatePiece(p(1, c.x0, 0, c.z0))).to.equal(nil) -- pillar
-			expect(TowerCodec.validatePiece(p(1, c.x0 + 2, c.level - 1, c.z0 + 2))).to.equal(nil) -- floor
-			expect(TowerCodec.validatePiece(p(1, c.x0 + 2, 0, c.z0 + 2))).to.be.ok() -- inside, ground level
-			expect(TowerCodec.validatePiece(p(1, c.x0 + 2, c.level, c.z0 + 2))).to.be.ok() -- standing on a floor
-			expect(TowerCodec.validatePiece(p(1, c.x0 - 1, 3, c.z0))).to.be.ok() -- next to a pillar
-			expect(TowerCodec.validatePiece(p(1, c.x0, c.height, c.z0))).to.be.ok() -- above the roof
+			local r = { core = true }
+			expect(TowerCodec.validatePiece(p(1, c.x0, 0, c.z0), r)).to.equal(nil) -- pillar
+			expect(TowerCodec.validatePiece(p(1, c.x0 + 2, c.level - 1, c.z0 + 2), r)).to.equal(nil) -- floor
+			expect(TowerCodec.validatePiece(p(1, c.x0 + 2, 0, c.z0 + 2), r)).to.be.ok() -- inside, ground level
+			expect(TowerCodec.validatePiece(p(1, c.x0 + 2, c.level, c.z0 + 2), r)).to.be.ok() -- standing on a floor
+			expect(TowerCodec.validatePiece(p(1, c.x0 - 1, 3, c.z0), r)).to.be.ok() -- next to a pillar
+			expect(TowerCodec.validatePiece(p(1, c.x0, c.height, c.z0), r)).to.be.ok() -- above the roof
+			expect(TowerCodec.validatePiece(p(1, c.x0, 0, c.z0))).to.be.ok() -- home island: no frame
+		end)
+		it("grows the bounds with the island size", function()
+			local edge = Config.PLOT_CELLS_X
+			expect(TowerCodec.validatePiece(p(1, edge, 0, 0))).never.to.be.ok()
+			expect(TowerCodec.validatePiece(p(1, edge, 0, 0), { size = edge + 2 })).to.be.ok()
 		end)
 
 		it("checks bounds using the rotated footprint", function()

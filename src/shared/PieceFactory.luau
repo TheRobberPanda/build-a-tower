@@ -120,6 +120,8 @@ local COLORS: { [string]: Color3 } = {
 	Lamp = Color3.fromRGB(255, 220, 140),
 	Flag = Color3.fromRGB(230, 60, 60),
 	Pumpkin = Color3.fromRGB(255, 130, 20),
+	Spikes = Color3.fromRGB(80, 84, 94),
+	Lava = Color3.fromRGB(255, 90, 20),
 	Stairs = Color3.fromRGB(255, 140, 30),
 	Beam = Color3.fromRGB(40, 120, 255),
 	BigFloor = Color3.fromRGB(110, 153, 202),
@@ -130,7 +132,7 @@ local COLORS: { [string]: Color3 } = {
 }
 
 local G = Config.GRID_STUDS
-local SLAB = { Platform = true, BigFloor = true, Crumble = true, Conveyor = true }
+local SLAB = { Platform = true, BigFloor = true, Crumble = true, Conveyor = true, Lava = true }
 
 local TELEPORTER_COLORS: { Color3 } = {
 	Color3.fromRGB(170, 85, 255),
@@ -179,10 +181,10 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 	if def.name == "Teleporter" then
 		local ch = piece.p and piece.p.ch or 1
 		part.Color = TELEPORTER_COLORS[ch] or part.Color -- linked pairs share a colour
-	elseif def.name == "JumpPad" then
-		local power = piece.p and piece.p.power or 1
-		part.Size = Vector3.new(part.Size.X, part.Size.Y * (0.25 + 0.15 * power), part.Size.Z) -- taller = stronger
-		part.Position -= Vector3.new(0, (Config.GRID_STUDS - part.Size.Y) / 2, 0)
+	elseif def.name == "JumpPad" or def.name == "Spikes" then
+		-- Flat plate on the floor of its cell (jump pad power shows as arrows).
+		part.Size = Vector3.new(part.Size.X, G * 0.15, part.Size.Z)
+		part.Position -= Vector3.new(0, (G - part.Size.Y) / 2, 0)
 	end
 	if SLAB[def.name] then
 		-- Thin slab like the icon; the top stays where a full cell's top would be.
@@ -191,6 +193,8 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 	end
 	if def.name == "Crumble" then
 		part.Material = Enum.Material.Slate
+	elseif def.name == "Lava" then
+		part.Material = Enum.Material.CrackedLava
 	elseif def.name == "Conveyor" then
 		part.Material = Enum.Material.DiamondPlate
 		-- Anchored parts with velocity carry whatever stands on them. Direction follows rotation.
@@ -246,7 +250,36 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 		part.Color = LINK_COLORS[ch] or part.Color -- button and its doors share a colour
 	end
 	local build = COMPOUND[def.name]
-	if build then
+	if def.asset then
+		-- Store model decoration: an invisible box (hit by building raycasts so it
+		-- can be deleted) holding a copy of the model, scaled to fit the box.
+		part.Transparency = 1
+		part.CanCollide = false
+		part.CanTouch = false
+		local assets = ReplicatedStorage:FindFirstChild("DecorAssets")
+		local template = assets and assets:FindFirstChild(def.asset)
+		if template and template:IsA("Model") then
+			local m = template:Clone()
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.Anchored = true
+					d.CanCollide = false
+					d.CanQuery = false
+					d.CanTouch = false
+				elseif d:IsA("LuaSourceContainer") then
+					d:Destroy()
+				end
+			end
+			local _, size = m:GetBoundingBox()
+			local fit = math.min(part.Size.X / size.X, part.Size.Y / size.Y, part.Size.Z / size.Z) * 0.95
+			m:ScaleTo(m:GetScale() * fit)
+			m:PivotTo(CFrame.Angles(0, piece.r * math.pi / 2, 0))
+			local cf, s2 = m:GetBoundingBox()
+			local floor = part.Position - Vector3.new(0, part.Size.Y / 2, 0)
+			m:PivotTo(m:GetPivot() + (floor - Vector3.new(cf.X, cf.Y - s2.Y / 2, cf.Z)))
+			m.Parent = part
+		end
+	elseif build then
 		-- The root is an invisible box; solid, visible children do the work.
 		part.Transparency = 1
 		part.CanCollide = false
@@ -275,6 +308,8 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 		or def.name == "SunBlock"
 		or def.name == "MoonBlock"
 		or def.name == "Lamp"
+		or def.name == "Spikes"
+		or def.name == "Lava"
 	then
 		CollectionService:AddTag(part, def.name) -- MechanicsService / client controller pick these up
 	end

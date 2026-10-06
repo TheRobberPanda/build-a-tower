@@ -52,6 +52,7 @@ local function push(player: Player, data: PlayerData)
 		unlocked = data.unlocked,
 		activeSlot = data.activeSlot,
 		tutorialDone = data.tutorialDone,
+		plotSize = data.plotSize,
 	})
 	changed:Fire(player, data)
 end

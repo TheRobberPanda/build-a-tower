@@ -190,7 +190,20 @@ local function onButton(part: BasePart)
 	end)
 end
 
+-- Traps knock you out: the run respawns you at your last checkpoint.
+local function onTrap(part: BasePart)
+	part.Touched:Connect(function(hit)
+		local player = playerFromHit(hit)
+		local humanoid = player and player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid and humanoid.Health > 0 then
+			humanoid.Health = 0
+			Sounds.play("Fail", part)
+		end
+	end)
+end
+
 function MechanicsService.init()
+	Players.RespawnTime = 1.5 -- traps and falls are part of play; get back quickly
 	CollectionService:GetInstanceAddedSignal("JumpPad"):Connect(function(inst)
 		if inst:IsA("BasePart") then
 			onJumpPad(inst)
@@ -204,6 +217,8 @@ function MechanicsService.init()
 	local handlers: { [string]: (BasePart) -> () } = {
 		Crumble = onCrumble,
 		Button = onButton,
+		Spikes = onTrap,
+		Lava = onTrap,
 		FakeWall = onPassive("FakeWall"),
 		InvisiblePlatform = onPassive("InvisiblePlatform"),
 	}

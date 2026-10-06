@@ -89,7 +89,7 @@ end
 -- (Config.CORE / TowerCodec.inCore). Every part stays inside the cells the core
 -- reserves, so no face is shared with player pieces. Only the pillar shafts and
 -- floor slabs collide; the rest is trim.
-local function core(model: Model, origin: Vector3)
+function PlotBuilder.core(model: Model, origin: Vector3)
 	local c = Config.CORE
 	local h = c.height * G
 	local lv = c.level * G
@@ -166,11 +166,12 @@ local function core(model: Model, origin: Vector3)
 					gui.Parent = p
 				end
 			end
+			-- Sits on the roof slab (its top was level with the slab's and flickered).
 			decoPart(
 				folder,
 				"CoreCap",
 				Vector3.new(G - 0.2, 0.8, G - 0.2),
-				CFrame.new(at + Vector3.new(0, h - 0.4, 0)),
+				CFrame.new(at + Vector3.new(0, h + 0.4, 0)),
 				trimColor,
 				Enum.Material.SmoothPlastic
 			)
@@ -227,18 +228,95 @@ local function core(model: Model, origin: Vector3)
 	folder.Parent = model
 end
 
+-- Island themes (Cosmetics.themes keys). Each scenery role lists the asset
+-- names (ServerStorage.SceneryAssets) used for it; missing assets are skipped.
+-- island = recolour of the Island2 mesh (nil keeps its own grass texture).
+type ThemeLook = {
+	base: Color3,
+	baseMaterial: Enum.Material,
+	island: { color: Color3, material: Enum.Material }?,
+	roles: { [string]: { string } },
+}
+local THEMES: { [string]: ThemeLook } = {
+	grass = { -- Skylands, the default
+		base = GRASS,
+		baseMaterial = Enum.Material.SmoothPlastic,
+		roles = {
+			tree = { "Tree1", "Tree2" },
+			bush = { "Bush1", "Bush2" },
+			rock = { "Rock1", "Rock2" },
+			small = { "Mushroom1" },
+			flower = { "Flower1" },
+			grass = { "Grass1" },
+			fence = { "Fence1" },
+			lamp = { "Lamp1" },
+		},
+	},
+	lava = {
+		base = Color3.fromRGB(70, 52, 48),
+		baseMaterial = Enum.Material.Basalt,
+		island = { color = Color3.fromRGB(64, 50, 46), material = Enum.Material.Basalt },
+		roles = {
+			tree = { "LavaTree1", "LavaTree2" },
+			bush = { "LavaRock1" },
+			rock = { "LavaRock1", "LavaRock2", "Rock2" },
+			small = { "LavaCrystal1" },
+			flower = { "LavaCrystal1" },
+			grass = {},
+			fence = { "Fence1" },
+			lamp = { "Lamp1" },
+		},
+	},
+	space = {
+		base = Color3.fromRGB(46, 44, 70),
+		baseMaterial = Enum.Material.Slate,
+		island = { color = Color3.fromRGB(120, 118, 140), material = Enum.Material.Slate },
+		roles = {
+			tree = { "SpaceCrystal1", "SpacePlant1" },
+			bush = { "SpacePlant1" },
+			rock = { "SpaceRock1", "Rock1" },
+			small = { "SpaceCrystal1" },
+			flower = { "SpacePlant1" },
+			grass = {},
+			fence = { "Fence1" },
+			lamp = { "Lamp1" },
+		},
+	},
+	candy = {
+		base = Color3.fromRGB(255, 180, 215),
+		baseMaterial = Enum.Material.SmoothPlastic,
+		island = { color = Color3.fromRGB(255, 170, 205), material = Enum.Material.SmoothPlastic },
+		roles = {
+			tree = { "Lollipop1", "CandyTree1" },
+			bush = { "Gumdrop1" },
+			rock = { "Gumdrop1", "Cupcake1" },
+			small = { "CandyCane1" },
+			flower = { "Lollipop1" },
+			grass = {},
+			fence = { "CandyCane1" },
+			lamp = { "Lamp1" },
+		},
+	},
+}
+
+local function look(theme: string?): ThemeLook
+	return THEMES[theme or "grass"] or THEMES.grass
+end
+
 -- The buildable base (exactly the grid, named "Base") and the spawn apron.
-function PlotBuilder.base(model: Model, origin: Vector3, apronDepth: number)
+function PlotBuilder.base(model: Model, origin: Vector3, apronDepth: number, size: number?, theme: string?)
 	local g = G
 	local APRON_DEPTH = apronDepth
+	local cells = size or Config.PLOT_CELLS_X
+	local t = look(theme)
 	-- Base covers exactly the buildable grid; the apron in front is where runs start.
 	local base = Instance.new("Part")
 	base.Name = "Base"
 	base.Anchored = true
-	base.Size = Vector3.new(Config.PLOT_CELLS_X * g, 1, Config.PLOT_CELLS_Z * g)
-	base.Position = origin + Vector3.new(Config.PLOT_CELLS_X * g / 2, -0.5, Config.PLOT_CELLS_Z * g / 2)
-	base.Color = GRASS
-	base.Material = Enum.Material.SmoothPlastic
+	base.Size = Vector3.new(cells * g, 1, cells * g)
+	base.Position = origin + Vector3.new(cells * g / 2, -0.5, cells * g / 2)
+	base.Color = t.base
+	base.Material = t.baseMaterial
 	base.TopSurface = Enum.SurfaceType.Smooth
 	local grid = Instance.new("Texture")
 	grid.Texture = GRID_TEXTURE
@@ -251,8 +329,8 @@ function PlotBuilder.base(model: Model, origin: Vector3, apronDepth: number)
 	local apron = Instance.new("Part")
 	apron.Name = "Apron"
 	apron.Anchored = true
-	apron.Size = Vector3.new(Config.PLOT_CELLS_X * g, 1, APRON_DEPTH)
-	apron.Position = origin + Vector3.new(Config.PLOT_CELLS_X * g / 2, -0.5, -APRON_DEPTH / 2)
+	apron.Size = Vector3.new(cells * g, 1, APRON_DEPTH)
+	apron.Position = origin + Vector3.new(cells * g / 2, -0.5, -APRON_DEPTH / 2)
 	apron.Color = Color3.fromRGB(196, 176, 140)
 	apron.Material = Enum.Material.Cobblestone
 	apron.TopSurface = Enum.SurfaceType.Smooth
@@ -263,8 +341,15 @@ end
 -- "Base") stays exactly the grid size so building/raycasts are unchanged.
 -- All scenery is Creator Store models from ServerStorage.SceneryAssets
 -- (see CREDITS.md); missing ones are simply skipped.
-function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
-	local sizeX, sizeZ = Config.PLOT_CELLS_X * G, Config.PLOT_CELLS_Z * G
+function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number, size: number?, theme: string?)
+	local cells = size or Config.PLOT_CELLS_X
+	local sizeX, sizeZ = cells * G, cells * G
+	local t = look(theme)
+	-- Role name ("tree") -> a random asset of this theme, or nil.
+	local function pick(role: string, rng: Random): string?
+		local names = t.roles[role]
+		return if names and #names > 0 then names[rng:NextInteger(1, #names)] else nil
+	end
 	local scenery = Instance.new("Folder")
 	scenery.Name = "Scenery"
 	local rng = Random.new(model.Name:len() * 7919)
@@ -311,8 +396,8 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	if template and template:IsA("Model") then
 		local m = template:Clone()
 		m.Name = "Island"
-		local from, size = m:GetBoundingBox()
-		local k = meshSize / size
+		local from, meshBox = m:GetBoundingBox()
+		local k = meshSize / meshBox
 		local to = CFrame.new(origin + Vector3.new(meshCenterX, -meshSize.Y * 0.245, meshCenterZ))
 		for _, d in m:GetDescendants() do
 			if d:IsA("BasePart") then
@@ -322,6 +407,13 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 				d.Anchored = true
 				d.CanTouch = false
 				d.CanQuery = true
+				if t.island then
+					d.Color = t.island.color
+					d.Material = t.island.material
+					if d:IsA("MeshPart") then
+						d.TextureID = "" -- the grass texture would hide the theme colour
+					end
+				end
 			end
 		end
 		m.Parent = workspace -- briefly, so it can be raycast
@@ -356,7 +448,10 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		for i = 0, n - 1 do
 			local at = ground(origin + a:Lerp(b, (i + 0.5) / n))
 			-- Skip segments that would sit on the hill.
-			local f = if at.Y < origin.Y + 0.5 then prop(scenery, "Fence1", at, len / n / 11.5, rng) else nil
+			local fence = pick("fence", rng)
+			local f = if at.Y < origin.Y + 0.5 and fence
+				then prop(scenery, fence, at, len / n / 11.5, rng)
+				else nil
 			if f then
 				f:PivotTo(
 					CFrame.lookAt(f:GetPivot().Position, f:GetPivot().Position + (b - a))
@@ -381,13 +476,17 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			Vector3.new(sizeX + 2, 0, sizeZ / 2),
 		}
 	do
-		prop(scenery, "Lamp1", ground(origin + at), 1, rng)
+		local lamp = pick("lamp", rng)
+		if lamp then
+			prop(scenery, lamp, ground(origin + at), 1, rng)
+		end
 	end
 
-	-- A prop on level ground near `at`, or nothing.
-	local function place(name: string, at: Vector3, scale: number): Model?
-		local p = spot(at, if name:find("Tree") then 5 else 1.5)
-		return if p then prop(scenery, name, p, scale, rng) else nil
+	-- A prop of this role on level ground near `at`, or nothing.
+	local function place(role: string, at: Vector3, scale: number): Model?
+		local name = pick(role, rng)
+		local p = name and spot(at, if role == "tree" then 5 else 1.5)
+		return if name and p then prop(scenery, name, p, scale, rng) else nil
 	end
 
 	-- Trees, bushes, rocks, mushrooms and grass on the rim (outside the grid).
@@ -413,30 +512,26 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	end
 	for _, spec in
 		{
-			{ names = { "Tree1", "Tree2" }, count = 6, scale = { 0.45, 0.7 }, margin = 4 },
-			{ names = { "Bush1", "Bush2" }, count = 12, scale = { 0.6, 0.9 }, margin = 2 },
-			{ names = { "Rock1", "Rock2" }, count = 8, scale = { 0.25, 0.5 }, margin = 2 },
-			{ names = { "Mushroom1" }, count = 8, scale = { 0.3, 0.5 }, margin = 2 },
-			{ names = { "Grass1" }, count = 60, scale = { 0.8, 1.4 }, margin = 1 },
+			{ role = "tree", count = 6, scale = { 0.45, 0.7 }, margin = 4 },
+			{ role = "bush", count = 12, scale = { 0.6, 0.9 }, margin = 2 },
+			{ role = "rock", count = 8, scale = { 0.25, 0.5 }, margin = 2 },
+			{ role = "small", count = 8, scale = { 0.3, 0.5 }, margin = 2 },
+			{ role = "grass", count = 60, scale = { 0.8, 1.4 }, margin = 1 },
 		}
 	do
 		for _ = 1, spec.count do
-			place(
-				spec.names[rng:NextInteger(1, #spec.names)],
-				origin + rimSpot(spec.margin),
-				rng:NextNumber(spec.scale[1], spec.scale[2])
-			)
+			place(spec.role, origin + rimSpot(spec.margin), rng:NextNumber(spec.scale[1], spec.scale[2]))
 		end
 	end
-	-- Meadow outside the fence: random spots on the island top (not the cliffs
-	-- or the hill) get trees, bushes, rocks, mushrooms, flowers and grass.
+	-- Outside the fence: random spots on the island top (not the cliffs or the
+	-- hill) get trees, bushes, rocks, small props, flowers and grass.
 	local outer = {
-		{ names = { "Tree1", "Tree2" }, count = 14, scale = { 0.6, 1 } },
-		{ names = { "Bush1", "Bush2" }, count = 20, scale = { 0.6, 1 } },
-		{ names = { "Rock1", "Rock2" }, count = 10, scale = { 0.3, 0.7 } },
-		{ names = { "Mushroom1" }, count = 10, scale = { 0.3, 0.6 } },
-		{ names = { "Flower1" }, count = 40, scale = { 0.35, 0.5 } },
-		{ names = { "Grass1" }, count = 120, scale = { 0.8, 1.4 } },
+		{ role = "tree", count = 14, scale = { 0.6, 1 } },
+		{ role = "bush", count = 20, scale = { 0.6, 1 } },
+		{ role = "rock", count = 10, scale = { 0.3, 0.7 } },
+		{ role = "small", count = 10, scale = { 0.3, 0.6 } },
+		{ role = "flower", count = 40, scale = { 0.35, 0.5 } },
+		{ role = "grass", count = 120, scale = { 0.8, 1.4 } },
 	}
 	local halfX = meshSize.X / 2
 	for _, spec in outer do
@@ -452,7 +547,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 				and y > origin.Y - 6
 				and y < origin.Y + 1
 				and place(
-					spec.names[rng:NextInteger(1, #spec.names)],
+					spec.role,
 					origin + Vector3.new(x, 0, z),
 					rng:NextNumber(spec.scale[1], spec.scale[2])
 				)
@@ -464,9 +559,8 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	-- A little wood on the hill behind the plot.
 	for _ = 1, 9 do
 		local a, r = rng:NextNumber(0, math.pi * 2), rng:NextNumber(0, 40)
-		local name = if rng:NextInteger(1, 2) == 1 then "Tree1" else "Tree2"
 		place(
-			name,
+			"tree",
 			hillAt + Vector3.new(math.cos(a) * r * 1.4, 0, math.sin(a) * r * 0.6),
 			rng:NextNumber(0.6, 1)
 		)
@@ -483,7 +577,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		local color = petals[rng:NextInteger(1, #petals)]
 		for _ = 1, rng:NextInteger(2, 4) do
 			local at = c + Vector3.new(rng:NextNumber(-1.5, 1.5), 0, rng:NextNumber(-1.5, 1.5))
-			local flower = place("Flower1", at, rng:NextNumber(0.35, 0.5))
+			local flower = place("flower", at, rng:NextNumber(0.35, 0.5))
 			if flower then
 				for _, d in flower:GetDescendants() do
 					if d:IsA("BasePart") and d.Name:find("Mesh35") then
@@ -493,17 +587,15 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			end
 		end
 	end
-	-- Props are walk-through except tree trunks, rocks and fences.
+	-- Props are walk-through except trees, rocks, fences and lamps.
+	local solid: { [string]: boolean } = {}
+	for _, role in { "tree", "rock", "fence", "lamp" } do
+		for _, name in t.roles[role] do
+			solid[name] = true
+		end
+	end
 	for _, m in scenery:GetChildren() do
-		if
-			m:IsA("Model")
-			and not (
-				m.Name:find("Tree")
-				or m.Name:find("Rock")
-				or m.Name:find("Fence")
-				or m.Name:find("Lamp")
-			)
-		then
+		if m:IsA("Model") and not solid[m.Name] then
 			for _, d in m:GetDescendants() do
 				if d:IsA("BasePart") then
 					d.CanCollide = false
@@ -516,7 +608,6 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	end
 	noQuery(scenery)
 	scenery.Parent = model
-	core(model, origin)
 end
 
 -- Bright cartoon daylight like the store thumbnail: deep blue sky, crisp sun,
@@ -576,6 +667,117 @@ local function skyProp(parent: Instance, name: string, at: Vector3, scale: numbe
 		end
 	end
 	return m
+end
+
+local function sparkleBurst(p: BasePart, color: Color3)
+	local e = Instance.new("ParticleEmitter")
+	e.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
+	e.LightEmission = 1
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 0) })
+	e.Lifetime = NumberRange.new(1.5, 2.5)
+	e.Speed = NumberRange.new(4, 8)
+	e.SpreadAngle = Vector2.new(15, 15)
+	e.EmissionDirection = Enum.NormalId.Right -- the cylinder's axis points up
+	e.Rate = 12
+	e.Parent = p
+end
+
+-- The lobby island, west of the plot row: where everyone spawns. Two pads
+-- (tagged LobbyPad, attribute Mode) send you to a round queue or free building.
+PlotBuilder.LOBBY = Vector3.new(-320, PlotBuilder.ALTITUDE, 0)
+function PlotBuilder.lobby(): Model
+	local center = PlotBuilder.LOBBY
+	local model = Instance.new("Model")
+	model.Name = "Lobby"
+	local rng = Random.new(7)
+	local floor = part(
+		model,
+		"LobbyFloor",
+		Vector3.new(4, 130, 130),
+		CFrame.new(center - Vector3.new(0, 2, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+		Color3.fromRGB(220, 214, 200),
+		Enum.Material.Cobblestone
+	)
+	floor.Shape = Enum.PartType.Cylinder
+	local rim = part(
+		model,
+		"LobbyRim",
+		Vector3.new(3.6, 136, 136),
+		CFrame.new(center - Vector3.new(0, 2.4, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+		GRASS,
+		Enum.Material.Grass
+	)
+	rim.Shape = Enum.PartType.Cylinder
+	-- The floating rock under it, like the plots' islands.
+	prop(model, "Island1", center - Vector3.new(0, 78, 0), 4.6, rng)
+	local function pad(mode: string, text: string, color: Color3, offset: Vector3)
+		local at = center + offset
+		local p = part(
+			model,
+			"LobbyPad",
+			Vector3.new(1, 22, 22),
+			CFrame.new(at + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+			color,
+			Enum.Material.Neon
+		)
+		p.Shape = Enum.PartType.Cylinder
+		p.CanCollide = false
+		p:SetAttribute("Mode", mode)
+		game:GetService("CollectionService"):AddTag(p, "LobbyPad")
+		local ring = part(
+			model,
+			"LobbyPadRing",
+			Vector3.new(0.6, 25, 25),
+			CFrame.new(at + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+			Color3.fromRGB(255, 255, 255),
+			Enum.Material.SmoothPlastic
+		)
+		ring.Shape = Enum.PartType.Cylinder
+		-- Floating sign over the pad.
+		local sign = Instance.new("BillboardGui")
+		sign.Size = UDim2.fromScale(22, 6)
+		sign.StudsOffsetWorldSpace = Vector3.new(0, 9, 0)
+		sign.LightInfluence = 0
+		sign.MaxDistance = 300
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.Text = text
+		label.TextColor3 = Color3.new(1, 1, 1)
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 4
+		stroke.Color = color:Lerp(Color3.new(0, 0, 0), 0.5)
+		stroke.Parent = label
+		label.Parent = sign
+		sign.Parent = p
+		sparkleBurst(p, color)
+	end
+	pad("queue", "PLAY ROUNDS", Color3.fromRGB(70, 210, 90), Vector3.new(-26, 0, 30))
+	pad("free", "FREE BUILD", Color3.fromRGB(60, 150, 255), Vector3.new(26, 0, 30))
+	-- Trees and lamps round the edge.
+	for i = 0, 11 do
+		local a = i / 12 * math.pi * 2
+		local at = center + Vector3.new(math.cos(a) * 58, 0, math.sin(a) * 58)
+		local m =
+			prop(model, if i % 3 == 0 then "Lamp1" elseif i % 2 == 0 then "Tree1" else "Tree2", at, 0.8, rng)
+		if m then
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.CanQuery = false
+				end
+			end
+		end
+	end
+	model.Parent = workspace
+	return model
+end
+
+-- Where players stand when they come to the lobby: facing the two pads.
+function PlotBuilder.lobbySpawn(): CFrame
+	local at = PlotBuilder.LOBBY + Vector3.new(0, 4, -20)
+	return CFrame.lookAt(at, at + Vector3.zAxis)
 end
 
 -- Shared world bits, once per server: ocean, hills on the horizon, floating

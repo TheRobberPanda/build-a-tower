@@ -69,7 +69,7 @@ end
 local function restoreOwnTower(player: Player)
 	local data = DataService.get(player)
 	if data then
-		PlotService.render(player, data.tower.pieces, data.material)
+		PlotService.render(player, data.tower.pieces, data.material, TowerService.isInRound(player))
 	end
 end
 
@@ -300,7 +300,7 @@ local function startRun(player: Player, ownerId: number)
 		end
 		hash = TowerCodec.hash(data.tower)
 		towerName = data.towerName
-		PlotService.render(player, data.tower.pieces, data.material)
+		PlotService.render(player, data.tower.pieces, data.material, TowerService.isInRound(player))
 	else
 		local tower = roundSource(ownerId) or TowerService.getPublished(ownerId)
 		if not tower then
@@ -308,7 +308,7 @@ local function startRun(player: Player, ownerId: number)
 		end
 		hash = tower.hash
 		towerName = tower.name
-		PlotService.render(player, tower.pieces, tower.mat)
+		PlotService.render(player, tower.pieces, tower.mat, tower.core)
 	end
 
 	local run: Run = {
@@ -434,7 +434,7 @@ local function onWatchReplay(player: Player, ownerId: any, racerId: any): { [str
 	end
 	watching[player] = true
 	TowerService.setEditLocked(player, true)
-	PlotService.render(player, tower.pieces, tower.mat)
+	PlotService.render(player, tower.pieces, tower.mat, tower.core)
 	return replay
 end
 

@@ -13,6 +13,7 @@ local list: { PieceDef } = {
 	{ id = 3, name = "Ramp", hint = "Steep ramp, 2 wide, 2 high; R rotates", size = { 2, 2, 2 }, props = {} },
 	{
 		id = 4,
+		level = 2,
 		name = "JumpPad",
 		hint = "Launches you up. Power 1-3",
 		size = { 1, 1, 1 },
@@ -20,6 +21,7 @@ local list: { PieceDef } = {
 	},
 	{
 		id = 5,
+		level = 3,
 		name = "Teleporter",
 		hint = "Links to the next teleporter of the same colour",
 		size = { 1, 1, 1 },
@@ -27,12 +29,20 @@ local list: { PieceDef } = {
 	},
 	{
 		id = 6,
+		level = 4,
 		name = "FakeWall",
 		hint = "Looks solid, but you can walk through it",
 		size = { 2, 2, 1 },
 		props = {},
 	},
-	{ id = 7, name = "InvisiblePlatform", hint = "Solid but invisible", size = { 1, 1, 1 }, props = {} },
+	{
+		id = 7,
+		level = 5,
+		name = "InvisiblePlatform",
+		hint = "Solid but invisible",
+		size = { 1, 1, 1 },
+		props = {},
+	},
 	{
 		id = 8,
 		name = "Finish",
@@ -42,10 +52,25 @@ local list: { PieceDef } = {
 		maxCount = 1,
 	},
 	-- M2 secret pieces
-	{ id = 9, name = "Crumble", hint = "Falls shortly after you land on it", size = { 2, 1, 2 }, props = {} }, -- falls shortly after you land
-	{ id = 10, name = "Conveyor", hint = "Carries you the way it faces", size = { 2, 1, 2 }, props = {} }, -- carries you toward its rotation
+	{
+		id = 9,
+		level = 2,
+		name = "Crumble",
+		hint = "Falls shortly after you land on it",
+		size = { 2, 1, 2 },
+		props = {},
+	}, -- falls shortly after you land
+	{
+		id = 10,
+		level = 2,
+		name = "Conveyor",
+		hint = "Carries you the way it faces",
+		size = { 2, 1, 2 },
+		props = {},
+	}, -- carries you toward its rotation
 	{
 		id = 11,
+		level = 6,
 		name = "OneWay",
 		hint = "A wall you can only pass from behind",
 		size = { 2, 2, 1 },
@@ -53,6 +78,7 @@ local list: { PieceDef } = {
 	}, -- pass through from the front only
 	{
 		id = 12,
+		level = 4,
 		name = "Button",
 		hint = "Opens doors of the same colour for 6 s",
 		size = { 1, 1, 1 },
@@ -60,6 +86,7 @@ local list: { PieceDef } = {
 	}, -- opens doors on its channel
 	{
 		id = 13,
+		level = 4,
 		name = "Door",
 		hint = "Opened by a button of the same colour",
 		size = { 1, 2, 1 },
@@ -78,6 +105,7 @@ local list: { PieceDef } = {
 	{ id = 15, name = "Plant", hint = "Decoration, free", size = { 1, 1, 1 }, props = {}, decor = true },
 	{
 		id = 16,
+		level = 2,
 		name = "Lamp",
 		hint = "Decoration with light, free",
 		size = { 1, 2, 1 },
@@ -104,13 +132,51 @@ local list: { PieceDef } = {
 	-- Premades (several parts; rotation turns them like a ramp)
 	{ id = 19, name = "Stairs", hint = "Walkable stairs, 2 high", size = { 1, 2, 2 }, props = {} },
 	{ id = 20, name = "Beam", hint = "Long plank walkway", size = { 1, 1, 4 }, props = {} },
-	{ id = 21, name = "LongRamp", hint = "Long sloped plank, 2 high", size = { 1, 2, 4 }, props = {} },
+	{
+		id = 21,
+		level = 2,
+		name = "LongRamp",
+		hint = "Long sloped plank, 2 high",
+		size = { 1, 2, 4 },
+		props = {},
+	},
 	-- Big pieces: one click covers a lot (still one piece of budget)
 	{ id = 22, name = "BigFloor", hint = "3x3 floor, builds fast", size = { 3, 1, 3 }, props = {} },
 	{ id = 23, name = "Wall", hint = "Wall 2 wide, 2 high; R rotates", size = { 2, 2, 1 }, props = {} },
 	-- Day/night (DayNightService toggles them)
-	{ id = 24, name = "SunBlock", hint = "Solid by day, a ghost at night", size = { 1, 1, 1 }, props = {} },
-	{ id = 25, name = "MoonBlock", hint = "Solid at night, a ghost by day", size = { 1, 1, 1 }, props = {} },
+	{
+		id = 24,
+		level = 6,
+		name = "SunBlock",
+		hint = "Solid by day, a ghost at night",
+		size = { 1, 1, 1 },
+		props = {},
+	},
+	{
+		id = 25,
+		level = 6,
+		name = "MoonBlock",
+		hint = "Solid at night, a ghost by day",
+		size = { 1, 1, 1 },
+		props = {},
+	},
+	-- Traps: touching one knocks you out (back to your last checkpoint)
+	{
+		id = 26,
+		level = 3,
+		name = "Spikes",
+		hint = "Trap: touch it and you're out",
+		size = { 1, 1, 1 },
+		props = {},
+	},
+	{
+		id = 27,
+		level = 5,
+		name = "Lava",
+		hint = "Trap floor: don't step on it",
+		size = { 2, 1, 2 },
+		props = {},
+	},
 }
 
 local byId: { [number]: PieceDef } = {}

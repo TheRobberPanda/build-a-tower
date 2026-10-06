@@ -63,7 +63,8 @@ function PublishedStore.publish(
 	name: string,
 	tower: Tower,
 	mat: string?,
-	builderMs: number?
+	builderMs: number?,
+	core: boolean?
 ): (boolean, string?)
 	local ok, err = TowerCodec.validate(tower)
 	if not ok then
@@ -78,6 +79,7 @@ function PublishedStore.publish(
 		publishedAt = self._deps.now(),
 		mat = mat,
 		builderMs = builderMs,
+		core = core == true,
 	}
 	local deps = self._deps
 	local key = tostring(ownerId)
@@ -174,6 +176,7 @@ function PublishedStore.get(self: PublishedStore, ownerId: number): PublishedTow
 		publishedAt = if type(raw.publishedAt) == "number" then raw.publishedAt else 0,
 		mat = if type(raw.mat) == "string" and Cosmetics.byKey[raw.mat] then raw.mat else nil,
 		builderMs = if type(raw.builderMs) == "number" and raw.builderMs > 0 then raw.builderMs else nil,
+		core = raw.core ~= false, -- towers published before home islands lost the frame had it
 	}
 end
 

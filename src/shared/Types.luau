@@ -8,6 +8,9 @@ export type PieceDef = {
 	maxCount: number?,
 	hint: string?, -- one-line description shown when selected
 	decor: boolean?, -- decoration: no collision, outside the piece budget
+	level: number?, -- player level that unlocks it (default 1)
+	asset: string?, -- decoration model in ReplicatedStorage.DecorAssets; must be owned
+	price: number?, -- Coins, for asset decorations
 }
 
 -- Persisted piece: t=typeId, x/y/z grid ints, r=rotation 0-3, p=props
@@ -49,6 +52,8 @@ export type PlayerData = {
 	contestVotes: { [string]: { number } }, -- contest id -> owner ids voted for
 	tutorialDone: boolean,
 	roundStash: SavedSlot?, -- the active tower, parked while a round tower is active
+	plotSize: number, -- home island cells per side (Config.PLOT_CELLS_X .. PLOT_CELLS_MAX)
+	starterCoins: boolean, -- the one-time welcome Coins were given
 }
 
 export type PublishedTower = {
@@ -60,6 +65,7 @@ export type PublishedTower = {
 	publishedAt: number,
 	mat: string?, -- Cosmetics material key
 	builderMs: number?, -- the builder's verification time
+	core: boolean?, -- built around the round tower frame (shown when raced)
 }
 
 return nil

@@ -35,10 +35,11 @@ local State = {
 	slots = 3,
 	trail = nil :: string?,
 	theme = "grass",
-	sitOut = false, -- skipping rounds to free-build
+	lobbyMode = "lobby", -- "lobby" | "queue" (play rounds) | "free" (free build on your island)
 	inRound = false,
 	roundPhase = "waiting", -- taking part in the current round (RoundController)
 	buildOwner = 0, -- userId whose plot you are building on; 0 = your own
+	plotSize = 16, -- home island cells per side (grows with expansions)
 	Changed = changed.Event,
 }
 
@@ -51,6 +52,18 @@ function State.settingOf(typeId: number): (string?, { number }?)
 		end
 	end
 	return nil, nil
+end
+
+-- Unlocked by level, or (asset decorations) owned. The server checks again.
+function State.canUse(typeId: number): boolean
+	local def = PieceDefs.byId[typeId]
+	if not def then
+		return false
+	end
+	if def.asset then
+		return State.unlocked["decor_" .. typeId] == true
+	end
+	return State.level >= (def.level or 1)
 end
 
 -- Props to send for the selected piece.

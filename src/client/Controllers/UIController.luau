@@ -534,11 +534,8 @@ local function buildTools()
 	menuItem(4, "Players", Theme.PanelLight, function()
 		SocialController.openPlayers()
 	end)
-	local sitButton: TextButton
-	sitButton = menuItem(5, "Sit out rounds", Theme.PanelLight, function()
-		State.set({ sitOut = not State.sitOut })
-		Remotes.event("RoundSitOut"):FireServer(State.sitOut)
-		sitButton.Text = if State.sitOut then "Join rounds" else "Sit out rounds"
+	menuItem(5, "Lobby", Theme.PanelLight, function()
+		Remotes.event("SetMode"):FireServer("lobby")
 	end)
 
 	verifiedLabel = Kit.label("", {
@@ -1175,7 +1172,9 @@ end
 
 local function render()
 	local isBuild = State.mode == "build"
-	buildLayer.Visible = isBuild and not (State.inRound and State.roundPhase ~= "build")
+	-- Build tools: your round tower during the build phase, or free building.
+	buildLayer.Visible = isBuild
+		and (if State.inRound then State.roundPhase == "build" else State.lobbyMode == "free")
 	runLayer.Visible = not isBuild
 
 	for id, slot in slots do
@@ -1308,7 +1307,9 @@ function UIController.start()
 				knownLevel = p.level
 			end
 			local patch = {}
-			for _, k in { "xp", "bricks", "level", "budget", "levelXp", "nextXp", "activeSlot", "slots" } do
+			for _, k in
+				{ "xp", "bricks", "level", "budget", "levelXp", "nextXp", "activeSlot", "slots", "plotSize" }
+			do
 				if type(p[k]) == "number" then
 					patch[k] = p[k]
 				end

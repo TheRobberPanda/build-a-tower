@@ -10,6 +10,8 @@ Remotes.Events = table.freeze({
 	"PlacePiece", -- (typeId, x, y, z, r, props?)
 	"PlaceArea", -- (typeId, x0, y0, z0, x1, y1, z1, r, props?) fill a box, max 64 pieces
 	"RemovePiece", -- (x, y, z)
+	"RemoveArea", -- (x0, y0, z0, x1, y1, z1) delete everything touching the box
+	"ClearTower", -- () delete every piece on the island
 	"Undo", -- () revert the last place/remove
 	"StartRun", -- (ownerId) ownerId == own id means a verification run
 	"TowerChanged", -- server -> client (tower, verified)
@@ -33,7 +35,8 @@ Remotes.Events = table.freeze({
 	"RoundReplay", -- server -> client { path, splits, ms } the builder's verify climb
 	"RoundResults", -- server -> all { { name, coins, valid, stars?, wins } }
 	"RoundVote", -- (stars 1-5) for the tower being shown
-	"RoundSitOut", -- (bool) skip rounds and free-build on your island
+	"SetMode", -- ("queue" | "free" | "lobby") join the round queue, free build, or go to the lobby
+	"Mode", -- server -> client (mode) your current lobby choice
 	"RoundDonate", -- (amount from Config.DONATE_AMOUNTS) to the tower's builder
 })
 

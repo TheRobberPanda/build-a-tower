@@ -129,8 +129,9 @@ local function applyTheme(player: Player)
 		then data.theme
 		else Cosmetics.DEFAULT_THEME
 	local def = Cosmetics.themeByKey[key] or Cosmetics.themeByKey[Cosmetics.DEFAULT_THEME]
-	PlotService.setTheme(player, def.color, def.material)
+	PlotService.configure(player, def.key, if data then data.plotSize else Config.PLOT_CELLS_X)
 end
+MonetizationService.applyTheme = applyTheme
 
 local function onSetTheme(player: Player, key: any): boolean
 	local data = DataService.get(player)

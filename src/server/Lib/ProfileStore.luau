@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
+local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Retry = require(script.Parent.Retry)
@@ -70,7 +71,7 @@ function ProfileStore.defaultData(): PlayerData
 		likedOrder = {},
 		secretsFound = 0,
 		xp = 0,
-		bricks = 0,
+		bricks = Config.STARTER_COINS,
 		material = Cosmetics.DEFAULT,
 		unlocked = {},
 		activeSlot = 1,
@@ -79,6 +80,8 @@ function ProfileStore.defaultData(): PlayerData
 		receipts = {},
 		contestVotes = {},
 		tutorialDone = false,
+		plotSize = Config.PLOT_CELLS_X,
+		starterCoins = true,
 	}
 end
 
@@ -210,10 +213,15 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 	end
 	if type(raw.unlocked) == "table" then
 		for key, v in raw.unlocked do
+			local decorId = type(key) == "string" and tonumber(string.match(key, "^decor_(%d+)$"))
 			if
 				v == true
 				and type(key) == "string"
-				and (Cosmetics.byKey[key] or Cosmetics.trailByKey[key])
+				and (
+					Cosmetics.byKey[key]
+					or Cosmetics.trailByKey[key]
+					or (decorId and PieceDefs.byId[decorId] and PieceDefs.byId[decorId].asset)
+				)
 			then
 				data.unlocked[key] = true
 			end
@@ -224,6 +232,20 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 		if type(v) == "number" and v == v and v >= 0 then
 			(data :: any)[field] = math.floor(math.min(v, 1e12))
 		end
+	end
+	local size = raw.plotSize
+	if
+		type(size) == "number"
+		and size % 2 == 0
+		and size >= Config.PLOT_CELLS_X
+		and size <= Config.PLOT_CELLS_MAX
+	then
+		data.plotSize = size
+	end
+	-- Everyone starts with enough Coins to decorate their island.
+	data.starterCoins = true
+	if raw.starterCoins ~= true then
+		data.bricks += Config.STARTER_COINS
 	end
 	if type(raw.likedOrder) == "table" and type(raw.liked) == "table" then
 		for _, key in raw.likedOrder do

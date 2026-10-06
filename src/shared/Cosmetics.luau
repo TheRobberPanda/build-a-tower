@@ -74,11 +74,12 @@ local trails: { TrailDef } = {
 	},
 }
 
--- VIP plot themes (plot base colour + material).
+-- VIP island themes: the whole island's ground, colours and scenery change
+-- (PlotBuilder THEMES). color/material are for the shop swatch.
 local themes: { ThemeDef } = {
 	{
-		key = "grass",
-		name = "Meadow",
+		key = "grass", -- persisted key; shown as Skylands
+		name = "Skylands",
 		color = Color3.fromRGB(96, 196, 80), -- matches the island grass (PlotBuilder)
 		material = Enum.Material.SmoothPlastic,
 	},

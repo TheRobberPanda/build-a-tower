@@ -25,6 +25,8 @@ local voteTitle: TextLabel
 local starButtons: { TextButton } = {}
 local donateButtons: { TextButton } = {}
 local resultsPanel: Frame
+local lobbyPanel: Frame
+local queuePanel: Frame
 local resultsText: TextLabel
 local state: { [string]: any } = { phase = "waiting" }
 
@@ -60,9 +62,9 @@ local function updateClock()
 	end
 	local left = math.max(0, math.ceil((state.endsAt or 0) - workspace:GetServerTimeNow()))
 	if not State.inRound and (phase == "build" or phase == "race" or phase == "vote") then
-		title = if State.sitOut
-			then "Free build (sitting out)"
-			else "Round in progress, you're in the next one"
+		title = if State.lobbyMode == "queue"
+			then "Round in progress, you're in the next one"
+			else "Round in progress"
 	end
 	if phase == "waiting" then
 		clock.Text = title
@@ -91,7 +93,7 @@ local function onRound(s: any)
 	end
 	votePanel.Visible = false
 	Sounds.music(
-		if not inMine
+		if not inRound
 			then "Ambient"
 			elseif s.phase == "build" then "BuildMusic"
 			elseif s.phase == "race" then "RaceMusic"
@@ -161,6 +163,67 @@ local function onResults(list: any)
 	task.delay(Config.RESULTS_SECONDS, function()
 		resultsPanel.Visible = false
 	end)
+end
+
+-- Lobby choices (also on the two pads in the lobby).
+local function renderLobby()
+	local mode = State.lobbyMode
+	lobbyPanel.Visible = mode == "lobby" and not State.inRound and State.mode == "build"
+	queuePanel.Visible = mode == "queue" and not State.inRound
+end
+
+local function buildLobby()
+	lobbyPanel = Kit.panel({
+		Name = "Lobby",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 0.95),
+		Size = UDim2.fromScale(0.5, 0.22),
+		Visible = false,
+		Parent = gui,
+	})
+	Kit.new("UIAspectRatioConstraint", { AspectRatio = 3.4, Parent = lobbyPanel })
+	Kit.label("Welcome! What do you want to do?", {
+		Size = UDim2.fromScale(0.92, 0.26),
+		Position = UDim2.fromScale(0.04, 0.06),
+		Parent = lobbyPanel,
+	})
+	Kit.button("Play rounds", Theme.Success, function()
+		Remotes.event("SetMode"):FireServer("queue")
+	end, {
+		Position = UDim2.fromScale(0.04, 0.4),
+		Size = UDim2.fromScale(0.44, 0.5),
+		Parent = lobbyPanel,
+	})
+	Kit.button("Free build", Theme.Primary, function()
+		Remotes.event("SetMode"):FireServer("free")
+	end, {
+		Position = UDim2.fromScale(0.52, 0.4),
+		Size = UDim2.fromScale(0.44, 0.5),
+		Parent = lobbyPanel,
+	})
+	queuePanel = Kit.panel({
+		Name = "Queue",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 0.95),
+		Size = UDim2.fromScale(0.4, 0.12),
+		Visible = false,
+		Parent = gui,
+	})
+	Kit.new("UIAspectRatioConstraint", { AspectRatio = 5, Parent = queuePanel })
+	Kit.label("You're in the queue for the next round", {
+		Size = UDim2.fromScale(0.6, 0.6),
+		Position = UDim2.fromScale(0.04, 0.2),
+		Font = Theme.BodyFont,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = queuePanel,
+	})
+	Kit.button("Leave", Theme.Danger, function()
+		Remotes.event("SetMode"):FireServer("lobby")
+	end, {
+		Position = UDim2.fromScale(0.7, 0.15),
+		Size = UDim2.fromScale(0.26, 0.7),
+		Parent = queuePanel,
+	})
 end
 
 function RoundController.init()
@@ -238,6 +301,7 @@ function RoundController.init()
 		TextColor3 = Theme.Primary,
 		Parent = resultsPanel,
 	})
+	buildLobby()
 	resultsText = Kit.label("", {
 		Size = UDim2.fromScale(0.9, 0.75),
 		Position = UDim2.fromScale(0.05, 0.2),
@@ -249,6 +313,12 @@ function RoundController.init()
 end
 
 function RoundController.start()
+	Remotes.event("Mode").OnClientEvent:Connect(function(mode)
+		if mode == "lobby" or mode == "queue" or mode == "free" then
+			State.set({ lobbyMode = mode })
+		end
+	end)
+	State.Changed:Connect(renderLobby)
 	Remotes.event("Round").OnClientEvent:Connect(onRound)
 	Remotes.event("RoundResults").OnClientEvent:Connect(onResults)
 	Remotes.event("RoundReplay").OnClientEvent:Connect(function(replay)

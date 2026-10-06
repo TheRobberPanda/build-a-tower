@@ -87,6 +87,7 @@ local TEX = {
 	orangewood = "rbxassetid://116469885897832",
 }
 PieceVisuals.TEX = TEX
+local BELT = "rbxassetid://123607877875891" -- assets/textures/conveyor_belt.png
 
 -- One stretched decal per face; long thin faces (slab and wall sides) get the
 -- image tiled in squares instead, so it isn't squashed. They fade with the piece.
@@ -244,7 +245,6 @@ end
 
 -- name = piece type name; r = rotation; channelColor for linked pieces.
 function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: number, channelColor: Color3?)
-	local top = part.CFrame * CFrame.new(0, part.Size.Y / 2, 0)
 	if name == "Block" then
 		part.Color = STONE
 		skin(part, TEX.stone)
@@ -282,37 +282,64 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		skin(part, TEX.crumble)
 		debris(part)
 	elseif name == "JumpPad" then
-		-- Silver rim, orange cushion, cream arrow pointing up the pad (like the icon).
+		-- Flat silver rim with an orange cushion; one cream arrow per power level.
 		part.Color = Color3.fromRGB(190, 195, 205)
 		part.Material = Enum.Material.Metal
-		local plate = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.15, 0)
+		local plate = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.08, 0)
 		local cushion = Color3.fromRGB(255, 140, 20)
-		local w = part.Size.X - 1.4
-		deco(part, Vector3.new(w, 0.5, w), plate, cushion)
-		-- Rounded edges and corners: cylinders along each side, balls in the corners.
-		for _, side in { -1, 1 } do
-			for _, turn in { 0, math.pi / 2 } do
-				local edge = deco(
-					part,
-					Vector3.new(w, 0.6, 0.6),
-					plate * CFrame.Angles(0, turn, 0) * CFrame.new(0, 0, side * w / 2),
-					cushion
-				)
-				edge.Shape = Enum.PartType.Cylinder
-				local ball = deco(
-					part,
-					Vector3.one * 0.6,
-					plate * CFrame.Angles(0, turn, 0) * CFrame.new(side * w / 2, 0, side * w / 2),
-					cushion
-				)
-				ball.Shape = Enum.PartType.Ball
+		local w = part.Size.X - 1.2
+		deco(part, Vector3.new(w, 0.16, w), plate, cushion)
+		local power = part:GetAttribute("power")
+		local n = if type(power) == "number" then power else 1
+		local up = plate * CFrame.new(0, 0.12, 0) * CFrame.Angles(0, math.pi, 0)
+		for i = 1, n do
+			chevron(part, up * CFrame.new(0, 0, (i - (n + 1) / 2) * -1.3), Color3.fromRGB(255, 240, 200), 1)
+		end
+		sparkles(part, Color3.fromRGB(255, 200, 90), 2 + n)
+	elseif name == "Spikes" then
+		-- Dark plate with four steel pyramids (corner wedges meeting at a point).
+		part.Material = Enum.Material.DiamondPlate
+		local floor = part.CFrame * CFrame.new(0, part.Size.Y / 2, 0)
+		local half, h = (G - 1) / 4, G * 0.55
+		for _, ox in { -1, 1 } do
+			for _, oz in { -1, 1 } do
+				local c = floor * CFrame.new(ox * half, 0, oz * half)
+				for k = 0, 3 do
+					local w = Instance.new("CornerWedgePart")
+					w.Name = "Deco"
+					w.Anchored = true
+					w.CanCollide = false
+					w.CanQuery = false
+					w.CanTouch = false
+					w.Massless = true
+					w.Size = Vector3.new(half, h, half)
+					w.Color = Color3.fromRGB(205, 210, 220)
+					w.Material = Enum.Material.Metal
+					w.CFrame = c
+						* CFrame.Angles(0, k * math.pi / 2, 0)
+						* CFrame.new(half / 2, h / 2, -half / 2)
+						* CFrame.Angles(0, math.pi / 2, 0)
+					w.Parent = part
+				end
 			end
 		end
-		local arrow = Color3.fromRGB(255, 240, 200)
-		local up = plate * CFrame.new(0, 0.3, 0) * CFrame.Angles(0, math.pi, 0)
-		chevron(part, up * CFrame.new(0, 0, -0.6), arrow, 1.3)
-		deco(part, Vector3.new(0.7, 0.15, 2.2), up * CFrame.new(0, 0, 0.8), arrow, Enum.Material.Neon)
-		sparkles(part, Color3.fromRGB(255, 200, 90), 3)
+	elseif name == "Lava" then
+		part.Color = Color3.fromRGB(255, 95, 20)
+		local glow = Instance.new("PointLight")
+		glow.Color = Color3.fromRGB(255, 120, 40)
+		glow.Range = 14
+		glow.Brightness = 2
+		glow.Parent = part
+		local e = Instance.new("ParticleEmitter")
+		e.Color = ColorSequence.new(Color3.fromRGB(255, 200, 60), Color3.fromRGB(255, 60, 20))
+		e.LightEmission = 1
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0) })
+		e.Lifetime = NumberRange.new(0.6, 1.2)
+		e.Speed = NumberRange.new(2, 5)
+		e.SpreadAngle = Vector2.new(20, 20)
+		e.Rate = 6
+		e.EmissionDirection = Enum.NormalId.Top
+		e.Parent = part
 	elseif name == "Teleporter" then
 		-- Purple pad with a glowing swirl disc and a faint light column.
 		local color = channelColor or Color3.fromRGB(170, 85, 255)
@@ -403,37 +430,46 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		pole(part, Color3.fromRGB(80, 190, 200))
 		sparkles(part, Color3.fromRGB(120, 255, 255), 3)
 	elseif name == "Conveyor" then
-		-- Dark belt, yellow side rails, glowing chevrons pointing the way it carries you.
-		local alongX = r % 2 == 1
+		-- Steel frame, black rubber belt with yellow chevrons that scroll the way it
+		-- carries you (MechanicsController moves the texture), hazard rails, rollers.
+		part.Material = Enum.Material.Metal
+		part.Color = Color3.fromRGB(70, 74, 84)
+		local along = part.CFrame * CFrame.Angles(0, r * math.pi / 2, 0) -- local -Z = travel
+		local len = if r % 2 == 1 then part.Size.X else part.Size.Z
+		local wide = if r % 2 == 1 then part.Size.Z else part.Size.X
+		local belt = deco(
+			part,
+			Vector3.new(wide - 1.6, 0.2, len - 0.4),
+			along * CFrame.new(0, part.Size.Y / 2 + 0.1, 0),
+			Color3.fromRGB(28, 28, 32)
+		)
+		belt.Name = "Belt"
+		local tex = Instance.new("Texture")
+		tex.Name = "Belt"
+		tex.Texture = BELT
+		tex.Face = Enum.NormalId.Top
+		tex.Color3 = Color3.fromRGB(255, 200, 40)
+		tex.StudsPerTileU = wide - 1.6
+		tex.StudsPerTileV = 3
+		tex.Parent = belt
 		for _, side in { -1, 1 } do
-			local offset = if alongX
-				then CFrame.new(0, part.Size.Y / 2 + 0.3, side * (part.Size.Z / 2 - 0.2))
-				else CFrame.new(side * (part.Size.X / 2 - 0.2), part.Size.Y / 2 + 0.3, 0)
-			local size = if alongX
-				then Vector3.new(part.Size.X, 0.7, 0.6)
-				else Vector3.new(0.6, 0.7, part.Size.Z)
-			deco(part, size, part.CFrame * offset, Color3.fromRGB(255, 200, 40), Enum.Material.Metal)
+			deco(
+				part,
+				Vector3.new(0.7, 0.6, len),
+				along * CFrame.new(side * (wide / 2 - 0.4), part.Size.Y / 2 + 0.3, 0),
+				Color3.fromRGB(255, 200, 40),
+				Enum.Material.Metal
+			)
 		end
-		-- Round rollers at both ends, under the belt.
-		local along = part.CFrame * CFrame.Angles(0, r * math.pi / 2, 0)
-		local len = if alongX then part.Size.X else part.Size.Z
-		local wide = if alongX then part.Size.Z else part.Size.X
 		for _, e in { -1, 1 } do
 			local roller = deco(
 				part,
-				Vector3.new(wide - 0.3, part.Size.Y + 0.1, part.Size.Y + 0.1),
-				along * CFrame.new(0, 0, e * (len / 2 - 0.1)),
-				Color3.fromRGB(40, 40, 48),
+				Vector3.new(wide - 1.4, part.Size.Y * 0.9, part.Size.Y * 0.9),
+				along * CFrame.new(0, 0.15, e * (len / 2 - part.Size.Y * 0.3)),
+				Color3.fromRGB(200, 205, 215),
 				Enum.Material.Metal
 			)
 			roller.Shape = Enum.PartType.Cylinder
-		end
-		part.Material = Enum.Material.SmoothPlastic
-		part.Color = Color3.fromRGB(35, 35, 42)
-		local facing = CFrame.new(top.Position + Vector3.new(0, 0.12, 0))
-			* CFrame.Angles(0, r * math.pi / 2, 0)
-		for _, z in { -2.2, 0, 2.2 } do
-			chevron(part, facing * CFrame.new(0, 0, z), Color3.fromRGB(255, 200, 40), 1.4)
 		end
 	elseif name == "Button" then
 		local base = part.CFrame * CFrame.new(0, -part.Size.Y / 2 + 0.15, 0)

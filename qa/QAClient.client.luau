@@ -108,17 +108,22 @@ local function place(t: number, x: number, y: number, z: number, r: number?, p: 
 	end, 3)
 end
 
+-- Everything but the round's Finish (locked on the frame's roof).
 local function clearTower()
-	local guard = 0
-	while count() > 0 and guard < 200 do
-		guard += 1
-		local piece = tower.pieces[1]
-		local before = count()
-		Remotes.event("RemovePiece"):FireServer(piece.x, piece.y, piece.z)
-		waitFor(function()
-			return count() < before
-		end, 2)
-		task.wait(0.12) -- stay under the edit rate limit
+	Remotes.event("ClearTower"):FireServer()
+	waitFor(function()
+		return count() == 1
+	end, 3)
+end
+
+-- The round Finish sits on the roof, 30 cells up: during a run, hop onto it (one
+-- AntiCheat flag, under the limit) once the route being tested is done.
+local function toFinish()
+	task.wait(1.1) -- runs under a second don't count
+	local plot = workspace.Plots:FindFirstChild("Plot_" .. player.UserId)
+	local finish = plot and plot:FindFirstChild("Pieces") and plot.Pieces:FindFirstChild("Finish")
+	if finish and finish:IsA("BasePart") then
+		player.Character:PivotTo(finish.CFrame + Vector3.new(0, 2, 0))
 	end
 end
 
@@ -177,6 +182,7 @@ if ReplicatedStorage:GetAttribute("QA2") == true then
 		return round.phase == name and (builderIsMe == nil or (round.builder == player.UserId) == builderIsMe)
 	end
 	step("joined a build phase", function()
+		Remotes.event("SetMode"):FireServer("queue")
 		return waitFor(function()
 			return phaseIs("build") and table.find(round.members or {}, player.UserId) ~= nil
 		end, 60),
@@ -186,11 +192,11 @@ if ReplicatedStorage:GetAttribute("QA2") == true then
 		waitFor(function()
 			return tower ~= nil
 		end, 5)
-		place(8, 8, 0, 3)
 		if not startRun() then
 			return false, "no run"
 		end
 		walkTo(cellCenter(8, 0, 3), 15, 1.5)
+		toFinish()
 		local r = runResult(10)
 		return r ~= nil and r[1] == true, if r then "ms=" .. tostring(r[2]) else "no result"
 	end)
@@ -204,6 +210,7 @@ if ReplicatedStorage:GetAttribute("QA2") == true then
 			return false, "phase=" .. tostring(round.phase) .. " builder=" .. tostring(round.builder)
 		end
 		walkTo(cellCenter(8, 0, 3), 15, 1.5)
+		toFinish()
 		local r = runResult(10)
 		return r ~= nil and r[1] == true, if r then "ms=" .. tostring(r[2]) else "no result"
 	end)
@@ -272,11 +279,12 @@ end)
 -- Everything below edits the round tower only: the real tower is parked
 -- (data.roundStash) and comes back when the round ends.
 local inRound = false
-step("round: build phase starts with an empty round tower", function()
+step("round: build phase starts with only the Finish on the roof", function()
+	Remotes.event("SetMode"):FireServer("queue") -- everyone starts in the lobby
 	inRound = waitFor(function()
 		return round.phase == "build" and table.find(round.members or {}, player.UserId) ~= nil
 	end, 60) and waitFor(function()
-		return count() == 0
+		return count() == 1 and tower.pieces[1].t == 8 and tower.pieces[1].y == 30
 	end, 5)
 	return inRound, string.format("phase=%s pieces=%d", tostring(round.phase), count())
 end)
@@ -286,7 +294,7 @@ if not inRound then
 		total = #results,
 		steps = results,
 		clientLog = clientLog,
-		aborted = "no round build phase with an empty tower",
+		aborted = "no round build phase with a fresh round tower",
 	})
 	return
 end
@@ -359,6 +367,40 @@ step("fill places a row in one go, rejects oversized fills, undo removes it", fu
 		string.format("filled=%s capped=%s undone=%s", tostring(filled), tostring(capped), tostring(undone))
 end)
 
+step("the roof Finish can't be removed, undone or bulk deleted", function()
+	local f = tower.pieces[1]
+	Remotes.event("RemovePiece"):FireServer(f.x, f.y, f.z)
+	Remotes.event("RemoveArea"):FireServer(0, 0, 0, 15, 63, 15)
+	task.wait(1.5)
+	local still = false
+	for _, piece in tower.pieces do
+		still = still or piece.t == 8
+	end
+	Remotes.event("Undo"):FireServer() -- brings back what the bulk delete took
+	task.wait(1)
+	return still, "pieces=" .. count()
+end)
+step("bulk delete removes a box in one go, undo brings it back", function()
+	Remotes.event("PlaceArea"):FireServer(1, 0, 0, 14, 3, 0, 14, 0)
+	waitFor(function()
+		return #tower.pieces >= 4
+	end, 3)
+	local before = count()
+	Remotes.event("RemoveArea"):FireServer(0, 0, 14, 3, 0, 14)
+	local removed = waitFor(function()
+		return count() == before - 4
+	end, 3)
+	Remotes.event("Undo"):FireServer()
+	local back = waitFor(function()
+		return count() == before
+	end, 3)
+	Remotes.event("RemoveArea"):FireServer(0, 0, 14, 3, 0, 14)
+	waitFor(function()
+		return count() == before - 4
+	end, 3)
+	return removed and back, string.format("removed=%s undone=%s", tostring(removed), tostring(back))
+end)
+
 step("parts rendered on the plot", function()
 	place(2, 0, 0, 8)
 	task.wait(0.5)
@@ -370,11 +412,11 @@ end)
 
 -- A finish right in front of the spawn, and a test run that walks onto it.
 step("test run verifies the tower", function()
-	place(8, 8, 0, 3) -- Finish, far enough for a run over the 1 s minimum
 	if not startRun() then
 		return false, "RunStarted never arrived"
 	end
 	walkTo(cellCenter(8, 0, 3), 15, 1.5)
+	toFinish()
 	local r = runResult(10)
 	return r ~= nil and r[1] == true and waitFor(function()
 		return verified
@@ -413,8 +455,9 @@ step("jump pad launches without failing the run", function()
 	conn:Disconnect()
 	local failed = lastResult and lastResult[1] == false and tostring(lastResult[4] or "")
 	walkTo(cellCenter(8, 0, 3), 15, 1.5)
+	toFinish()
 	local r = runResult(10)
-	return peak > 80 and r ~= nil and r[1] == true,
+	return peak > 120 and r ~= nil and r[1] == true,
 		string.format(
 			"peak vy=%.0f, mid-run failure=%s, result=%s",
 			peak,
@@ -461,6 +504,7 @@ step("checkpoint split, death respawns there, run continues", function()
 	local nearCheckpoint = (root.Position - cellCenter(4, 0, 1)).Magnitude < 10
 	local stillRunning = lastResult == nil
 	walkTo(cellCenter(8, 0, 3), 15, 1.5)
+	toFinish()
 	local r = runResult(10)
 	return gotSplit and nearCheckpoint and stillRunning and r ~= nil and r[1] == true,
 		string.format(
@@ -495,13 +539,27 @@ local function standOn(x: number, y: number, z: number)
 end
 
 step("fake wall: walk straight through it to the finish", function()
-	place(6, 8, 0, 1) -- fake wall on the spawn -> finish line
+	place(6, 8, 0, 1) -- fake wall on the spawn -> (8, 0, 3) line
 	if not startRun() then
 		return false, "no run"
 	end
-	walkTo(cellCenter(8, 0, 3), 15, 1.5)
+	local through = walkTo(cellCenter(8, 0, 3), 15, 1.5)
+	toFinish()
 	local r = runResult(10)
-	return r ~= nil and r[1] == true, "result=" .. tostring(r and r[1])
+	return through and r ~= nil and r[1] == true,
+		"through=" .. tostring(through) .. " result=" .. tostring(r and r[1])
+end)
+
+step("spikes knock you out", function()
+	place(26, 14, 0, 10)
+	local _, humanoid = character()
+	standOn(14, 0, 10)
+	local died = waitFor(function()
+		return humanoid.Health <= 0
+	end, 3)
+	player.CharacterAdded:Wait()
+	task.wait(1)
+	return died
 end)
 
 step("invisible platform is solid and invisible", function()
@@ -617,18 +675,23 @@ step("contest info answers", function()
 	local ok, info = invoke("ContestInfo")
 	return ok, if type(info) == "table" then tostring(info.phase) else "no contest now"
 end)
-step("material: plastic ok, marble needs Bricks", function()
+step("material: plastic ok, diamond plate needs level 8 and 1000 Coins", function()
+	task.wait(1.5) -- query rate limit after the browse calls
 	local _, okPlastic = invoke("SetMaterial", "plastic")
-	task.wait(0.3)
-	local _, okMarble, err = invoke("BuyMaterial", "marble")
+	task.wait(0.5)
+	local _, okMetal, err = invoke("BuyMaterial", "metal")
 	local bricks = progress and progress.bricks or 0
-	return okPlastic == true and (okMarble == (bricks >= 300)),
-		string.format("bricks=%d marble=%s (%s)", bricks, tostring(okMarble), tostring(err))
+	local level = progress and progress.level or 1
+	return okPlastic == true and (okMetal == (bricks >= 1000 and level >= 8)),
+		string.format("bricks=%d level=%d metal=%s (%s)", bricks, level, tostring(okMetal), tostring(err))
 end)
-step("trail purchase refused without Bricks", function()
+step("trail purchase refused without enough Coins", function()
 	local bricks = progress and progress.bricks or 0
-	local _, ok, err = invoke("BuyTrail", "trail_spark")
-	return ok == (bricks >= 200), tostring(err)
+	if bricks >= 1200 then
+		return true, "skipped: the test account can afford every trail"
+	end
+	local _, ok, err = invoke("BuyTrail", "trail_rainbow")
+	return ok == false, tostring(err)
 end)
 step("cannot like or report your own tower", function()
 	local _, liked = invoke("LikeTower", player.UserId)
@@ -662,11 +725,11 @@ step("round: publish refused during the round", function()
 end)
 step("round: build + climb verifies the round tower", function()
 	clearTower()
-	place(8, 8, 0, 3)
 	if not startRun() then
 		return false, "RunStarted never arrived"
 	end
 	walkTo(cellCenter(8, 0, 3), 15, 1.5)
+	toFinish()
 	local r = runResult(10)
 	return r ~= nil and r[1] == true, if r then "ms=" .. tostring(r[2]) else "no result"
 end)
@@ -674,10 +737,10 @@ local restoredCount = -1
 step("round: results list a valid tower with coins", function()
 	local ok = waitFor(function()
 		return roundResults ~= nil
-	end, 60)
+	end, 150) -- the QA build phase is 200 s
 	restoredCount = count()
 	task.wait(12) -- leave the results board up for a screenshot
-	local mine = ok and roundResults[1]
+	local mine = if ok then roundResults[1] else nil
 	return mine ~= nil and mine.valid == true and (mine.coins or 0) > 0,
 		if mine
 			then string.format("valid=%s coins=%s", tostring(mine.valid), tostring(mine.coins))
