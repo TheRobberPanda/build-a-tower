@@ -41,22 +41,6 @@ local function deco(
 	return p
 end
 
--- Four glowing strips around the top edge of a pad.
-local function frame(part: BasePart, color: Color3)
-	local top = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.05, 0)
-	local sx, sz = part.Size.X, part.Size.Z
-	for _, e in
-		{
-			{ Vector3.new(sx, 0.2, 0.5), CFrame.new(0, 0, sz / 2 - 0.25) },
-			{ Vector3.new(sx, 0.2, 0.5), CFrame.new(0, 0, -sz / 2 + 0.25) },
-			{ Vector3.new(0.5, 0.2, sz - 1), CFrame.new(sx / 2 - 0.25, 0, 0) },
-			{ Vector3.new(0.5, 0.2, sz - 1), CFrame.new(-sx / 2 + 0.25, 0, 0) },
-		}
-	do
-		deco(part, e[1], top * e[2], color, Enum.Material.Neon)
-	end
-end
-
 local function sparkles(part: BasePart, color: Color3, rate: number)
 	local e = Instance.new("ParticleEmitter")
 	e.Color = ColorSequence.new(color)
@@ -167,6 +151,23 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		part.Color = BRICK
 		part.Material = Enum.Material.Brick -- the tower material cosmetic may override it
 		bevel(part)
+		if name == "OneWay" then
+			-- Cyan arrow on both faces, pointing the way you may pass.
+			for _, side in { -1, 1 } do
+				local face = part.CFrame
+					* CFrame.Angles(0, r * math.pi / 2, 0)
+					* CFrame.new(0, 0, side * (part.Size.Z / 2 + 0.05))
+					* CFrame.Angles(math.pi / 2, 0, 0)
+				chevron(part, face, Color3.fromRGB(60, 230, 255), 1.3)
+				deco(
+					part,
+					Vector3.new(0.6, 0.15, 2),
+					face * CFrame.new(0, 0, 0.9),
+					Color3.fromRGB(60, 230, 255),
+					Enum.Material.Neon
+				)
+			end
+		end
 	elseif name == "Platform" then
 		part.Color = BLUE
 		bevel(part)
@@ -186,16 +187,25 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		part.Color = Color3.fromRGB(205, 165, 105)
 		part.Material = Enum.Material.Sandstone
 		bevel(part)
+		-- Split into four cracked tiles like the icon.
 		local crack = Color3.fromRGB(110, 80, 45)
-		deco(part, Vector3.new(0.18, 0.06, part.Size.Z * 0.8), top * CFrame.Angles(0, 0.3, 0), crack)
-		deco(part, Vector3.new(part.Size.X * 0.7, 0.06, 0.18), top * CFrame.Angles(0, -0.2, 0), crack)
+		deco(part, Vector3.new(0.4, 0.08, part.Size.Z), top, crack)
+		deco(part, Vector3.new(part.Size.X, 0.08, 0.4), top, crack)
+		for _, a in { -1, 1 } do
+			deco(
+				part,
+				Vector3.new(0.15, 0.08, part.Size.Z * 0.3),
+				top * CFrame.new(a * part.Size.X / 4, 0, a * part.Size.Z / 5) * CFrame.Angles(0, 0.5, 0),
+				crack
+			)
+		end
 	elseif name == "JumpPad" then
 		-- Grey base, glowing orange top plate with an arrow.
 		part.Color = Color3.fromRGB(110, 115, 128)
 		part.Material = Enum.Material.Metal
 		local plate = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.1, 0)
 		deco(part, Vector3.new(part.Size.X - 0.5, 0.2, part.Size.Z - 0.5), plate, Color3.fromRGB(235, 95, 0))
-		local arrow = Color3.fromRGB(255, 240, 200)
+		local arrow = Color3.fromRGB(255, 210, 120)
 		chevron(part, plate * CFrame.new(0, 0.1, -0.9), arrow, 1.2)
 		deco(part, Vector3.new(0.6, 0.15, 2.4), plate * CFrame.new(0, 0.1, 0.6), arrow, Enum.Material.Neon)
 		sparkles(part, Color3.fromRGB(255, 200, 90), 3)
@@ -214,19 +224,24 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 			0.85
 		sparkles(part, color, 8)
 	elseif name == "Finish" then
-		-- Glowing green pad, light beam and a big green flag.
-		part.Color = Color3.fromRGB(40, 60, 50)
-		part.Material = Enum.Material.SmoothPlastic
-		frame(part, Color3.fromRGB(60, 255, 120))
-		local beam = deco(
+		-- Just a big green flag on a wooden pole, like the icon (the box stays as the hitbox).
+		part.Transparency = 1
+		local base = part.CFrame * CFrame.new(0, -part.Size.Y / 2, 0)
+		local h = G * 2.2
+		deco(
 			part,
-			Vector3.new(part.Size.X - 1, 18, part.Size.Z - 1),
-			part.CFrame * CFrame.new(0, part.Size.Y / 2 + 9, 0),
-			Color3.fromRGB(90, 255, 140),
-			Enum.Material.Neon
+			Vector3.new(0.6, h, 0.6),
+			base * CFrame.new(0, h / 2, 0),
+			Color3.fromRGB(200, 170, 120),
+			Enum.Material.Wood
 		)
-		beam.Transparency = 0.82
-		pole(part, Color3.fromRGB(60, 200, 80), 1.8)
+		deco(
+			part,
+			Vector3.new(G * 1.2, G * 0.8, 0.15),
+			base * CFrame.new(G * 0.62, h - G * 0.45, 0),
+			Color3.fromRGB(60, 200, 70),
+			Enum.Material.Fabric
+		)
 		sparkles(part, Color3.fromRGB(120, 255, 160), 8)
 	elseif name == "Checkpoint" then
 		pole(part, Color3.fromRGB(0, 210, 220))

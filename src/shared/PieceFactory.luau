@@ -73,9 +73,15 @@ local COMPOUND: { [string]: (BasePart) -> () } = {
 	end,
 	LongRamp = function(root)
 		local size = root.Size
-		local length = math.sqrt(size.Z ^ 2 + (size.Y - 1) ^ 2)
-		local angle = math.atan2(size.Y - 1, size.Z)
-		child(root, "LongRamp", Vector3.new(size.X, 1, length), CFrame.Angles(-angle, 0, 0), ORANGE) -- rises toward +Z
+		-- Solid wedge like the icon, rising toward +Z.
+		local w = Instance.new("WedgePart")
+		w.Name = "LongRamp"
+		w.Anchored = true
+		w.Size = size
+		w.CFrame = root.CFrame
+		w.Color = ORANGE
+		w.Material = Enum.Material.WoodPlanks
+		w.Parent = root
 	end,
 }
 
@@ -128,6 +134,14 @@ local TELEPORTER_COLORS: { Color3 } = {
 	Color3.fromRGB(0, 170, 255),
 	Color3.fromRGB(255, 85, 170),
 	Color3.fromRGB(255, 255, 85),
+}
+
+-- Buttons, doors and flags: channel 1 is red like their icons.
+local LINK_COLORS: { Color3 } = {
+	Color3.fromRGB(225, 50, 45),
+	Color3.fromRGB(0, 170, 255),
+	Color3.fromRGB(60, 200, 80),
+	Color3.fromRGB(255, 210, 60),
 }
 
 function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
@@ -217,7 +231,7 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 			part.Position += Vector3.new(0, Config.GRID_STUDS / 2, 0)
 			part.Material = Enum.Material.Fabric
 			local ch = piece.p and piece.p.ch or 1
-			part.Color = TELEPORTER_COLORS[ch] or part.Color
+			part.Color = LINK_COLORS[ch] or part.Color
 		end
 	elseif def.name == "Checkpoint" then
 		part.Size = Vector3.new(part.Size.X, part.Size.Y * 0.25, part.Size.Z)
@@ -226,7 +240,7 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 	end
 	if def.name == "Button" or def.name == "Door" then
 		local ch = piece.p and piece.p.ch or 1
-		part.Color = TELEPORTER_COLORS[ch] or part.Color -- button and its doors share a colour
+		part.Color = LINK_COLORS[ch] or part.Color -- button and its doors share a colour
 	end
 	local build = COMPOUND[def.name]
 	if build then
@@ -242,7 +256,8 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 		part.Size -= Vector3.new(0.24, 0.24, 0.24)
 	end
 	local ch = piece.p and piece.p.ch
-	PieceVisuals.decorate(part, def.name, piece.y, piece.r, if ch then TELEPORTER_COLORS[ch] else nil)
+	local palette = if def.name == "Teleporter" then TELEPORTER_COLORS else LINK_COLORS
+	PieceVisuals.decorate(part, def.name, piece.y, piece.r, if ch then palette[ch] else nil)
 	part:SetAttribute("BaseMat", part.Material.Name) -- restored when the tower material is the default
 	if
 		def.name == "JumpPad"
