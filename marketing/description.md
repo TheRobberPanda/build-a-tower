@@ -5,25 +5,26 @@ Build a Tower
 
 ## Description (Creator Dashboard, max 1000 chars)
 
-Build an obby tower, hide secret routes in it, then race other players' towers.
+5 minutes. Build a tower. Climb it. Then watch everyone else try.
 
 BUILD
-Place blocks, platforms, ramps, jump pads and teleporters on your own plot. You get 150 pieces. Top it off with a Finish.
+Everyone in the server builds at the same time, on the same clock. Blocks, ramps, jump pads, teleporters, crumbling floors, conveyors. Put a Finish on top.
 
-PROVE IT
-You can only publish a tower you have climbed yourself. If you can't beat it, nobody has to.
-
-HIDE SECRETS
-Fake walls you can walk through. Invisible platforms. Jump pads and teleporters tucked out of sight. Anyone who finds a secret is allowed to use it, so the fastest route is rarely the obvious one.
+CLIMB IT
+Your tower only counts if you reach your own top before time runs out. Too hard for you? You're out.
 
 RACE
-Browse published towers and set a time. Every tower has its own leaderboard.
+Then every player races every tower. First to the top wins. If nobody makes it, the builder wins.
 
-CONTROLS
-PC: 1-8 pick a piece, R rotate, F change jump pad power or teleporter channel, X delete, click to place.
-Mobile: tap a piece, tap the grid to place.
+HIDE SECRETS
+Fake walls, invisible platforms, hidden teleporters. Anyone who finds a secret may use it. But your own climb is replayed to everyone after the race, so they'll see your shortcut.
 
-Sound effects by Kenney (kenney.nl, CC0).
+RATE AND REWARD
+Give each tower 1-5 stars and tip the builder coins. The best towers are saved for everyone to race.
+
+Want to build in peace? Menu → Sit out rounds.
+
+PC: 1-8 pick a piece, R rotate, F setting, X delete. Mobile: tap a piece, tap the grid.
 
 ## Genre
 Obby & Platformer
