@@ -12,11 +12,10 @@ return table.freeze({
 	TextDim = Color3.fromRGB(175, 180, 200),
 	Stroke = Color3.fromRGB(10, 10, 18),
 
-	-- 1024x512 sheet, 4x2 cells of 256px, in PieceDefs id order (assets/ui/piece_icons.png).
-	-- Empty = fall back to coloured tiles.
-	PieceIconSheet = "rbxassetid://94701657277096", -- decal 129283383469770
-	PieceIconCell = 256,
-	PieceIconCount = 8, -- pieces beyond this use coloured tiles
+	-- 1024x512 sheet (Roblox caps images at 1024), 8x4 cells of 128px, in PieceDefs id order (assets/ui/piece_icons.png).
+	PieceIconSheet = "rbxassetid://97673503901191", -- decal 109553124117562
+	PieceIconCell = 128,
+	PieceIconColumns = 8,
 
 	Font = Enum.Font.FredokaOne,
 	BodyFont = Enum.Font.BuilderSansBold,
