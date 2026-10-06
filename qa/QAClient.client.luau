@@ -169,6 +169,95 @@ local function invoke(name: string, ...: any): (boolean, any, any)
 	return ok, a, b
 end
 
+---------------------------------------------------------------- 2-client round
+-- RunQA = 2: every client builds a finish, climbs it, races the other tower,
+-- votes 5 stars and donates 10; each client reports separately.
+if ReplicatedStorage:GetAttribute("QA2") == true then
+	local function phaseIs(name: string, builderIsMe: boolean?): boolean
+		return round.phase == name and (builderIsMe == nil or (round.builder == player.UserId) == builderIsMe)
+	end
+	step("joined a build phase", function()
+		return waitFor(function()
+			return phaseIs("build") and table.find(round.members or {}, player.UserId) ~= nil
+		end, 60),
+			string.format("phase=%s members=%d", tostring(round.phase), #(round.members or {}))
+	end)
+	step("build + verify", function()
+		waitFor(function()
+			return tower ~= nil
+		end, 5)
+		place(8, 8, 0, 3)
+		if not startRun() then
+			return false, "no run"
+		end
+		walkTo(cellCenter(8, 0, 3), 15, 1.5)
+		local r = runResult(10)
+		return r ~= nil and r[1] == true, if r then "ms=" .. tostring(r[2]) else "no result"
+	end)
+	step("race the other tower and win it", function()
+		runStarted = false
+		lastResult = nil
+		local raced = waitFor(function()
+			return phaseIs("race", false) and runStarted
+		end, 90)
+		if not raced then
+			return false, "phase=" .. tostring(round.phase) .. " builder=" .. tostring(round.builder)
+		end
+		walkTo(cellCenter(8, 0, 3), 15, 1.5)
+		local r = runResult(10)
+		return r ~= nil and r[1] == true, if r then "ms=" .. tostring(r[2]) else "no result"
+	end)
+	step("vote 5 stars and donate 10 on the other tower", function()
+		local ok = waitFor(function()
+			return phaseIs("vote", false)
+		end, 90)
+		local before = progress and progress.bricks or 0
+		Remotes.event("RoundVote"):FireServer(5)
+		task.wait(0.3)
+		Remotes.event("RoundDonate"):FireServer(10)
+		local paid = waitFor(function()
+			return progress ~= nil and progress.bricks == before - 10
+		end, 5)
+		return ok and paid, string.format("coins %d -> %s", before, tostring(progress and progress.bricks))
+	end)
+	step("results: both towers valid, coins for everyone", function()
+		local ok = waitFor(function()
+			return roundResults ~= nil
+		end, 120)
+		local detail = {}
+		local good = ok and #roundResults == 2
+		for _, r in roundResults or {} do
+			table.insert(
+				detail,
+				string.format(
+					"%s valid=%s coins=%s wins=%s stars=%s",
+					r.name,
+					tostring(r.valid),
+					tostring(r.coins),
+					tostring(r.wins),
+					tostring(r.stars)
+				)
+			)
+			good = good and r.valid == true and (r.coins or 0) > 0 and r.stars == 5
+		end
+		return good, table.concat(detail, "; ")
+	end)
+	local passed = 0
+	for _, r in results do
+		if r.ok then
+			passed += 1
+		end
+	end
+	ReplicatedStorage:WaitForChild("QAReport"):FireServer({
+		player = player.Name,
+		passed = passed,
+		total = #results,
+		steps = results,
+		clientLog = clientLog,
+	})
+	return
+end
+
 ---------------------------------------------------------------- the run
 
 local homeCount = -1
@@ -419,7 +508,12 @@ step("invisible platform is solid and invisible", function()
 	place(7, 14, 0, 14)
 	local part = partAt(14, 0, 14)
 	return part ~= nil and part.Transparency >= 0.85 and part.CanCollide, -- night shimmer: 0.85
-		part and string.format("%s t=%.2f collide=%s", part.Name, part.Transparency, tostring(part.CanCollide))
+		part and string.format(
+			"%s t=%.2f collide=%s",
+			part.Name,
+			part.Transparency,
+			tostring(part.CanCollide)
+		)
 end)
 
 step("crumble falls after landing and comes back", function()

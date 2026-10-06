@@ -67,6 +67,9 @@ local function broadcast(newPhase: string, duration: number, extra: { [string]: 
 	end
 	state.members = members
 	Remotes.event("Round"):FireAllClients(state)
+	if RunService:IsStudio() and ServerStorage:GetAttribute("RunQA") ~= nil then
+		print(string.format("[Round] %s members=%d builder=%s", newPhase, #members, tostring(state.builder)))
+	end
 end
 
 local function present(e: Entry): boolean
@@ -186,7 +189,7 @@ local function race(e: Entry, index: number, count: number): Entry?
 		index = index,
 		count = count,
 	})
-	LiveRaceService.startRound(tower.owner, tower.name, racers)
+	LiveRaceService.startRound(tower.owner, tower.name, racers, { e.player })
 	waitPhase(seconds(Config.RACE_SECONDS), function()
 		return raceWinner ~= nil
 	end)
@@ -253,7 +256,7 @@ local function finishRound()
 		TowerService.setEditLocked(e.player, false)
 		-- Good towers are saved: valid, and rated 3+ stars (or nobody was there to rate).
 		local tower = e.tower
-		local qa = RunService:IsStudio() and ServerStorage:GetAttribute("RunQA") == true
+		local qa = RunService:IsStudio() and ServerStorage:GetAttribute("RunQA") ~= nil
 		if tower and roundTower and not qa and (avg == nil or avg >= 3) then
 			task.spawn(TowerService.publishRound, e.player, roundTower, tower.name, tower.builderMs)
 		end

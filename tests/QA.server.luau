@@ -10,13 +10,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
-if not RunService:IsStudio() or ServerStorage:GetAttribute("RunQA") ~= true then
+local mode = ServerStorage:GetAttribute("RunQA")
+if not RunService:IsStudio() or (mode ~= true and mode ~= 2) then
 	return
 end
 
 local serverLog: { string } = {}
 LogService.MessageOut:Connect(function(message, messageType)
-	if messageType == Enum.MessageType.MessageError or messageType == Enum.MessageType.MessageWarning then
+	if
+		messageType == Enum.MessageType.MessageError
+		or messageType == Enum.MessageType.MessageWarning
+		or string.sub(message, 1, 7) == "[Round]"
+	then
 		if #serverLog < 60 then
 			table.insert(serverLog, string.sub(message, 1, 300))
 		end
@@ -24,15 +29,18 @@ LogService.MessageOut:Connect(function(message, messageType)
 end)
 
 ServerStorage:SetAttribute("RoundFast", true) -- play-mode copy only; Edit keeps its value
-ServerStorage:SetAttribute("QABuildSeconds", 200)
+ServerStorage:SetAttribute("QABuildSeconds", if mode == 2 then 30 else 200)
+ReplicatedStorage:SetAttribute("QA2", mode == 2)
 local remote = Instance.new("RemoteEvent")
 remote.Name = "QAReport"
 remote.Parent = ReplicatedStorage
 ReplicatedStorage:SetAttribute("QA", true)
 
 local report: any = nil
+local reports = {}
 remote.OnServerEvent:Connect(function(_player, data)
-	report = data
+	table.insert(reports, data)
+	report = if mode == 2 then (if #reports >= 2 then reports else nil) else data
 end)
 
 local started = os.clock()
@@ -48,7 +56,8 @@ local DataService = require(ServerScriptService.Server.Services.DataService) :: 
 DataService.releaseAll()
 
 local result = {
-	client = report or "client report timed out",
+	client = report or (if #reports > 0 then reports else "client report timed out"),
+	players = #game:GetService("Players"):GetPlayers(),
 	serverLog = serverLog,
 	seconds = math.floor(os.clock() - started),
 }

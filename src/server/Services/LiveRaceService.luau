@@ -25,6 +25,7 @@ type Race = {
 	state: "lobby" | "running",
 	startsAt: number,
 	results: { { player: Player, ms: number? } }, -- in finishing order; ms nil = did not finish
+	spectators: { Player }?, -- round mode: the builder watches racers as ghosts
 }
 
 local races: { [number]: Race } = {}
@@ -101,6 +102,11 @@ local function checkDone(race: Race)
 	for _, p in race.members do
 		Remotes.event("LiveRaceStandings"):FireClient(p, standings(race), true)
 	end
+	for _, p in race.spectators or {} do
+		if p.Parent then
+			Remotes.event("LiveRaceStandings"):FireClient(p, standings(race), true)
+		end
+	end
 	closeRace(race)
 end
 
@@ -140,7 +146,12 @@ local function startRace(race: Race)
 end
 
 -- Round mode: start a race on a round tower right away (no lobby).
-function LiveRaceService.startRound(ownerId: number, towerName: string, members: { Player })
+function LiveRaceService.startRound(
+	ownerId: number,
+	towerName: string,
+	members: { Player },
+	spectators: { Player }
+)
 	if #members == 0 then
 		return
 	end
@@ -154,6 +165,7 @@ function LiveRaceService.startRound(ownerId: number, towerName: string, members:
 		state = "lobby",
 		startsAt = os.clock(),
 		results = {},
+		spectators = spectators,
 	}
 	races[race.id] = race
 	for _, p in members do
@@ -286,6 +298,11 @@ function LiveRaceService.init()
 				end
 				for _, p in race.members do
 					if RunTimerService.isRunning(p) then
+						Remotes.event("LiveRacePositions"):FireClient(p, positions)
+					end
+				end
+				for _, p in race.spectators or {} do
+					if p.Parent then
 						Remotes.event("LiveRacePositions"):FireClient(p, positions)
 					end
 				end
