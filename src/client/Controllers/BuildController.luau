@@ -25,7 +25,7 @@ local ghostTarget: CFrame? = nil -- the ghost glides here (visual only)
 local FILL_MAX = 64 -- matches the server's PlaceArea cap
 -- Drag state: press on a face, drag across the plane of that face, release to
 -- fill the rectangle (ground = floor, wall face = wall). A plain click = one piece.
-type Drag = { cell: Vector3, normal: Vector3, ended: Vector3 }
+type Drag = { cell: Vector3, normal: Vector3, ended: Vector3, at: Vector3, n: Vector3 }
 local drag: Drag? = nil
 local tapStart: Drag? = nil -- touch Fill mode: first tap sets the corner
 local painting = false
@@ -34,7 +34,8 @@ local lastPaintAt = 0
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Include
 
-type Target = { cell: Vector3, removeCell: Vector3?, valid: boolean, normal: Vector3 }
+type Target =
+	{ cell: Vector3, removeCell: Vector3?, valid: boolean, normal: Vector3, at: Vector3, n: Vector3 }
 
 local function myPlot(): Model?
 	local plots = workspace:FindFirstChild("Plots")
@@ -90,7 +91,7 @@ local function targetAt(screenPos: Vector2, viewport: boolean): Target?
 		then Vector3.yAxis
 		elseif math.abs(n.X) >= math.abs(n.Z) then Vector3.xAxis
 		else Vector3.zAxis
-	return { cell = cell, removeCell = removeCell, valid = valid, normal = axis }
+	return { cell = cell, removeCell = removeCell, valid = valid, normal = axis, at = hit.Position, n = n }
 end
 
 -- The cell under the pointer on the plane the drag started on.
@@ -104,16 +105,17 @@ local function cellOnPlane(screenPos: Vector2, viewport: boolean, d: Drag): Vect
 	local ray = if viewport
 		then camera:ViewportPointToRay(screenPos.X, screenPos.Y)
 		else camera:ScreenPointToRay(screenPos.X, screenPos.Y)
-	local center = origin + (d.cell + Vector3.one * 0.5) * G
-	local denom = ray.Direction:Dot(d.normal)
+	-- Intersect the clicked face itself (not the cell centre half a cell above it:
+	-- at shallow camera angles that plane lands cells away and a click became a fill).
+	local denom = ray.Direction:Dot(d.n)
 	if math.abs(denom) < 1e-3 then
 		return d.cell
 	end
-	local t = (center - ray.Origin):Dot(d.normal) / denom
+	local t = (d.at - ray.Origin):Dot(d.n) / denom
 	if t < 0 or t > 800 then
 		return d.cell
 	end
-	local c = toCell(origin, ray.Origin + ray.Direction * t)
+	local c = toCell(origin, ray.Origin + ray.Direction * t + d.n * (G / 2))
 	local keep = d.cell * d.normal -- stay on the starting layer/wall
 	return c * (Vector3.one - d.normal) + keep
 end
@@ -308,7 +310,13 @@ function BuildController.start()
 				painting = true
 				lastPainted = target and target.removeCell
 			elseif target and target.valid and State.mode == "build" then
-				drag = { cell = target.cell, normal = target.normal, ended = target.cell }
+				drag = {
+					cell = target.cell,
+					normal = target.normal,
+					ended = target.cell,
+					at = target.at,
+					n = target.n,
+				}
 			end
 		elseif input.UserInputType == Enum.UserInputType.Keyboard and State.mode == "build" then
 			local piece = KEY_TO_PIECE[input.KeyCode]
@@ -341,7 +349,13 @@ function BuildController.start()
 					tapStart = nil
 					fill(d.cell, d.ended)
 				elseif target and target.valid then
-					tapStart = { cell = target.cell, normal = target.normal, ended = target.cell }
+					tapStart = {
+						cell = target.cell,
+						normal = target.normal,
+						ended = target.cell,
+						at = target.at,
+						n = target.n,
+					}
 				end
 				updateGhost(target)
 				return
@@ -377,7 +391,9 @@ function BuildController.start()
 			if d then
 				d.ended = cellOnPlane(mouse, true, d)
 			end
-			updateGhost(if d then { cell = d.cell, valid = true, normal = d.normal } else target)
+			updateGhost(
+				if d then { cell = d.cell, valid = true, normal = d.normal, at = d.at, n = d.n } else target
+			)
 			if painting and target then
 				local cell = if State.deleting then target.removeCell else target.cell
 				if cell and cell ~= lastPainted and os.clock() - lastPaintAt > 0.08 then

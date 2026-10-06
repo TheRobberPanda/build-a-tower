@@ -120,6 +120,9 @@ local COLORS: { [string]: Color3 } = {
 	MoonBlock = Color3.fromRGB(90, 110, 230),
 }
 
+local G = Config.GRID_STUDS
+local SLAB = { Platform = true, BigFloor = true, Crumble = true, Conveyor = true }
+
 local TELEPORTER_COLORS: { Color3 } = {
 	Color3.fromRGB(170, 85, 255),
 	Color3.fromRGB(0, 170, 255),
@@ -163,6 +166,11 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 		local power = piece.p and piece.p.power or 1
 		part.Size = Vector3.new(part.Size.X, part.Size.Y * (0.25 + 0.15 * power), part.Size.Z) -- taller = stronger
 		part.Position -= Vector3.new(0, (Config.GRID_STUDS - part.Size.Y) / 2, 0)
+	end
+	if SLAB[def.name] then
+		-- Thin slab like the icon; the top stays where a full cell's top would be.
+		part.Size = Vector3.new(part.Size.X, G * 0.35, part.Size.Z)
+		part.Position += Vector3.new(0, (G - part.Size.Y) / 2, 0)
 	end
 	if def.name == "Crumble" then
 		part.Material = Enum.Material.Slate

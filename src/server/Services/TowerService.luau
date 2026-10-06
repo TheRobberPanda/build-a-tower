@@ -130,6 +130,31 @@ function TowerService.buildTargetOf(player: Player): Player?
 	return buildTarget[player]
 end
 
+-- True if the piece's cells overlap any character (you can't build inside a player).
+local overlap = OverlapParams.new()
+overlap.FilterType = Enum.RaycastFilterType.Include
+local function hitsCharacter(owner: Player, piece: Types.Piece): boolean
+	local plot = PlotService.get(owner)
+	if not plot then
+		return false
+	end
+	local chars = {}
+	for _, p in Players:GetPlayers() do
+		if p.Character then
+			table.insert(chars, p.Character)
+		end
+	end
+	overlap.FilterDescendantsInstances = chars
+	local sx, sy, sz = TowerCodec.extent(piece)
+	local g = Config.GRID_STUDS
+	local center = plot.origin + Vector3.new(piece.x + sx / 2, piece.y + sy / 2, piece.z + sz / 2) * g
+	return #workspace:GetPartBoundsInBox(
+		CFrame.new(center),
+		Vector3.new(sx, sy, sz) * g - Vector3.one * 0.2,
+		overlap
+	) > 0
+end
+
 local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p: any)
 	local owner, data = editable(player)
 	local state = owner and states[owner]
@@ -151,7 +176,12 @@ local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p
 		return
 	end
 	local piece = TowerCodec.validatePiece({ t = t, x = x, y = y, z = z, r = r, p = p })
-	if not piece or not Events.pieceAvailable(piece.t, os.time()) or not TowerCodec.canAdd(state, piece) then
+	if
+		not piece
+		or not Events.pieceAvailable(piece.t, os.time())
+		or not TowerCodec.canAdd(state, piece)
+		or hitsCharacter(owner, piece)
+	then
 		return
 	end
 	TowerCodec.add(state, piece)
@@ -212,7 +242,7 @@ local function onPlaceArea(
 		for _, x in xs do
 			for _, z in zs do
 				local piece = TowerCodec.validatePiece({ t = t, x = x, y = y, z = z, r = r, p = p })
-				if piece and TowerCodec.canAdd(state, piece) then
+				if piece and TowerCodec.canAdd(state, piece) and not hitsCharacter(owner, piece) then
 					TowerCodec.add(state, piece)
 					table.insert(data.tower.pieces, piece)
 					table.insert(added, piece)
