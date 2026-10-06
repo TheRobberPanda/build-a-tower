@@ -19,10 +19,22 @@ local player = Players.LocalPlayer
 local G = Config.GRID_STUDS
 
 local ghost: Part
+local outline: SelectionBox
+local countTag: BillboardGui
+local ghostTarget: CFrame? = nil -- the ghost glides here (visual only)
+local FILL_MAX = 64 -- matches the server's PlaceArea cap
+-- Drag state: press on a face, drag across the plane of that face, release to
+-- fill the rectangle (ground = floor, wall face = wall). A plain click = one piece.
+type Drag = { cell: Vector3, normal: Vector3, ended: Vector3 }
+local drag: Drag? = nil
+local tapStart: Drag? = nil -- touch Fill mode: first tap sets the corner
+local painting = false
+local lastPainted: Vector3? = nil
+local lastPaintAt = 0
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Include
 
-type Target = { cell: Vector3, removeCell: Vector3?, valid: boolean }
+type Target = { cell: Vector3, removeCell: Vector3?, valid: boolean, normal: Vector3 }
 
 local function myPlot(): Model?
 	local plots = workspace:FindFirstChild("Plots")
@@ -73,13 +85,89 @@ local function targetAt(screenPos: Vector2, viewport: boolean): Target?
 		then toCell(origin, hit.Position - hit.Normal * (G / 2))
 		else nil
 	local valid = TowerCodec.validatePiece(selectedPiece(cell)) ~= nil
-	return { cell = cell, removeCell = removeCell, valid = valid }
+	local n = hit.Normal
+	local axis = if math.abs(n.Y) >= math.abs(n.X) and math.abs(n.Y) >= math.abs(n.Z)
+		then Vector3.yAxis
+		elseif math.abs(n.X) >= math.abs(n.Z) then Vector3.xAxis
+		else Vector3.zAxis
+	return { cell = cell, removeCell = removeCell, valid = valid, normal = axis }
+end
+
+-- The cell under the pointer on the plane the drag started on.
+local function cellOnPlane(screenPos: Vector2, viewport: boolean, d: Drag): Vector3
+	local plot = myPlot()
+	local camera = workspace.CurrentCamera
+	local origin = plot and plot:GetAttribute("Origin")
+	if not camera or typeof(origin) ~= "Vector3" then
+		return d.cell
+	end
+	local ray = if viewport
+		then camera:ViewportPointToRay(screenPos.X, screenPos.Y)
+		else camera:ScreenPointToRay(screenPos.X, screenPos.Y)
+	local center = origin + (d.cell + Vector3.one * 0.5) * G
+	local denom = ray.Direction:Dot(d.normal)
+	if math.abs(denom) < 1e-3 then
+		return d.cell
+	end
+	local t = (center - ray.Origin):Dot(d.normal) / denom
+	if t < 0 or t > 800 then
+		return d.cell
+	end
+	local c = toCell(origin, ray.Origin + ray.Direction * t)
+	local keep = d.cell * d.normal -- stay on the starting layer/wall
+	return c * (Vector3.one - d.normal) + keep
+end
+
+-- Snaps a drag box to whole pieces and the fill cap. Returns start, end
+-- (both piece origins) and the piece count.
+local function fillBox(a: Vector3, b: Vector3): (Vector3, Vector3, number)
+	local sx, sy, sz = TowerCodec.extent(selectedPiece(a))
+	local ext = { sx, sy, sz }
+	local from = { a.X, a.Y, a.Z }
+	local to = { b.X, b.Y, b.Z }
+	local counts = {}
+	for i = 1, 3 do
+		counts[i] = math.floor(math.abs(to[i] - from[i]) / ext[i]) + 1
+	end
+	while counts[1] * counts[2] * counts[3] > FILL_MAX do
+		local big = 1
+		for i = 2, 3 do
+			if counts[i] > counts[big] then
+				big = i
+			end
+		end
+		counts[big] -= 1
+	end
+	local out = {}
+	for i = 1, 3 do
+		local dir = if to[i] >= from[i] then 1 else -1
+		out[i] = from[i] + dir * (counts[i] - 1) * ext[i]
+	end
+	return a, Vector3.new(out[1], out[2], out[3]), counts[1] * counts[2] * counts[3]
+end
+
+local function showGhost(cf: CFrame, size: Vector3, color: Color3, count: number)
+	if ghost.Parent == nil or not ghostTarget then
+		ghost.CFrame = cf -- appear in place, then glide
+	end
+	ghostTarget = cf
+	ghost.Size = size
+	ghost.Color = color
+	outline.Color3 = color
+	outline.SurfaceColor3 = color
+	local label = countTag:FindFirstChildOfClass("TextLabel")
+	if label then
+		label.Text = "x" .. count
+	end
+	countTag.Enabled = count > 1
+	ghost.Parent = workspace
 end
 
 local function updateGhost(target: Target?)
 	local plot = myPlot()
 	if State.mode ~= "build" or not target or not plot then
 		ghost.Parent = nil
+		ghostTarget = nil
 		return
 	end
 	local origin = plot:GetAttribute("Origin") :: Vector3
@@ -88,17 +176,28 @@ local function updateGhost(target: Target?)
 			ghost.Parent = nil
 			return
 		end
-		ghost.Size = Vector3.one * (G + 0.2)
-		ghost.Position = origin + (target.removeCell + Vector3.one * 0.5) * G
-		ghost.Color = Color3.fromRGB(235, 70, 80)
-	else
-		local piece = selectedPiece(target.cell)
-		local sx, sy, sz = TowerCodec.extent(piece)
-		ghost.Size = Vector3.new(sx, sy, sz) * G
-		ghost.Position = origin + (target.cell + Vector3.new(sx, sy, sz) / 2) * G
-		ghost.Color = if target.valid then Color3.fromRGB(80, 200, 255) else Color3.fromRGB(235, 70, 80)
+		local pos = origin + (target.removeCell + Vector3.one * 0.5) * G
+		showGhost(CFrame.new(pos), Vector3.one * (G + 0.2), Color3.fromRGB(235, 70, 80), 1)
+		return
 	end
-	ghost.Parent = workspace
+	local a = target.cell
+	local b = target.cell
+	local d = drag or tapStart
+	if d then
+		a, b = d.cell, d.ended
+	end
+	local first, last, count = fillBox(a, b)
+	local sx, sy, sz = TowerCodec.extent(selectedPiece(first))
+	local ext = Vector3.new(sx, sy, sz)
+	local lo = first:Min(last)
+	local hi = last:Max(first) + ext
+	local valid = TowerCodec.validatePiece(selectedPiece(first)) ~= nil
+	showGhost(
+		CFrame.new(origin + (lo + hi) / 2 * G),
+		(hi - lo) * G,
+		if valid then Color3.fromRGB(80, 200, 255) else Color3.fromRGB(235, 70, 80),
+		count
+	)
 end
 
 local function act(target: Target?)
@@ -117,6 +216,29 @@ local function act(target: Target?)
 		local c = target.cell
 		Remotes.event("PlacePiece")
 			:FireServer(State.selected, c.X, c.Y, c.Z, State.rotation, State.selectedProps())
+	end
+end
+
+local function fill(a: Vector3, b: Vector3)
+	if State.mode ~= "build" or State.deleting then
+		return
+	end
+	local first, last, count = fillBox(a, b)
+	if count <= 1 then
+		Remotes.event("PlacePiece")
+			:FireServer(State.selected, first.X, first.Y, first.Z, State.rotation, State.selectedProps())
+	else
+		Remotes.event("PlaceArea"):FireServer(
+			State.selected,
+			first.X,
+			first.Y,
+			first.Z,
+			last.X,
+			last.Y,
+			last.Z,
+			State.rotation,
+			State.selectedProps()
+		)
 	end
 end
 
@@ -154,6 +276,24 @@ function BuildController.init()
 	ghost.CanTouch = false
 	ghost.Transparency = 0.6
 	ghost.Material = Enum.Material.ForceField
+	outline = Instance.new("SelectionBox")
+	outline.Adornee = ghost
+	outline.LineThickness = 0.12
+	outline.SurfaceTransparency = 0.85
+	outline.Parent = ghost
+	countTag = Instance.new("BillboardGui")
+	countTag.Size = UDim2.fromOffset(70, 34)
+	countTag.AlwaysOnTop = true
+	countTag.Adornee = ghost
+	countTag.Parent = ghost
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.2
+	label.Parent = countTag
 end
 
 function BuildController.start()
@@ -162,7 +302,14 @@ function BuildController.start()
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			act(targetAt(Vector2.new(input.Position.X, input.Position.Y), false))
+			local target = targetAt(Vector2.new(input.Position.X, input.Position.Y), false)
+			if State.deleting then
+				act(target)
+				painting = true
+				lastPainted = target and target.removeCell
+			elseif target and target.valid and State.mode == "build" then
+				drag = { cell = target.cell, normal = target.normal, ended = target.cell }
+			end
 		elseif input.UserInputType == Enum.UserInputType.Keyboard and State.mode == "build" then
 			local piece = KEY_TO_PIECE[input.KeyCode]
 			if piece and PieceDefs.byId[piece] then
@@ -175,6 +322,8 @@ function BuildController.start()
 				BuildController.cycleSetting()
 			elseif input.KeyCode == Enum.KeyCode.X then
 				State.set({ deleting = not State.deleting })
+			elseif input.KeyCode == Enum.KeyCode.G then
+				State.set({ fill = not State.fill })
 			end
 		end
 	end)
@@ -182,18 +331,68 @@ function BuildController.start()
 	-- Touch: a tap (not a drag/camera swipe) places or deletes.
 	UserInputService.TouchTap:Connect(function(positions, processed)
 		if not processed and positions[1] then
-			local target = targetAt(Vector2.new(positions[1].X, positions[1].Y), false)
+			local pos = Vector2.new(positions[1].X, positions[1].Y)
+			local target = targetAt(pos, false)
+			if State.fill and not State.deleting and State.mode == "build" then
+				-- Fill mode: first tap = one corner, second tap = the other corner.
+				if tapStart then
+					local d = tapStart
+					d.ended = cellOnPlane(pos, false, d)
+					tapStart = nil
+					fill(d.cell, d.ended)
+				elseif target and target.valid then
+					tapStart = { cell = target.cell, normal = target.normal, ended = target.cell }
+				end
+				updateGhost(target)
+				return
+			end
 			updateGhost(target)
 			act(target)
 		end
 	end)
 
-	-- Desktop hover preview.
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			painting = false
+			lastPainted = nil
+			local d = drag
+			drag = nil
+			if d then
+				fill(d.cell, d.ended)
+			end
+		end
+	end)
+	State.Changed:Connect(function()
+		if not State.fill then
+			tapStart = nil
+		end
+	end)
+
+	-- Desktop hover preview; holding the mouse button paints along the drag.
 	RunService.RenderStepped:Connect(function()
 		if UserInputService.MouseEnabled and State.mode == "build" then
-			updateGhost(targetAt(UserInputService:GetMouseLocation(), true))
+			local mouse = UserInputService:GetMouseLocation()
+			local target = targetAt(mouse, true)
+			local d = drag
+			if d then
+				d.ended = cellOnPlane(mouse, true, d)
+			end
+			updateGhost(if d then { cell = d.cell, valid = true, normal = d.normal } else target)
+			if painting and target then
+				local cell = if State.deleting then target.removeCell else target.cell
+				if cell and cell ~= lastPainted and os.clock() - lastPaintAt > 0.08 then
+					lastPainted = cell
+					lastPaintAt = os.clock()
+					act(target)
+				end
+			end
 		elseif State.mode ~= "build" then
 			ghost.Parent = nil
+			drag = nil
+		end
+		local goal = ghostTarget
+		if goal and ghost.Parent then
+			ghost.CFrame = ghost.CFrame:Lerp(goal, 0.45)
 		end
 	end)
 end

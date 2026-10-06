@@ -12,6 +12,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
 local Kit = require(script.Parent.Parent.UI.Kit)
 local Theme = require(script.Parent.Parent.UI.Theme)
+local PieceIcon = require(script.Parent.Parent.UI.PieceIcon)
 local State = require(script.Parent.Parent.State)
 local BuildController = require(script.Parent.BuildController)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
@@ -26,30 +27,7 @@ local UIController = {}
 
 local player = Players.LocalPlayer
 
--- Same colours as the parts on the plot so slots read at a glance.
-local PIECE_COLORS: { [string]: Color3 } = {
-	Block = Color3.fromRGB(163, 162, 165),
-	Platform = Color3.fromRGB(110, 153, 202),
-	Ramp = Color3.fromRGB(196, 140, 98),
-	JumpPad = Color3.fromRGB(255, 176, 0),
-	Teleporter = Color3.fromRGB(170, 85, 255),
-	FakeWall = Color3.fromRGB(120, 120, 128),
-	InvisiblePlatform = Color3.fromRGB(220, 240, 255),
-	Finish = Color3.fromRGB(0, 200, 90),
-	Crumble = Color3.fromRGB(181, 140, 90),
-	Conveyor = Color3.fromRGB(60, 60, 70),
-	OneWay = Color3.fromRGB(140, 200, 255),
-	Button = Color3.fromRGB(230, 60, 60),
-	Door = Color3.fromRGB(150, 100, 60),
-	Checkpoint = Color3.fromRGB(0, 190, 200),
-	Plant = Color3.fromRGB(70, 160, 70),
-	Lamp = Color3.fromRGB(255, 220, 140),
-	Flag = Color3.fromRGB(230, 60, 60),
-	Pumpkin = Color3.fromRGB(255, 130, 20),
-	Stairs = Color3.fromRGB(255, 140, 30),
-	Beam = Color3.fromRGB(40, 120, 255),
-	LongRamp = Color3.fromRGB(255, 160, 60),
-}
+-- Short labels for the hotbar slots.
 local SHORT_NAMES: { [string]: string } = {
 	InvisiblePlatform = "Invisible",
 	FakeWall = "Fake Wall",
@@ -79,6 +57,7 @@ local xpFill: Frame
 local verifiedLabel: TextLabel
 local hintLabel: TextLabel
 local deleteButton: TextButton
+local fillButton: TextButton
 local settingButton: TextButton
 local publishButton: TextButton
 local testButton: TextButton
@@ -236,20 +215,25 @@ local function buildHotbar()
 			Size = UDim2.fromScale(0.66, 0.66),
 			Parent = slot,
 		}
-		if Theme.PieceIconSheet ~= "" and def.id <= Theme.PieceIconCount then
-			local cell = Theme.PieceIconCell
-			local i = def.id - 1
-			tileProps.BackgroundTransparency = 1
-			tileProps.Image = Theme.PieceIconSheet
-			tileProps.ImageRectSize = Vector2.new(cell, cell)
-			tileProps.ImageRectOffset = Vector2.new((i % 4) * cell, (i // 4) * cell)
-			Kit.new("ImageLabel", tileProps)
-		else
-			tileProps.BackgroundColor3 = PIECE_COLORS[def.name]
-			tileProps.Size = UDim2.fromScale(0.55, 0.55)
-			tileProps.Position = UDim2.fromScale(0.5, 0.1)
-			Kit.new("Frame", tileProps, { Kit.corner(0.15), Kit.stroke(1.5) })
-		end
+		Kit.new("Frame", {
+			Name = "Backdrop",
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.fromScale(0.5, 0.06),
+			Size = UDim2.fromScale(0.84, 0.64),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			Parent = slot,
+		}, {
+			Kit.corner(0.2),
+			Kit.new("UIGradient", {
+				Rotation = 90,
+				Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 215, 235)),
+			}),
+		})
+		local icon = PieceIcon.new(def.id, tileProps)
+		icon.Size = UDim2.fromScale(0.86, 0.68)
+		icon.Position = UDim2.fromScale(0.5, 0.04)
+		icon.ZIndex = 2
+		icon.Parent = slot
 		Kit.label(SHORT_NAMES[def.name] or def.name, {
 			Size = UDim2.fromScale(0.94, 0.26),
 			Position = UDim2.fromScale(0.03, 0.7),
@@ -483,7 +467,7 @@ local function buildTools()
 	): TextButton
 		return Kit.button(text, color, fn, {
 			LayoutOrder = order,
-			Size = UDim2.fromScale(1, 0.15),
+			Size = UDim2.fromScale(1, 0.14),
 			Parent = parent,
 		})
 	end
@@ -494,10 +478,13 @@ local function buildTools()
 	deleteButton = tool(column, 3, "Delete", Theme.PanelLight, function()
 		State.set({ deleting = not State.deleting })
 	end)
-	tool(column, 4, "Undo", Theme.PanelLight, function()
+	fillButton = tool(column, 4, "Fill", Theme.PanelLight, function()
+		State.set({ fill = not State.fill, deleting = false })
+	end)
+	tool(column, 5, "Undo", Theme.PanelLight, function()
 		Remotes.event("Undo"):FireServer()
 	end)
-	testButton = tool(column, 5, "Test Run", Theme.Success, function()
+	testButton = tool(column, 6, "Test Run", Theme.Success, function()
 		Remotes.event("StartRun"):FireServer(player.UserId)
 	end)
 
@@ -1192,6 +1179,7 @@ local function render()
 	local selectedDef = PieceDefs.byId[State.selected]
 	pieceHint.Text = if State.deleting
 		then "Tap a piece to delete it"
+		elseif State.fill then "Fill: tap one corner, then the other"
 		elseif selectedDef and selectedDef.hint then selectedDef.hint
 		else ""
 	budgetLabel.Text = string.format("Pieces %d/%d", count, State.budget)
@@ -1208,6 +1196,9 @@ local function render()
 		settingButton.Text = string.format("%s %d", if settingKey == "ch" then "Channel" else "Power", value)
 	end
 	deleteButton.BackgroundColor3 = if State.deleting then Theme.Danger else Theme.PanelLight
+	fillButton.BackgroundColor3 = if State.fill and not State.deleting
+		then Theme.Primary
+		else Theme.PanelLight
 	Kit.setEnabled(publishButton, State.verified, Theme.Primary)
 	Kit.setEnabled(publishConfirm, State.verified, Theme.Primary)
 	local hasFinish = false

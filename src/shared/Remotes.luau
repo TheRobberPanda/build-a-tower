@@ -8,6 +8,7 @@ local Remotes = {}
 
 Remotes.Events = table.freeze({
 	"PlacePiece", -- (typeId, x, y, z, r, props?)
+	"PlaceArea", -- (typeId, x0, y0, z0, x1, y1, z1, r, props?) fill a box, max 64 pieces
 	"RemovePiece", -- (x, y, z)
 	"Undo", -- () revert the last place/remove
 	"StartRun", -- (ownerId) ownerId == own id means a verification run

@@ -6,7 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
-local PieceFactory = require(script.Parent.PieceFactory)
+local PieceFactory = require(game:GetService("ReplicatedStorage").Shared.PieceFactory)
 local PlotBuilder = require(script.Parent.PlotBuilder)
 local Types = require(ReplicatedStorage.Shared.Types)
 

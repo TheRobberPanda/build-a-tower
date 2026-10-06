@@ -254,6 +254,24 @@ step("undo reverts a place and a delete", function()
 		string.format("place undone=%s remove undone=%s", tostring(undidPlace), tostring(undidRemove))
 end)
 
+step("fill places a row in one go, rejects oversized fills, undo removes it", function()
+	local before = count()
+	Remotes.event("PlaceArea"):FireServer(1, 0, 0, 12, 3, 0, 12, 0)
+	local filled = waitFor(function()
+		return count() == before + 4
+	end, 3)
+	Remotes.event("PlaceArea"):FireServer(1, 0, 1, 0, 15, 1, 15, 0) -- 256 cells > cap
+	Remotes.event("PlaceArea"):FireServer(1, 0 / 0, 0, 0, 1, 0, 0, 0)
+	task.wait(1)
+	local capped = count() == before + 4
+	Remotes.event("Undo"):FireServer()
+	local undone = waitFor(function()
+		return count() == before
+	end, 3)
+	return filled and capped and undone,
+		string.format("filled=%s capped=%s undone=%s", tostring(filled), tostring(capped), tostring(undone))
+end)
+
 step("parts rendered on the plot", function()
 	place(2, 0, 0, 8)
 	task.wait(0.5)

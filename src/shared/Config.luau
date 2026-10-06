@@ -4,7 +4,7 @@
 local Config = {
 	SCHEMA_VERSION = 1,
 
-	GRID_STUDS = 4,
+	GRID_STUDS = 6, -- bigger cells = faster building (a block is still jumpable)
 	PLOT_CELLS_X = 16, -- valid x: 0..PLOT_CELLS_X-1
 	PLOT_CELLS_Z = 16,
 	PLOT_CELLS_Y = 64, -- valid y: 0..PLOT_CELLS_Y-1

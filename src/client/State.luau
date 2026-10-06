@@ -16,6 +16,7 @@ local State = {
 	rotation = 0,
 	props = {} :: { [string]: number }, -- chosen setting per prop key (power, ch)
 	deleting = false,
+	fill = false, -- touch: two taps fill the box between them (desktop: drag)
 	tower = nil :: Types.Tower?,
 	verified = false,
 	runOwner = 0,

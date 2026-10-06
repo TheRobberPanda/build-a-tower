@@ -8,15 +8,22 @@ for _, root in { game.ServerScriptService, game.StarterPlayer, game.ReplicatedSt
 		if d:IsA("LuaSourceContainer") then
 			n += 1
 			local fn, err = loadstring(d.Source, d:GetFullName())
-			if not fn then table.insert(bad, err) end
+			if not fn then
+				table.insert(bad, err)
+			end
 		end
 	end
 end
 local cache = {}
 local freshRequire
 local function load(module)
-	if cache[module] ~= nil then return cache[module] end
-	if module:IsDescendantOf(game.ServerStorage.DevPackages) then cache[module] = require(module) return cache[module] end
+	if cache[module] ~= nil then
+		return cache[module]
+	end
+	if module:IsDescendantOf(game.ServerStorage.DevPackages) then
+		cache[module] = require(module)
+		return cache[module]
+	end
 	local fn, err = loadstring(module.Source, module:GetFullName())
 	assert(fn, err)
 	setfenv(fn, setmetatable({ script = module, require = freshRequire }, { __index = getfenv(1) }))
@@ -25,7 +32,9 @@ local function load(module)
 	return result
 end
 freshRequire = function(target)
-	if typeof(target) == "Instance" and target:IsA("ModuleScript") then return load(target) end
+	if typeof(target) == "Instance" and target:IsA("ModuleScript") then
+		return load(target)
+	end
 	return require(target)
 end
 local TestEZ = require(game.ServerStorage.DevPackages.TestEZ)
@@ -39,12 +48,21 @@ local results = TestEZ.TestRunner.runPlan(TestEZ.TestPlanner.createPlan(list))
 local lines = {}
 local function walk(node)
 	for _, child in node.children do
-		if child.status == "Failure" then table.insert(lines, "FAIL " .. child.planNode.phrase .. ": " .. table.concat(child.errors, " | "):sub(1, 400)) end
+		if child.status == "Failure" then
+			table.insert(
+				lines,
+				"FAIL " .. child.planNode.phrase .. ": " .. table.concat(child.errors, " | "):sub(1, 400)
+			)
+		end
 		walk(child)
 	end
 end
 walk(results)
 table.insert(lines, string.format("passed %d failed %d", results.successCount, results.failureCount))
-local report = n .. " scripts, compile errors: " .. table.concat(bad, "; ") .. "\n" .. table.concat(lines, "\n")
+local report = n
+	.. " scripts, compile errors: "
+	.. table.concat(bad, "; ")
+	.. "\n"
+	.. table.concat(lines, "\n")
 print(report)
 return report

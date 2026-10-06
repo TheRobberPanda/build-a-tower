@@ -33,7 +33,7 @@ local budgetFor: (Player, PlayerData) -> number
 
 local states: { [Player]: TowerCodec.PlaceState } = {}
 -- Undo history per tower owner: most recent last.
-type Action = { kind: "place" | "remove", piece: Types.Piece }
+type Action = { kind: "place" | "remove" | "fill", piece: Types.Piece, pieces: { Types.Piece }? }
 local history: { [Player]: { Action } } = {}
 local HISTORY_MAX = 30
 
@@ -158,6 +158,78 @@ local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p
 	table.insert(data.tower.pieces, piece)
 	data.verifiedHash = nil -- any edit resets verification
 	remember(owner, "place", piece)
+	pushTower(owner, data)
+	Analytics.step(player, "PlacedPiece")
+end
+
+-- Fills the box between two cells with the selected piece (stepping by its
+-- size) in one intent, so floors and walls don't need a click per block.
+local FILL_MAX = 64
+local function onPlaceArea(
+	player: Player,
+	t: any,
+	x0: any,
+	y0: any,
+	z0: any,
+	x1: any,
+	y1: any,
+	z1: any,
+	r: any,
+	p: any
+)
+	local owner, data = editable(player)
+	local state = owner and states[owner]
+	if not owner or not data or not state then
+		return
+	end
+	for _, n in { x0, y0, z0, x1, y1, z1 } do
+		if not isInt(n, 0, 255) then
+			return
+		end
+	end
+	if not isInt(t, 1, 255) or not isInt(r, 0, 3) or (p ~= nil and type(p) ~= "table") then
+		return
+	end
+	local probe = TowerCodec.validatePiece({ t = t, x = x0, y = y0, z = z0, r = r, p = p })
+	if not probe or not Events.pieceAvailable(probe.t, os.time()) then
+		return
+	end
+	local sx, sy, sz = TowerCodec.extent(probe)
+	local function steps(a: number, b: number, s: number): { number }
+		local out = {}
+		local dir = if b >= a then 1 else -1
+		for v = a, b, dir * s do
+			table.insert(out, v)
+		end
+		return out
+	end
+	local xs, ys, zs = steps(x0, x1, sx), steps(y0, y1, sy), steps(z0, z1, sz)
+	if #xs * #ys * #zs > FILL_MAX then
+		return
+	end
+	local added = {}
+	for _, y in ys do
+		for _, x in xs do
+			for _, z in zs do
+				local piece = TowerCodec.validatePiece({ t = t, x = x, y = y, z = z, r = r, p = p })
+				if piece and TowerCodec.canAdd(state, piece) then
+					TowerCodec.add(state, piece)
+					table.insert(data.tower.pieces, piece)
+					table.insert(added, piece)
+				end
+			end
+		end
+	end
+	if #added == 0 then
+		return
+	end
+	data.verifiedHash = nil
+	local list = history[owner] or {}
+	history[owner] = list
+	table.insert(list, { kind = "fill", piece = added[1], pieces = added })
+	if #list > HISTORY_MAX then
+		table.remove(list, 1)
+	end
 	pushTower(owner, data)
 	Analytics.step(player, "PlacedPiece")
 end
@@ -508,7 +580,15 @@ local function onUndo(player: Player)
 		return
 	end
 	local action = table.remove(list) :: Action
-	if action.kind == "place" then
+	if action.kind == "fill" then
+		for _, piece in action.pieces or {} do
+			local i = table.find(data.tower.pieces, piece)
+			if i then
+				TowerCodec.remove(state, piece)
+				table.remove(data.tower.pieces, i)
+			end
+		end
+	elseif action.kind == "place" then
 		local i = table.find(data.tower.pieces, action.piece)
 		if i then
 			TowerCodec.remove(state, action.piece)
@@ -660,6 +740,7 @@ function TowerService.init()
 	end)
 
 	Remotes.event("PlacePiece").OnServerEvent:Connect(onPlace)
+	Remotes.event("PlaceArea").OnServerEvent:Connect(onPlaceArea)
 	Remotes.event("RemovePiece").OnServerEvent:Connect(onRemove)
 	Remotes.event("Undo").OnServerEvent:Connect(onUndo)
 	Remotes.func("Publish").OnServerInvoke = onPublish

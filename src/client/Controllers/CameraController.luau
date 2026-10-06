@@ -19,7 +19,7 @@ local G = Config.GRID_STUDS
 local active = false
 local yaw = math.rad(200)
 local pitch = math.rad(35)
-local distance = 90
+local distance = 130
 local dragging = false
 local lastPos: Vector2? = nil
 local pinchStart: number? = nil
@@ -101,7 +101,7 @@ function CameraController.start()
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseWheel and not processed then
-			distance = math.clamp(distance - input.Position.Z * 8, 30, 220)
+			distance = math.clamp(distance - input.Position.Z * 10, 40, 320)
 		elseif
 			dragging
 			and lastPos
@@ -125,7 +125,7 @@ function CameraController.start()
 			pinchStart = scale
 			pinchDistance = distance
 		elseif pinchStart then
-			distance = math.clamp(pinchDistance / math.max(scale, 0.1), 30, 220)
+			distance = math.clamp(pinchDistance / math.max(scale, 0.1), 40, 320)
 		end
 	end)
 
