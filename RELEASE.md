@@ -10,7 +10,7 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 - [x] Ambient sound
 - [x] Sound hooks: place, delete, jump pad, teleport, finish, fail, ambient (src/shared/Sounds.luau)
 - [x] Sound ids: Kenney CC0 SFX + generated ambient loop (CREDITS.md)
-- [ ] **(Paulo)** Server size 8 on the Creator Dashboard (plots are 200 studs apart, 8 fit fine)
+- [ ] **(Paulo)** Server size 6 on the Creator Dashboard (one round per server)
 - [x] Browse empty state
 - [ ] **(Paulo)** Playtest checkpoint: one Studio session, ~15 min, I drive and screenshot
 
@@ -20,20 +20,20 @@ Steps marked **(Paulo)** need you in Studio or on the Creator Dashboard; the res
 
 ## 2. Private test (Oct 10–14)
 - [ ] **(Paulo)** Publish the place to Roblox (private), enable Studio API access for DataStores
-- [ ] Two-client local server test: browse, race, leaderboard, publish
+- [ ] **(Paulo)** Multiplayer round session (2+ accounts): race, ghosts, vote, donate, results
 - [ ] Mobile device emulation pass (phone + tablet): hotbar, tools, run HUD clear of thumbstick/jump
 - [ ] DataStore check: rejoin keeps tower, session lock across servers, newer-schema refusal
 - [ ] Fix everything found
 
 ## 3. Store page (Oct 15–18)
 - [x] Icon: 2 variants in marketing/final (A tower, B secret wall) for A/B
-- [ ] 3 thumbnails from in-game captures (tools/stage_thumbnail.luau + tools/compose_thumbnail.py), needs a Studio session
-- [ ] Title, description, genre (Obby), tags
+- [x] 3 thumbnails in marketing/final/thumb_1-3.png (race one to recapture with real racers)
+- [x] Title, description, genre (Obby) in marketing/description.md
 - [ ] **(Paulo)** Maturity questionnaire, set public settings, devices: phone/tablet/PC/console off
 - [ ] **(Paulo)** Build and publish 3–5 seed towers so browse isn't empty
 
 - [x] Badges 1-5 created via Open Cloud (FirstPublish, FirstRace, WallWalker, GhostStep, PortalHopper); icons in marketing/final/badges
-- [ ] Badges 6-11 (Launched, Doorman, SecretHunter, RecordHolder, FeaturedPodium, ContestWinner): free quota is 5/day, create tomorrow with expectedCost 0
+- [x] Badges 6-10 created 2026-10-06; ContestWinner: run tools/create_badges.sh on 2026-10-07
 - [x] Game passes (Builder Pass 199, VIP 149) and Bricks packs (500 = 49, 1500 = 129) created with icons; ids in Config
 
 ## 4. Soft launch (Oct 19–20)
