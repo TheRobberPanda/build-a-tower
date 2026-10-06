@@ -12,5 +12,6 @@ Rule: paid calls pre-approved by Paulo (2026-10-05); log every charge, never exc
 | 2026-10-05 | Game pass + Bricks icons (3) → marketing/raw/pass_*.png, bricks.png | google/gemini-3.1-flash-image | $0.20 |
 | 2026-10-05 | Badge icon sheet (11 badges) → marketing/raw/badge_sheet.png | google/gemini-3.1-flash-image | $0.07 |
 | 2026-10-06 | Piece icons 9-25 (3 calls) → assets/ui/piece_icons.png | google/gemini-3.1-flash-image | $0.20 |
+| 2026-10-06 | Piece face textures (1 sheet, 9 tiles) → assets/textures/*.png | google/gemini-3.1-flash-image | $0.07 |
 
-**Spent: $0.72 · Remaining: $9.28**
+**Spent: $0.79 · Remaining: $9.21**

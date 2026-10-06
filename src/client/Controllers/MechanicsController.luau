@@ -59,7 +59,39 @@ local function updateOneWays()
 	end
 end
 
+-- Secret pieces get their icon's particles, but only for the builder (others must find them).
+local SECRET_FX: { [string]: Color3 } = {
+	FakeWall = Color3.fromRGB(190, 110, 255), -- purple wisps
+	InvisiblePlatform = Color3.fromRGB(210, 240, 255), -- frosty sparkles
+}
+
+local function onSecret(inst: Instance, color: Color3)
+	local plot = inst:FindFirstAncestorOfClass("Model")
+	if not inst:IsA("BasePart") or not plot or plot:GetAttribute("OwnerId") ~= player.UserId then
+		return
+	end
+	local e = Instance.new("ParticleEmitter")
+	e.Color = ColorSequence.new(color)
+	e.LightEmission = 1
+	e.Transparency = NumberSequence.new(0.3, 1)
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
+	e.Lifetime = NumberRange.new(1, 1.6)
+	e.Speed = NumberRange.new(0.5, 1.5)
+	e.SpreadAngle = Vector2.new(30, 30)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.Rate = 4
+	e.Parent = inst
+end
+
 function MechanicsController.start()
+	for tag, color in SECRET_FX do
+		for _, inst in CollectionService:GetTagged(tag) do
+			onSecret(inst, color)
+		end
+		CollectionService:GetInstanceAddedSignal(tag):Connect(function(inst)
+			onSecret(inst, color)
+		end)
+	end
 	local function addOneWay(inst: Instance)
 		if inst:IsA("BasePart") then
 			oneWays[inst] = true

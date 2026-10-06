@@ -73,39 +73,53 @@ local function pole(part: BasePart, flagColor: Color3, scale: number?)
 	)
 end
 
--- Darker strips on all 12 edges: the bevel and outline of the icon art. They fade
--- with the piece (crumble, day/night ghosts).
--- ponytail: 12 extra parts per bevelled piece; swap to a bevelled MeshPart if part count hurts.
-local function bevel(part: BasePart)
-	local s = part.Size
-	local t = 0.5
-	local color = part.Color:Lerp(DARK, 0.45)
-	for axis = 1, 3 do
-		for _, a in { -1, 1 } do
-			for _, b in { -1, 1 } do
-				local size, offset
-				if axis == 1 then
-					size = Vector3.new(s.X + 0.06, t, t)
-					offset = Vector3.new(0, a * (s.Y - t) / 2 + a * 0.03, b * (s.Z - t) / 2 + b * 0.03)
-				elseif axis == 2 then
-					size = Vector3.new(t, s.Y + 0.06, t)
-					offset = Vector3.new(a * (s.X - t) / 2 + a * 0.03, 0, b * (s.Z - t) / 2 + b * 0.03)
-				else
-					size = Vector3.new(t, t, s.Z + 0.06)
-					offset = Vector3.new(a * (s.X - t) / 2 + a * 0.03, b * (s.Y - t) / 2 + b * 0.03, 0)
-				end
-				local strip = deco(part, size, part.CFrame * CFrame.new(offset), color)
-				strip.Name = "Bevel"
-			end
-		end
+-- AI-painted face textures matching the icon sheet (assets/textures/*.png). The
+-- painted rim gives each face its cartoon outline; the factory's inset keeps gaps.
+local TEX = {
+	stone = "rbxassetid://119484405922970",
+	brick = "rbxassetid://115361175478336",
+	wood = "rbxassetid://112942160962510",
+	platform = "rbxassetid://77281096911289",
+	tiles = "rbxassetid://104813448091682",
+	crumble = "rbxassetid://125530033648969",
+	sun = "rbxassetid://92738377327937",
+	moon = "rbxassetid://126322619810953",
+	orangewood = "rbxassetid://116469885897832",
+}
+PieceVisuals.TEX = TEX
+
+-- One stretched decal per face; they fade with the piece (crumble, day/night ghosts).
+local function skin(part: BasePart, image: string, faces: { Enum.NormalId }?)
+	for _, face in faces or Enum.NormalId:GetEnumItems() :: { Enum.NormalId } do
+		local d = Instance.new("Decal")
+		d.Name = "Skin"
+		d.Texture = image
+		d.Face = face
+		d.Parent = part
 	end
 	part:GetPropertyChangedSignal("Transparency"):Connect(function()
 		for _, c in part:GetChildren() do
-			if c.Name == "Bevel" and c:IsA("BasePart") then
+			if c:IsA("Decal") and c.Name == "Skin" then
 				c.Transparency = part.Transparency
 			end
 		end
 	end)
+end
+PieceVisuals.skin = skin
+
+local FLAT = { Enum.NormalId.Top, Enum.NormalId.Bottom }
+
+-- Bits falling off the bottom, like the crumble icon's debris.
+local function debris(part: BasePart)
+	local e = Instance.new("ParticleEmitter")
+	e.Color = ColorSequence.new(Color3.fromRGB(150, 110, 60))
+	e.Size = NumberSequence.new(0.25)
+	e.Lifetime = NumberRange.new(1, 1.5)
+	e.Speed = NumberRange.new(0.5, 1)
+	e.Acceleration = Vector3.new(0, -20, 0)
+	e.EmissionDirection = Enum.NormalId.Bottom
+	e.Rate = 1.5
+	e.Parent = part
 end
 
 -- A flat arrowhead (two bars) lying in `cf`'s XZ plane, pointing toward -Z.
@@ -145,12 +159,10 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 	local top = part.CFrame * CFrame.new(0, part.Size.Y / 2, 0)
 	if name == "Block" then
 		part.Color = STONE
-		part.Material = Enum.Material.Slate
-		bevel(part)
+		skin(part, TEX.stone)
 	elseif name == "Wall" or name == "FakeWall" or name == "OneWay" then
 		part.Color = BRICK
-		part.Material = Enum.Material.Brick -- the tower material cosmetic may override it
-		bevel(part)
+		skin(part, TEX.brick)
 		if name == "OneWay" then
 			-- Cyan arrow on both faces, pointing the way you may pass.
 			for _, side in { -1, 1 } do
@@ -170,35 +182,17 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		end
 	elseif name == "Platform" then
 		part.Color = BLUE
-		bevel(part)
+		skin(part, TEX.platform, FLAT)
 	elseif name == "BigFloor" then
 		part.Color = Color3.fromRGB(120, 190, 240)
-		bevel(part)
-		-- 3x3 tile grooves on top
-		local line = part.Color:Lerp(DARK, 0.3)
-		for _, k in { -1, 1 } do
-			deco(part, Vector3.new(0.2, 0.06, part.Size.Z), top * CFrame.new(k * part.Size.X / 6, 0, 0), line)
-			deco(part, Vector3.new(part.Size.X, 0.06, 0.2), top * CFrame.new(0, 0, k * part.Size.Z / 6), line)
-		end
+		skin(part, TEX.tiles, FLAT)
 	elseif name == "Ramp" then
 		part.Color = WOOD
-		part.Material = Enum.Material.WoodPlanks
+		skin(part, TEX.wood, { Enum.NormalId.Top, Enum.NormalId.Back })
 	elseif name == "Crumble" then
 		part.Color = Color3.fromRGB(205, 165, 105)
-		part.Material = Enum.Material.Sandstone
-		bevel(part)
-		-- Split into four cracked tiles like the icon.
-		local crack = Color3.fromRGB(110, 80, 45)
-		deco(part, Vector3.new(0.4, 0.08, part.Size.Z), top, crack)
-		deco(part, Vector3.new(part.Size.X, 0.08, 0.4), top, crack)
-		for _, a in { -1, 1 } do
-			deco(
-				part,
-				Vector3.new(0.15, 0.08, part.Size.Z * 0.3),
-				top * CFrame.new(a * part.Size.X / 4, 0, a * part.Size.Z / 5) * CFrame.Angles(0, 0.5, 0),
-				crack
-			)
-		end
+		skin(part, TEX.crumble, FLAT)
+		debris(part)
 	elseif name == "JumpPad" then
 		-- Grey base, glowing orange top plate with an arrow.
 		part.Color = Color3.fromRGB(110, 115, 128)
@@ -245,6 +239,7 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		sparkles(part, Color3.fromRGB(120, 255, 160), 8)
 	elseif name == "Checkpoint" then
 		pole(part, Color3.fromRGB(0, 210, 220))
+		sparkles(part, Color3.fromRGB(120, 255, 255), 3)
 	elseif name == "Conveyor" then
 		-- Dark belt, yellow side rails, glowing chevrons pointing the way it carries you.
 		local alongX = r % 2 == 1
@@ -299,6 +294,7 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		part.Material = Enum.Material.Metal
 		local head = part.CFrame * CFrame.new(0, part.Size.Y / 2 - 0.9, 0)
 		deco(part, Vector3.new(1.4, 1.4, 1.4), head, Color3.fromRGB(255, 200, 110), Enum.Material.Neon)
+		sparkles(part, Color3.fromRGB(255, 210, 120), 2)
 		deco(
 			part,
 			Vector3.new(1.8, 0.3, 1.8),
@@ -338,20 +334,8 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 	elseif name == "SunBlock" or name == "MoonBlock" then
 		local sun = name == "SunBlock"
 		part.Color = if sun then Color3.fromRGB(255, 195, 40) else Color3.fromRGB(50, 80, 200)
-		bevel(part)
-		-- A sun (disc) or crescent (disc with a block-coloured bite) on each side face.
-		local symbol = if sun then Color3.fromRGB(255, 240, 150) else Color3.fromRGB(255, 225, 130)
-		for i = 0, 3 do
-			local face = part.CFrame
-				* CFrame.Angles(0, i * math.pi / 2, 0)
-				* CFrame.new(0, 0, -part.Size.Z / 2 - 0.04)
-			disc(part, 2.4, 0.06, face * CFrame.Angles(math.pi / 2, 0, 0), symbol, Enum.Material.Neon).Name =
-				"Bevel"
-			if not sun then
-				local bite = face * CFrame.new(0.7, 0.4, -0.03) * CFrame.Angles(math.pi / 2, 0, 0)
-				disc(part, 2.1, 0.06, bite, part.Color).Name = "Bevel"
-			end
-		end
+		skin(part, if sun then TEX.sun else TEX.moon)
+		sparkles(part, if sun then Color3.fromRGB(255, 230, 120) else Color3.fromRGB(255, 240, 180), 2)
 	end
 end
 

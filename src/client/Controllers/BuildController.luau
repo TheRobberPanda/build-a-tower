@@ -2,6 +2,7 @@
 -- Turns pointer/touch input into place/remove intents. Shows a ghost of the
 -- selected piece. The server re-validates everything.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -9,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
+local PieceFactory = require(ReplicatedStorage.Shared.PieceFactory)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local State = require(script.Parent.Parent.State)
@@ -148,6 +150,46 @@ local function fillBox(a: Vector3, b: Vector3): (Vector3, Vector3, number)
 	return a, Vector3.new(out[1], out[2], out[3]), counts[1] * counts[2] * counts[3]
 end
 
+-- See-through copy of the real piece where a single click would place it.
+local preview: BasePart? = nil
+local previewKey = ""
+
+local function setPreview(piece: TowerCodec.Piece?, origin: Vector3?)
+	local key = if piece then game:GetService("HttpService"):JSONEncode(piece) else ""
+	if key == previewKey then
+		return
+	end
+	previewKey = key
+	if preview then
+		preview:Destroy()
+		preview = nil
+	end
+	if not piece or not origin then
+		return
+	end
+	local root = PieceFactory.make(piece, origin)
+	local all = root:GetDescendants()
+	table.insert(all, root)
+	for _, d in all do
+		for _, tag in CollectionService:GetTags(d) do
+			CollectionService:RemoveTag(d, tag) -- no jump pad / one-way behaviour on a ghost
+		end
+		if d:IsA("BasePart") then
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.CastShadow = false
+			d.Transparency = math.max(d.Transparency, 0.45)
+		elseif d:IsA("Decal") then
+			d.Transparency = 0.45
+		elseif d:IsA("ParticleEmitter") or d:IsA("Light") then
+			d:Destroy()
+		end
+	end
+	root.Parent = workspace
+	preview = root
+end
+
 local function showGhost(cf: CFrame, size: Vector3, color: Color3, count: number)
 	if ghost.Parent == nil or not ghostTarget then
 		ghost.CFrame = cf -- appear in place, then glide
@@ -167,6 +209,9 @@ end
 
 local function updateGhost(target: Target?)
 	local plot = myPlot()
+	if State.mode ~= "build" or not target or not plot or State.deleting then
+		setPreview(nil)
+	end
 	if State.mode ~= "build" or not target or not plot then
 		ghost.Parent = nil
 		ghostTarget = nil
@@ -194,6 +239,8 @@ local function updateGhost(target: Target?)
 	local lo = first:Min(last)
 	local hi = last:Max(first) + ext
 	local valid = TowerCodec.validatePiece(selectedPiece(first)) ~= nil
+	setPreview(if valid and count == 1 then selectedPiece(first) else nil, origin)
+	ghost.Transparency = if preview then 1 else 0.6 -- the outline stays around the real shape
 	showGhost(
 		CFrame.new(origin + (lo + hi) / 2 * G),
 		(hi - lo) * G,
@@ -405,6 +452,7 @@ function BuildController.start()
 		elseif State.mode ~= "build" then
 			ghost.Parent = nil
 			drag = nil
+			setPreview(nil)
 		end
 		local goal = ghostTarget
 		if goal and ghost.Parent then

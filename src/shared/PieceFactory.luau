@@ -80,8 +80,8 @@ local COMPOUND: { [string]: (BasePart) -> () } = {
 		w.Size = size
 		w.CFrame = root.CFrame
 		w.Color = ORANGE
-		w.Material = Enum.Material.WoodPlanks
 		w.Parent = root
+		PieceVisuals.skin(w, PieceVisuals.TEX.orangewood, { Enum.NormalId.Top, Enum.NormalId.Back })
 	end,
 }
 

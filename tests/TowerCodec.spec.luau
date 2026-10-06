@@ -31,10 +31,25 @@ return function()
 
 		it("checks bounds using the rotated footprint", function()
 			local edge = Config.PLOT_CELLS_X - 1
-			-- Ramp is 1x1x2: fits at the x edge unrotated, not when rotated
-			expect(TowerCodec.validatePiece(p(3, edge, 0, 0, 0))).to.be.ok()
-			expect(TowerCodec.validatePiece(p(3, edge, 0, 0, 1))).never.to.be.ok()
+			-- LongRamp is 1x2x4: fits at the x edge unrotated, not when rotated
+			expect(TowerCodec.validatePiece(p(21, edge, 0, 0, 0))).to.be.ok()
+			expect(TowerCodec.validatePiece(p(21, edge, 0, 0, 1))).never.to.be.ok()
 			expect(TowerCodec.validatePiece(p(1, 0, Config.PLOT_CELLS_Y, 0))).never.to.be.ok()
+		end)
+		it("measures support: grounded, overhang, floating", function()
+			local x, z = Config.PLOT_CELLS_X - 4, Config.PLOT_CELLS_Z - 4
+			local d = TowerCodec.support({
+				p(1, x, 0, z), -- on the ground
+				p(1, x, 1, z), -- stacked
+				p(1, x + 1, 1, z), -- one hop out
+				p(1, x + 2, 1, z), -- two hops out
+				p(1, x, 5, z), -- floating
+			})
+			expect(d[1]).to.equal(0)
+			expect(d[2]).to.equal(0)
+			expect(d[3]).to.equal(1)
+			expect(d[4]).to.equal(2)
+			expect(d[5]).to.equal(math.huge)
 		end)
 		it("validates props and fills defaults", function()
 			expect(TowerCodec.validatePiece(p(4, 0, 0, 0, 0, { power = 9 }))).never.to.be.ok()

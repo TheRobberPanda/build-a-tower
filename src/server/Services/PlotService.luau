@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local PieceFactory = require(game:GetService("ReplicatedStorage").Shared.PieceFactory)
 local PlotBuilder = require(script.Parent.PlotBuilder)
+local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 type Piece = Types.Piece
@@ -124,6 +125,47 @@ function PlotService.render(player: Player, pieces: { Piece }, mat: string?)
 			part.Material = if def.key == Cosmetics.DEFAULT and type(base) == "string"
 				then (Enum.Material :: any)[base]
 				else def.material
+			-- Painted textures only with the default material, so a bought one shows.
+			for _, c in part:GetDescendants() do
+				if c:IsA("Decal") and c.Name == "Skin" then
+					c.Transparency = if def.key == Cosmetics.DEFAULT then part.Transparency else 1
+				end
+			end
+		end
+	end
+	-- Weakly supported pieces glow: yellow two hops out from support, red from four or floating.
+	local byKey: { [string]: Instance } = {}
+	for _, part in folder:GetChildren() do
+		local key = part:GetAttribute("Key")
+		if type(key) == "string" then
+			byKey[key] = part
+		end
+	end
+	local support = TowerCodec.support(pieces)
+	for i, piece in pieces do
+		local part = byKey[pieceKey(piece)]
+		if not part or not part:IsA("BasePart") then
+			continue
+		end
+		local old = part:FindFirstChild("WeakGlow")
+		if old then
+			old:Destroy()
+		end
+		local d = support[i]
+		if d >= 2 then
+			local k = math.clamp((d - 2) / 2, 0, 1)
+			local glow = Instance.new("Part")
+			glow.Name = "WeakGlow"
+			glow.Anchored = true
+			glow.CanCollide = false
+			glow.CanTouch = false
+			glow.CanQuery = false
+			glow.CastShadow = false
+			glow.Material = Enum.Material.ForceField
+			glow.Color = Color3.fromRGB(255, 220, 70):Lerp(Color3.fromRGB(255, 60, 50), k)
+			glow.Size = part.Size + Vector3.one * 0.3
+			glow.CFrame = part.CFrame
+			glow.Parent = part
 		end
 	end
 end

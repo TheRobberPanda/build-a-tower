@@ -10,7 +10,7 @@ type PieceDef = Types.PieceDef
 local list: { PieceDef } = {
 	{ id = 1, name = "Block", hint = "Solid block", size = { 1, 1, 1 }, props = {} },
 	{ id = 2, name = "Platform", hint = "Wide platform to land on", size = { 2, 1, 2 }, props = {} },
-	{ id = 3, name = "Ramp", hint = "Walk up it; R rotates", size = { 1, 1, 2 }, props = {} },
+	{ id = 3, name = "Ramp", hint = "Steep ramp, 2 wide, 2 high; R rotates", size = { 2, 2, 2 }, props = {} },
 	{
 		id = 4,
 		name = "JumpPad",

@@ -130,6 +130,72 @@ export type PlaceState = {
 }
 
 -- budget defaults to the largest any player can have (used when loading stored towers).
+-- Structural support per piece: 0 = stands on the ground or the tower frame (or on
+-- a chain of pieces that does), +1 per sideways hop away from such a chain.
+-- math.huge = floating. Decorations neither need nor give support. Visual only.
+function TowerCodec.support(pieces: { Piece }): { number }
+	local owner: { [number]: number } = {}
+	for i, piece in pieces do
+		if not PieceDefs.byId[piece.t].decor then
+			forEachCell(piece, function(c)
+				owner[c] = i
+			end)
+		end
+	end
+	local dist: { number } = {}
+	local edges: { { { number } } } = {} -- edges[i] = { {j, cost} }
+	for i, piece in pieces do
+		dist[i] = math.huge
+		edges[i] = {}
+		if PieceDefs.byId[piece.t].decor then
+			continue
+		end
+		local sx, sy, sz = TowerCodec.extent(piece)
+		local function look(x: number, y: number, z: number, cost: number)
+			if y < 0 or TowerCodec.inCore(x, y, z) then
+				dist[i] = math.min(dist[i], cost)
+				return
+			end
+			local j = owner[cellIndex(x, y, z)]
+			if j and j ~= i then
+				table.insert(edges[i], { j, cost })
+			end
+		end
+		for dx = 0, sx - 1 do
+			for dz = 0, sz - 1 do
+				look(piece.x + dx, piece.y - 1, piece.z + dz, 0) -- below
+				look(piece.x + dx, piece.y + sy, piece.z + dz, 1) -- hanging
+			end
+		end
+		for dy = 0, sy - 1 do
+			local y = piece.y + dy
+			for dx = 0, sx - 1 do
+				look(piece.x + dx, y, piece.z - 1, 1)
+				look(piece.x + dx, y, piece.z + sz, 1)
+			end
+			for dz = 0, sz - 1 do
+				look(piece.x - 1, y, piece.z + dz, 1)
+				look(piece.x + sx, y, piece.z + dz, 1)
+			end
+		end
+	end
+	-- ponytail: Bellman-Ford relaxation, O(n * passes); fine for a few hundred pieces.
+	local changed = true
+	while changed do
+		changed = false
+		for i in pieces do
+			for _, e in edges[i] do
+				local d = dist[e[1]] + e[2]
+				if d < dist[i] then
+					dist[i] = d
+					changed = true
+				end
+			end
+		end
+	end
+	return dist
+end
+
 function TowerCodec.newPlaceState(budget: number?): PlaceState
 	return { occupied = {}, counts = {}, total = 0, decor = 0, budget = budget or Config.PIECE_BUDGET_STORED }
 end
