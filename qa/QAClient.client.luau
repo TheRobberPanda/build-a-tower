@@ -294,7 +294,15 @@ step("test run verifies the tower", function()
 	end, 3),
 		if r
 			then string.format("ok=%s ms=%s msg=%s", tostring(r[1]), tostring(r[2]), tostring(r[4]))
-			else "no result"
+			else string.format(
+				"no result; root=%s origin=%s finish=%s",
+				tostring(character().PrimaryPart and (character() :: any).PrimaryPart.Position),
+				tostring(plotOrigin()),
+				tostring(
+					workspace.Plots:FindFirstChild("Finish", true)
+						and (workspace.Plots:FindFirstChild("Finish", true) :: BasePart).Position
+				)
+			)
 end)
 step("any edit clears verification", function()
 	place(1, 0, 0, 0)

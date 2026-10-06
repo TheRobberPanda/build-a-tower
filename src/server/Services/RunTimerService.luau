@@ -17,6 +17,7 @@ local PathCodec = require(ReplicatedStorage.Shared.PathCodec)
 local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
+local Types = require(ReplicatedStorage.Shared.Types)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
 local ReplayStore = require(script.Parent.Parent.Lib.ReplayStore)
 local Analytics = require(script.Parent.Analytics)
@@ -34,6 +35,8 @@ local RunTimerService = {}
 local runEnded = Instance.new("BindableEvent")
 RunTimerService.Ended = runEnded.Event
 
+type PublishedTower = Types.PublishedTower
+
 type Run = {
 	ownerId: number,
 	hash: string,
@@ -46,6 +49,14 @@ type Run = {
 }
 
 local runs: { [Player]: Run } = {}
+-- Round mode: towers that only exist for this round, and who may start which run.
+local roundSource: (number) -> PublishedTower? = function(_ownerId: number)
+	return nil
+end
+local startFilter: (Player, number) -> boolean = function(_player: Player, _ownerId: number)
+	return true
+end
+local verifyReplays: { [Player]: { path: string, splits: { number }, ms: number } } = {}
 local watching: { [Player]: boolean } = {}
 local startLimiter = RateLimiter.new(2, 1 / 3)
 local replayLimiter = RateLimiter.new(6, 1 / 5)
@@ -98,6 +109,7 @@ local function finish(player: Player, run: Run)
 			data.verifiedMs = ms
 			Analytics.step(player, "Verified")
 			saveReplay(player, run, ms) -- the builder's run, watchable once published
+			verifyReplays[player] = { path = PathCodec.encode(run.path), splits = run.splits, ms = ms }
 		end
 		Remotes.event("RunResult"):FireClient(player, true, ms, false)
 		Remotes.event("TowerChanged")
@@ -105,6 +117,12 @@ local function finish(player: Player, run: Run)
 		return
 	end
 
+	if roundSource(run.ownerId) then
+		-- Round towers have no leaderboard or likes; the round decides the winner.
+		Remotes.event("RunResult"):FireClient(player, true, ms, false)
+		restoreOwnTower(player)
+		return
+	end
 	Analytics.event(player, "RaceFinished", ms / 1000)
 	local usedList: { string } = {}
 	for kind in run.used do
@@ -284,7 +302,7 @@ local function startRun(player: Player, ownerId: number)
 		towerName = data.towerName
 		PlotService.render(player, data.tower.pieces, data.material)
 	else
-		local tower = TowerService.getPublished(ownerId)
+		local tower = roundSource(ownerId) or TowerService.getPublished(ownerId)
 		if not tower then
 			return
 		end
@@ -325,7 +343,9 @@ local function startRun(player: Player, ownerId: number)
 		Analytics.step(player, "StartedTestRun")
 	else
 		Analytics.event(player, "RaceStarted")
-		TowerService.recordStart(ownerId, hash)
+		if not roundSource(ownerId) then
+			TowerService.recordStart(ownerId, hash)
+		end
 	end
 	Remotes.event("RunStarted"):FireClient(player, ownerId, towerName)
 end
@@ -334,8 +354,8 @@ local function onStartRun(player: Player, ownerId: any)
 	if not startLimiter:allow(player) or not isId(ownerId) or ownerId < 1 then
 		return
 	end
-	if RunTimerService.isLocked(player) then
-		return -- in a live race: the race controls starts
+	if RunTimerService.isLocked(player) or not startFilter(player, ownerId) then
+		return -- in a live race or round: those control starts
 	end
 	startRun(player, ownerId)
 end
@@ -396,7 +416,7 @@ local function findReplay(ownerId: number, racerId: number): { [string]: any }?
 end
 
 local function onGetReplay(player: Player, ownerId: any, racerId: any): { [string]: any }?
-	if not replayLimiter:allow(player) or not isId(ownerId) or not isId(racerId) then
+	if not replayLimiter:allow(player) or not isId(ownerId) or not isId(racerId) or roundSource(ownerId) then
 		return nil
 	end
 	return findReplay(ownerId, racerId)
@@ -416,6 +436,27 @@ local function onWatchReplay(player: Player, ownerId: any, racerId: any): { [str
 	TowerService.setEditLocked(player, true)
 	PlotService.render(player, tower.pieces, tower.mat)
 	return replay
+end
+
+function RunTimerService.setRoundSource(fn: (number) -> PublishedTower?)
+	roundSource = fn
+end
+
+function RunTimerService.setStartFilter(fn: (Player, number) -> boolean)
+	startFilter = fn
+end
+
+-- The builder's latest finished verification run, kept in memory for the round replay.
+function RunTimerService.verifyReplay(player: Player): { path: string, splits: { number }, ms: number }?
+	return verifyReplays[player]
+end
+
+-- Ends a run from the server (round clock ran out).
+function RunTimerService.stop(player: Player, message: string)
+	local run = runs[player]
+	if run then
+		fail(player, run, message)
+	end
 end
 
 function RunTimerService.isRunning(player: Player): boolean
@@ -454,6 +495,7 @@ function RunTimerService.init()
 	Players.PlayerRemoving:Connect(function(player)
 		endRun(player)
 		watching[player] = nil
+		verifyReplays[player] = nil
 		startLimiter:forget(player)
 		replayLimiter:forget(player)
 	end)

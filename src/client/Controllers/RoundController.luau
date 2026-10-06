@@ -1,0 +1,248 @@
+--!strict
+-- Round HUD: phase + clock at the top, a big banner on phase changes, the
+-- 1-5 star vote with donate buttons, and the results board.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Sounds = require(ReplicatedStorage.Shared.Sounds)
+local GhostController = require(script.Parent.GhostController)
+local Kit = require(script.Parent.Parent.UI.Kit)
+local Theme = require(script.Parent.Parent.UI.Theme)
+
+local RoundController = {}
+
+local player = Players.LocalPlayer
+
+local gui: ScreenGui
+local clock: TextLabel
+local banner: TextLabel
+local votePanel: Frame
+local voteTitle: TextLabel
+local starButtons: { TextButton } = {}
+local donateButtons: { TextButton } = {}
+local resultsPanel: Frame
+local resultsText: TextLabel
+local state: { [string]: any } = { phase = "waiting" }
+
+local TITLES = {
+	waiting = "Waiting for players",
+	intermission = "Next round in",
+	build = "BUILD + CLIMB your tower",
+	race = "RACE",
+	vote = "Rate this tower",
+	results = "Results",
+}
+
+local function flash(text: string, color: Color3?)
+	banner.Text = text
+	banner.TextColor3 = color or Theme.Text
+	Kit.show(banner, true)
+	local current = text
+	task.delay(3, function()
+		if banner.Text == current then
+			banner.Visible = false
+		end
+	end)
+end
+
+local function updateClock()
+	local phase = state.phase
+	local title = TITLES[phase] or ""
+	if phase == "race" and state.builderName then
+		title = string.format("RACE %d/%d: %s's tower", state.index or 1, state.count or 1, state.builderName)
+		if state.builder == player.UserId then
+			title = "Your tower is being raced"
+		end
+	end
+	local left = math.max(0, math.ceil((state.endsAt or 0) - workspace:GetServerTimeNow()))
+	if phase == "waiting" then
+		clock.Text = title
+	else
+		clock.Text = string.format("%s  %d:%02d", title, left // 60, left % 60)
+	end
+	clock.TextColor3 = if phase ~= "waiting" and left <= 10 then Theme.Danger else Theme.Text
+end
+
+local function setStars(n: number)
+	for i, b in starButtons do
+		b.TextColor3 = if i <= n then Theme.Primary else Theme.TextDim
+	end
+end
+
+local function onRound(s: any)
+	if type(s) ~= "table" then
+		return
+	end
+	local old = state.phase
+	state = s
+	votePanel.Visible = false
+	if s.phase ~= old then
+		if s.phase == "build" then
+			resultsPanel.Visible = false
+			flash("Build a tower, then CLIMB it before time runs out!", Theme.Primary)
+			Sounds.play("LevelUp")
+		elseif s.phase == "race" then
+			flash(
+				if s.builder == player.UserId then "Watch them try your tower!" else "First to the top wins!",
+				Theme.Accent
+			)
+		elseif s.phase == "intermission" then
+			flash("Round starting soon", Theme.TextDim)
+		end
+	end
+	if s.phase == "vote" then
+		local mine = s.builder == player.UserId
+		voteTitle.Text = if mine
+			then "Your climb is replayed for everyone"
+			else string.format(
+				"%s's tower%s",
+				tostring(s.builderName),
+				if s.winnerName then "  (won by " .. tostring(s.winnerName) .. ")" else "  (nobody made it!)"
+			)
+		setStars(0)
+		for _, b in starButtons do
+			b.Visible = not mine
+		end
+		for _, b in donateButtons do
+			b.Visible = not mine
+			Kit.setEnabled(b, true, Theme.Success)
+		end
+		Kit.show(votePanel, true)
+	end
+	updateClock()
+end
+
+local function onResults(list: any)
+	if type(list) ~= "table" then
+		return
+	end
+	local lines = {}
+	for i, r in list do
+		if type(r) ~= "table" then
+			continue
+		end
+		table.insert(
+			lines,
+			string.format(
+				"%d. %s  +%d coins  %s%s",
+				i,
+				tostring(r.name),
+				tonumber(r.coins) or 0,
+				if r.valid then "" else "(no valid tower) ",
+				if type(r.stars) == "number" then string.format("%.1f stars", r.stars) else ""
+			)
+		)
+	end
+	resultsText.Text = table.concat(lines, "\n")
+	Kit.show(resultsPanel, true)
+	Sounds.play("Finish")
+	task.delay(Config.RESULTS_SECONDS, function()
+		resultsPanel.Visible = false
+	end)
+end
+
+function RoundController.init()
+	gui = Kit.new("ScreenGui", {
+		Name = "RoundUI",
+		ResetOnSpawn = false,
+		ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
+		Parent = player:WaitForChild("PlayerGui"),
+	})
+	clock = Kit.label("", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.01),
+		Size = UDim2.fromScale(0.5, 0.055),
+		Parent = gui,
+	})
+	banner = Kit.label("", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.28),
+		Size = UDim2.fromScale(0.8, 0.08),
+		Visible = false,
+		Parent = gui,
+	})
+
+	votePanel = Kit.panel({
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 0.97),
+		Size = UDim2.fromScale(0.5, 0.2),
+		Visible = false,
+		Parent = gui,
+	})
+	Kit.new("UIAspectRatioConstraint", { AspectRatio = 3.2, Parent = votePanel })
+	voteTitle = Kit.label(
+		"",
+		{ Size = UDim2.fromScale(0.94, 0.28), Position = UDim2.fromScale(0.03, 0.04), Parent = votePanel }
+	)
+	for i = 1, 5 do
+		local b = Kit.button("★", Theme.PanelLight, function()
+			setStars(i)
+			Remotes.event("RoundVote"):FireServer(i)
+		end, {
+			Position = UDim2.fromScale(0.04 + (i - 1) * 0.12, 0.38),
+			Size = UDim2.fromScale(0.11, 0.5),
+			TextColor3 = Theme.TextDim,
+			Parent = votePanel,
+		})
+		starButtons[i] = b
+	end
+	for i, amount in Config.DONATE_AMOUNTS do
+		local b: TextButton
+		b = Kit.button("Give " .. amount, Theme.Success, function()
+			Remotes.event("RoundDonate"):FireServer(amount)
+			for _, other in donateButtons do
+				Kit.setEnabled(other, false, Theme.Success)
+			end
+		end, {
+			Position = UDim2.fromScale(0.66 + (i - 1) * 0.165, 0.38),
+			Size = UDim2.fromScale(0.15, 0.5),
+			Parent = votePanel,
+		})
+		donateButtons[i] = b
+	end
+
+	resultsPanel = Kit.panel({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.5, 0.5),
+		Visible = false,
+		Parent = gui,
+	})
+	Kit.new("UIAspectRatioConstraint", { AspectRatio = 1.4, Parent = resultsPanel })
+	Kit.label(
+		"Round results",
+		{
+			Size = UDim2.fromScale(1, 0.15),
+			Position = UDim2.fromScale(0, 0.03),
+			TextColor3 = Theme.Primary,
+			Parent = resultsPanel,
+		}
+	)
+	resultsText = Kit.label("", {
+		Size = UDim2.fromScale(0.9, 0.75),
+		Position = UDim2.fromScale(0.05, 0.2),
+		Font = Theme.BodyFont,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Parent = resultsPanel,
+	})
+end
+
+function RoundController.start()
+	Remotes.event("Round").OnClientEvent:Connect(onRound)
+	Remotes.event("RoundResults").OnClientEvent:Connect(onResults)
+	Remotes.event("RoundReplay").OnClientEvent:Connect(function(replay)
+		if type(replay) == "table" then
+			GhostController.playReplay(replay)
+		end
+	end)
+	while true do
+		updateClock()
+		task.wait(0.25)
+	end
+end
+
+return RoundController

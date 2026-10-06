@@ -139,6 +139,20 @@ local Config = {
 	CONTEST_VOTES = 3, -- votes per player per contest
 	CONTEST_PRIZE_BRICKS = 500,
 
+	-- Rounds (RoundService). In Studio, ServerStorage attribute RoundFast=true divides times by 10.
+	ROUND_MIN_PLAYERS = 1, -- alone you still build and verify against the clock
+	ROUND_WAIT_SECONDS = 20, -- intermission before a round
+	BUILD_SECONDS = 300,
+	RACE_SECONDS = 150,
+	VOTE_SECONDS = 20,
+	RESULTS_SECONDS = 12,
+	ROUND_BUDGET = 150,
+	COINS_RACE_WIN = 40, -- first to the top of someone's tower
+	COINS_BUILDER_WIN = 40, -- per race nobody finished
+	COINS_VALID = 15, -- built and climbed your tower in time
+	COINS_PER_STAR = 4, -- builder gets this per star received
+	DONATE_AMOUNTS = table.freeze({ 10, 50 }),
+
 	-- Runs
 	MAX_RUN_MS = 60 * 60 * 1000,
 	MIN_RUN_MS = 1000,

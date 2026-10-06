@@ -166,6 +166,24 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 		data.theme = raw.theme
 	end
 	data.tutorialDone = raw.tutorialDone == true
+	-- A round was interrupted (server crash): bring the parked tower back, drop the round one.
+	local stash = raw.roundStash
+	if type(stash) == "table" then
+		local stashTower, stashDropped = TowerCodec.sanitize(stash.tower)
+		if not stashTower then
+			return nil, false
+		end
+		local stashHash = TowerCodec.hash(stashTower)
+		data.tower = stashTower
+		data.towerName = if type(stash.name) == "string" and #stash.name <= Config.TOWER_NAME_MAX
+			then stash.name
+			else "My Tower"
+		data.verifiedHash = if stash.verifiedHash == stashHash then stashHash else nil
+		data.verifiedMs = if data.verifiedHash and type(stash.verifiedMs) == "number"
+			then math.floor(stash.verifiedMs)
+			else nil
+		dropped += stashDropped
+	end
 	if type(raw.contestVotes) == "table" then
 		for _, contest in Config.CONTESTS do
 			local votes = raw.contestVotes[contest.id]

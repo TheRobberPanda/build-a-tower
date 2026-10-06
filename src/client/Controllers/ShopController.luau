@@ -112,9 +112,9 @@ local function render()
 		return a.bricks < b.bricks
 	end)
 	if #packs > 0 then
-		header("Bricks", nextOrder())
+		header("Coins", nextOrder())
 		for _, pack in packs do
-			item(nextOrder(), string.format("%d Bricks", pack.bricks), "Buy", Theme.Primary, function()
+			item(nextOrder(), string.format("%d Coins", pack.bricks), "Buy", Theme.Primary, function()
 				MarketplaceService:PromptProductPurchase(player, pack.id)
 			end)
 		end
@@ -139,7 +139,7 @@ local function render()
 		item(
 			nextOrder(),
 			def.name,
-			if equipped then "Equipped" elseif owned then "Use" else def.bricks .. " Bricks",
+			if equipped then "Equipped" elseif owned then "Use" else def.bricks .. " Coins",
 			if equipped then Theme.Success elseif owned then Theme.Accent else Theme.Primary,
 			if equipped
 				then nil

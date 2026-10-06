@@ -48,6 +48,7 @@ export type PlayerData = {
 	receipts: { string }, -- recent dev product purchase ids (dedupe), oldest first
 	contestVotes: { [string]: { number } }, -- contest id -> owner ids voted for
 	tutorialDone: boolean,
+	roundStash: SavedSlot?, -- the active tower, parked while a round tower is active
 }
 
 export type PublishedTower = {

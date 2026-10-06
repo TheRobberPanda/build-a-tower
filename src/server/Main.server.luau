@@ -20,6 +20,7 @@ for _, name in
 		"MechanicsService",
 		"RunTimerService",
 		"LiveRaceService",
+		"RoundService",
 		"FeaturedService",
 		"ContestService",
 		"DayNightService",

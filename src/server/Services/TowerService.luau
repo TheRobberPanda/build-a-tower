@@ -46,6 +46,7 @@ local function remember(owner: Player, kind: "place" | "remove", piece: Types.Pi
 	end
 end
 local editLocked: { [Player]: boolean } = {} -- set by RunTimerService during runs
+local inRound: { [Player]: boolean } = {} -- building a round tower (RoundService)
 local published: PublishedStore.PublishedStore
 
 local editLimiter = RateLimiter.new(20, 10)
@@ -341,6 +342,9 @@ local function onPublish(player: Player, name: any): (boolean, string?)
 	if not data or editLocked[player] then
 		return false, "not ready"
 	end
+	if inRound[player] then
+		return false, "round towers are saved automatically"
+	end
 	if type(name) ~= "string" or #name < 1 or #name > Config.TOWER_NAME_MAX or not utf8.len(name) then
 		return false, "bad name"
 	end
@@ -369,6 +373,9 @@ end
 
 -- Level budget, plus the Builder Pass bonus.
 budgetFor = function(player: Player, data: PlayerData): number
+	if inRound[player] then
+		return Config.ROUND_BUDGET -- same for everyone in a round
+	end
 	return Progression.budget(
 		ProgressionService.level(data),
 		MonetizationService.hasPass(player, "BuilderPass")
@@ -617,7 +624,7 @@ local function onSwitchSlot(player: Player, index: any): boolean
 		return false
 	end
 	local slots = Progression.slots(MonetizationService.hasPass(player, "BuilderPass"))
-	if not data or not isInt(index, 1, slots) or index == data.activeSlot then
+	if not data or inRound[player] or not isInt(index, 1, slots) or index == data.activeSlot then
 		return false
 	end
 	data.slots[tostring(data.activeSlot)] = {
@@ -640,6 +647,86 @@ local function onSwitchSlot(player: Player, index: any): boolean
 	pushTower(player, data)
 	ProgressionService.refresh(player)
 	return true
+end
+
+local function resetEditing(player: Player, data: PlayerData)
+	states[player] = TowerCodec.buildState(data.tower, budgetFor(player, data))
+	history[player] = nil
+	collapseToken[player] = nil
+	pushTower(player, data)
+	ProgressionService.refresh(player)
+end
+
+-- Round start: park the active tower in data.roundStash (persisted, so a crash
+-- restores it on the next load) and give the player an empty round tower.
+function TowerService.enterRound(player: Player): boolean
+	local data = DataService.get(player)
+	if not data or inRound[player] then
+		return false
+	end
+	TowerService.setBuildTarget(player, nil)
+	for helper, owner in buildTarget do
+		if owner == player then
+			TowerService.setBuildTarget(helper, nil)
+		end
+	end
+	data.roundStash = {
+		tower = data.tower,
+		name = data.towerName,
+		verifiedHash = data.verifiedHash,
+		verifiedMs = data.verifiedMs,
+	}
+	inRound[player] = true
+	data.tower = TowerCodec.empty()
+	data.towerName = player.DisplayName .. "'s round tower"
+	data.verifiedHash = nil
+	data.verifiedMs = nil
+	editLocked[player] = nil
+	resetEditing(player, data)
+	return true
+end
+
+-- Round over: the parked tower comes back. Returns the round tower (or nil).
+function TowerService.leaveRound(player: Player): Types.Tower?
+	local data = DataService.get(player)
+	local stash = data and data.roundStash
+	inRound[player] = nil
+	if not data or not stash then
+		return nil
+	end
+	local roundTower = data.tower
+	data.tower = stash.tower
+	data.towerName = stash.name
+	data.verifiedHash = stash.verifiedHash
+	data.verifiedMs = stash.verifiedMs
+	data.roundStash = nil
+	resetEditing(player, data)
+	return roundTower
+end
+
+function TowerService.isInRound(player: Player): boolean
+	return inRound[player] == true
+end
+
+-- Round votes of 4+ stars count as likes (they feed the Popular list).
+function TowerService.addLike(ownerId: number, hash: string)
+	stats:addLike(ownerId, hash)
+end
+
+-- Saves a finished round tower as the player's published tower.
+function TowerService.publishRound(player: Player, tower: Types.Tower, name: string, ms: number?): boolean
+	local data = DataService.get(player)
+	if not data then
+		return false
+	end
+	local ok = published:publish(player.UserId, name, tower, data.material, ms)
+	if ok then
+		data.publishedHash = TowerCodec.hash(tower)
+		towerCache[player.UserId] = nil
+		table.clear(browseCache)
+		Badges.award(player, "FirstPublish")
+	end
+	return ok
 end
 
 -- Reverts the last place/remove on the tower you are editing.
@@ -806,6 +893,7 @@ function TowerService.init()
 			end
 		end
 		editLocked[player] = nil
+		inRound[player] = nil
 		editLimiter:forget(player)
 		publishLimiter:forget(player)
 		queryLimiter:forget(player)

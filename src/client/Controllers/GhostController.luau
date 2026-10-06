@@ -160,6 +160,11 @@ function GhostController.newGhost(color: Color3?): Model
 	return makeGhost(color)
 end
 
+-- Round vote: replay the builder's verify climb on your plot (camera follows).
+function GhostController.playReplay(replay: any)
+	play(replay, true)
+end
+
 -- Called from the leaderboard: watch a saved run (racerId 0 = record).
 function GhostController.watch(ownerId: number, racerId: number)
 	task.spawn(function()

@@ -319,7 +319,7 @@ local function buildProfileBadge()
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = panel,
 	})
-	bricksLabel = Kit.label("0 Bricks", {
+	bricksLabel = Kit.label("0 Coins", {
 		Position = UDim2.fromScale(0.45, 0.08),
 		Size = UDim2.fromScale(0.5, 0.38),
 		TextXAlignment = Enum.TextXAlignment.Right,
@@ -378,7 +378,7 @@ local function renderTowerMenu()
 		elseif State.level < def.level then
 			text, color = "Lv " .. def.level, Theme.PanelLight
 		else
-			text, color, action = def.bricks .. " Bricks", Theme.Primary, "BuyMaterial"
+			text, color, action = def.bricks .. " Coins", Theme.Primary, "BuyMaterial"
 		end
 		local button = Kit.button(text, color, function()
 			if not action then
@@ -1190,7 +1190,7 @@ local function render()
 	budgetLabel.Text = string.format("Pieces %d/%d", count, State.budget)
 	budgetLabel.TextColor3 = if count >= State.budget then Theme.Danger else Theme.Text
 	levelLabel.Text = string.format("Lv %d", State.level)
-	bricksLabel.Text = string.format("%d Bricks", State.bricks)
+	bricksLabel.Text = string.format("%d Coins", State.bricks)
 	local span = math.max(State.nextXp - State.levelXp, 1)
 	xpFill.Size = UDim2.fromScale(math.clamp((State.xp - State.levelXp) / span, 0, 1), 1)
 

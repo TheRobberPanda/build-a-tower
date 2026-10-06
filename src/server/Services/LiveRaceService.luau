@@ -139,12 +139,40 @@ local function startRace(race: Race)
 	end)
 end
 
+-- Round mode: start a race on a round tower right away (no lobby).
+function LiveRaceService.startRound(ownerId: number, towerName: string, members: { Player })
+	if #members == 0 then
+		return
+	end
+	nextId += 1
+	local race: Race = {
+		id = nextId,
+		host = members[1],
+		ownerId = ownerId,
+		towerName = towerName,
+		members = table.clone(members),
+		state = "lobby",
+		startsAt = os.clock(),
+		results = {},
+	}
+	races[race.id] = race
+	for _, p in members do
+		local old = raceOf[p]
+		if old then
+			removeMember(old, p)
+		end
+		raceOf[p] = race
+	end
+	startRace(race)
+end
+
 local function onHost(player: Player, ownerId: any): boolean
 	-- Owners race their own tower as a verification run, so they can't host or join it.
 	if
 		not limiter:allow(player)
 		or not isId(ownerId)
 		or ownerId == player.UserId
+		or TowerService.isInRound(player)
 		or raceOf[player]
 		or RunTimerService.isRunning(player)
 	then
@@ -179,6 +207,7 @@ local function onJoin(player: Player, raceId: any): boolean
 		or not race
 		or race.state ~= "lobby"
 		or race.ownerId == player.UserId
+		or TowerService.isInRound(player)
 		or raceOf[player]
 		or #race.members >= Config.LIVE_RACE_MAX
 		or RunTimerService.isRunning(player)

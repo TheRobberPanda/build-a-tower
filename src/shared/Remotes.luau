@@ -29,6 +29,11 @@ Remotes.Events = table.freeze({
 	"LeaveLiveRace", -- () leave a lobby
 	"Passes", -- server -> client { [passName]: owned }
 	"TutorialDone", -- () the first-time tutorial was closed
+	"Round", -- server -> all { phase, endsAt (server time), players, builder?, builderName?, tower?, index?, count?, message? }
+	"RoundReplay", -- server -> client { path, splits, ms } the builder's verify climb
+	"RoundResults", -- server -> all { { name, coins, valid, stars?, wins } }
+	"RoundVote", -- (stars 1-5) for the tower being shown
+	"RoundDonate", -- (amount from Config.DONATE_AMOUNTS) to the tower's builder
 })
 
 Remotes.Functions = table.freeze({
