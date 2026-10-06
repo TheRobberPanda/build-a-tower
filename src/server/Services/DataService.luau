@@ -106,7 +106,8 @@ end
 function DataService.init()
 	store = ProfileStore.new({
 		store = DataStoreService:GetDataStore(Config.PLAYER_STORE),
-		jobId = if game.JobId ~= "" then game.JobId else "studio-" .. tostring(math.random(1, 1e9)),
+		-- fixed Studio id: a stopped playtest never releases its lock, so the next one must own it
+		jobId = if game.JobId ~= "" then game.JobId else "studio",
 		now = os.time,
 		wait = task.wait,
 		budgetReady = budgetReady,
