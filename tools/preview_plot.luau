@@ -119,7 +119,9 @@ local views = {
 	top = CFrame.lookAt(center + Vector3.new(0, 140, -60) * k, center - Vector3.new(0, 30, 0) * k),
 	close = CFrame.lookAt(center + Vector3.new(-14, -16, -40) * k, center + Vector3.new(0, -20, 0) * k),
 }
-cam.CFrame = if ALL
+local view = if ALL
 	then CFrame.lookAt(origin + Vector3.new(11, 11, -7) * G, origin + Vector3.new(11, 0, 10) * G)
 	else views[VIEW]
+cam.CFrame = view
+cam.Focus = view * CFrame.new(0, 0, -60) -- without a Focus the unfocused edit camera snaps back
 return string.format("preview built: %d/%d pieces, view %s", made, #pieces, VIEW)
