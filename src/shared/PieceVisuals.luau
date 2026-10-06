@@ -88,10 +88,27 @@ local TEX = {
 }
 PieceVisuals.TEX = TEX
 
--- One stretched decal per face; they fade with the piece (crumble, day/night ghosts).
-local function skin(part: BasePart, image: string, faces: { Enum.NormalId }?)
+-- One stretched decal per face; long thin faces (slab and wall sides) get the
+-- image tiled in squares instead, so it isn't squashed. They fade with the piece.
+local function skin(part: BasePart, image: string, faces: { Enum.NormalId }?, stretch: boolean?)
+	local s = part.Size
 	for _, face in faces or Enum.NormalId:GetEnumItems() :: { Enum.NormalId } do
-		local d = Instance.new("Decal")
+		local u, v = s.X, s.Z
+		if face == Enum.NormalId.Front or face == Enum.NormalId.Back then
+			v = s.Y
+		elseif face == Enum.NormalId.Left or face == Enum.NormalId.Right then
+			u, v = s.Z, s.Y
+		end
+		local short = math.min(u, v)
+		local d: Decal
+		if not stretch and short < math.max(u, v) * 0.7 then
+			local t = Instance.new("Texture")
+			t.StudsPerTileU = short
+			t.StudsPerTileV = short
+			d = t
+		else
+			d = Instance.new("Decal")
+		end
 		d.Name = "Skin"
 		d.Texture = image
 		d.Face = face
@@ -107,7 +124,44 @@ local function skin(part: BasePart, image: string, faces: { Enum.NormalId }?)
 end
 PieceVisuals.skin = skin
 
-local FLAT = { Enum.NormalId.Top, Enum.NormalId.Bottom }
+local WEDGE =
+	{ Enum.NormalId.Top, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right, Enum.NormalId.Bottom }
+PieceVisuals.WEDGE = WEDGE
+
+-- Breaks a part into unanchored chunks that tumble away and vanish (crumble
+-- platforms, collapsing towers). The caller hides or removes the part itself.
+function PieceVisuals.shatter(part: BasePart)
+	local s = part.Size
+	local n = Vector3.new(
+		math.clamp(math.round(s.X / 2), 1, 4),
+		math.clamp(math.round(s.Y / 2), 1, 4),
+		math.clamp(math.round(s.Z / 2), 1, 4)
+	)
+	local cell = s / n
+	for ix = 1, n.X do
+		for iy = 1, n.Y do
+			for iz = 1, n.Z do
+				local c = Instance.new("Part")
+				c.Name = "Chunk"
+				c.Size = cell * (0.75 + math.random() * 0.2)
+				c.CFrame = part.CFrame
+					* CFrame.new((Vector3.new(ix, iy, iz) - Vector3.one * 0.5) * cell - s / 2)
+				c.Color = part.Color
+				c.Material = part.Material
+				c.CanCollide = false
+				c.CanQuery = false
+				c.CanTouch = false
+				c.CastShadow = false
+				c.AssemblyLinearVelocity =
+					Vector3.new(math.random(-8, 8), math.random(0, 10), math.random(-8, 8))
+				c.AssemblyAngularVelocity =
+					Vector3.new(math.random(-6, 6), math.random(-6, 6), math.random(-6, 6))
+				c.Parent = workspace
+				game:GetService("Debris"):AddItem(c, 2.5)
+			end
+		end
+	end
+end
 
 -- Bits falling off the bottom, like the crumble icon's debris.
 local function debris(part: BasePart)
@@ -168,7 +222,7 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 			for _, side in { -1, 1 } do
 				local face = part.CFrame
 					* CFrame.Angles(0, r * math.pi / 2, 0)
-					* CFrame.new(0, 0, side * (part.Size.Z / 2 + 0.05))
+					* CFrame.new(0, 0, side * (math.min(part.Size.X, part.Size.Z) / 2 + 0.05))
 					* CFrame.Angles(math.pi / 2, 0, 0)
 				chevron(part, face, Color3.fromRGB(60, 230, 255), 1.3)
 				deco(
@@ -182,26 +236,32 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		end
 	elseif name == "Platform" then
 		part.Color = BLUE
-		skin(part, TEX.platform, FLAT)
+		skin(part, TEX.platform)
 	elseif name == "BigFloor" then
 		part.Color = Color3.fromRGB(120, 190, 240)
-		skin(part, TEX.tiles, FLAT)
+		skin(part, TEX.tiles)
 	elseif name == "Ramp" then
 		part.Color = WOOD
-		skin(part, TEX.wood, { Enum.NormalId.Top, Enum.NormalId.Back })
+		skin(part, TEX.wood, WEDGE)
 	elseif name == "Crumble" then
 		part.Color = Color3.fromRGB(205, 165, 105)
-		skin(part, TEX.crumble, FLAT)
+		skin(part, TEX.crumble)
 		debris(part)
 	elseif name == "JumpPad" then
-		-- Grey base, glowing orange top plate with an arrow.
-		part.Color = Color3.fromRGB(110, 115, 128)
+		-- Silver rim, orange cushion, cream arrow pointing up the pad (like the icon).
+		part.Color = Color3.fromRGB(190, 195, 205)
 		part.Material = Enum.Material.Metal
-		local plate = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.1, 0)
-		deco(part, Vector3.new(part.Size.X - 0.5, 0.2, part.Size.Z - 0.5), plate, Color3.fromRGB(235, 95, 0))
-		local arrow = Color3.fromRGB(255, 210, 120)
-		chevron(part, plate * CFrame.new(0, 0.1, -0.9), arrow, 1.2)
-		deco(part, Vector3.new(0.6, 0.15, 2.4), plate * CFrame.new(0, 0.1, 0.6), arrow, Enum.Material.Neon)
+		local plate = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.15, 0)
+		deco(
+			part,
+			Vector3.new(part.Size.X - 0.8, 0.3, part.Size.Z - 0.8),
+			plate,
+			Color3.fromRGB(255, 140, 20)
+		)
+		local arrow = Color3.fromRGB(255, 240, 200)
+		local up = plate * CFrame.new(0, 0.16, 0) * CFrame.Angles(0, math.pi, 0)
+		chevron(part, up * CFrame.new(0, 0, -0.6), arrow, 1.3)
+		deco(part, Vector3.new(0.7, 0.15, 2.2), up * CFrame.new(0, 0, 0.8), arrow, Enum.Material.Neon)
 		sparkles(part, Color3.fromRGB(255, 200, 90), 3)
 	elseif name == "Teleporter" then
 		-- Purple pad with a glowing swirl disc and a faint light column.
@@ -214,8 +274,12 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		disc(part, G - 0.8, 0.12, pad, color, Enum.Material.Neon)
 		disc(part, G - 2, 0.14, pad, color:Lerp(Color3.new(1, 1, 1), 0.5), Enum.Material.Neon)
 		disc(part, G - 3, 0.16, pad, color, Enum.Material.Neon)
-		disc(part, G - 1, G - 0.6, pad * CFrame.new(0, (G - 0.6) / 2, 0), color, Enum.Material.Neon).Transparency =
-			0.85
+		deco(
+			part,
+			Vector3.new(G - 0.2, 0.3, G - 0.2),
+			part.CFrame * CFrame.new(0, 0.2, 0),
+			color:Lerp(DARK, 0.3)
+		)
 		sparkles(part, color, 8)
 	elseif name == "Finish" then
 		-- Just a big green flag on a wooden pole, like the icon (the box stays as the hitbox).
@@ -248,14 +312,28 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 				then CFrame.new(0, part.Size.Y / 2 + 0.3, side * (part.Size.Z / 2 - 0.2))
 				else CFrame.new(side * (part.Size.X / 2 - 0.2), part.Size.Y / 2 + 0.3, 0)
 			local size = if alongX
-				then Vector3.new(part.Size.X, 0.6, 0.4)
-				else Vector3.new(0.4, 0.6, part.Size.Z)
+				then Vector3.new(part.Size.X, 0.7, 0.6)
+				else Vector3.new(0.6, 0.7, part.Size.Z)
 			deco(part, size, part.CFrame * offset, Color3.fromRGB(255, 200, 40), Enum.Material.Metal)
+		end
+		-- Round rollers at both ends, under the belt.
+		local along = part.CFrame * CFrame.Angles(0, r * math.pi / 2, 0)
+		local len = if alongX then part.Size.X else part.Size.Z
+		local wide = if alongX then part.Size.Z else part.Size.X
+		for _, e in { -1, 1 } do
+			local roller = deco(
+				part,
+				Vector3.new(wide - 0.2, part.Size.Y + 0.3, part.Size.Y + 0.3),
+				along * CFrame.new(0, 0, e * (len / 2 - part.Size.Y / 2)),
+				Color3.fromRGB(40, 40, 48),
+				Enum.Material.Metal
+			)
+			roller.Shape = Enum.PartType.Cylinder
 		end
 		local facing = CFrame.new(top.Position + Vector3.new(0, 0.05, 0))
 			* CFrame.Angles(0, r * math.pi / 2, 0)
 		for _, z in { -2.2, 0, 2.2 } do
-			chevron(part, facing * CFrame.new(0, 0, z), Color3.fromRGB(255, 200, 40), 1)
+			chevron(part, facing * CFrame.new(0, 0, z), Color3.fromRGB(255, 200, 40), 1.4)
 		end
 	elseif name == "Button" then
 		local base = part.CFrame * CFrame.new(0, -part.Size.Y / 2 + 0.15, 0)
@@ -266,7 +344,19 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		-- Wooden door in a frame of its channel colour (the frame stays when it opens).
 		local color = channelColor or part.Color
 		part.Color = WOOD
+		part.Size = Vector3.new(part.Size.X, part.Size.Y, 1.2) -- thin like the icon; still blocks the cell
+		skin(part, TEX.wood, nil, true)
 		local s = part.Size
+		for _, z in { -1, 1 } do
+			local knob = deco(
+				part,
+				Vector3.new(0.5, 0.5, 0.5),
+				part.CFrame * CFrame.new(s.X / 2 - 0.9, -0.4, z * (s.Z / 2 + 0.2)),
+				Color3.fromRGB(240, 200, 80),
+				Enum.Material.Metal
+			)
+			knob.Shape = Enum.PartType.Ball
+		end
 		for _, side in { -1, 1 } do
 			deco(
 				part,
@@ -282,24 +372,51 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 			color
 		)
 	elseif name == "Plant" then
+		-- Leafy bush: a cluster of balls on a dark soil square.
+		part.Color = Color3.fromRGB(70, 150, 55)
+		part.Size = Vector3.one * G * 0.7
+		part.CFrame -= Vector3.new(0, G * 0.1, 0)
 		deco(
 			part,
 			Vector3.new(G - 0.4, 0.4, G - 0.4),
-			part.CFrame * CFrame.new(0, -G / 2 + 0.2, 0),
-			Color3.fromRGB(80, 140, 60)
+			part.CFrame * CFrame.new(0, -G * 0.4 + 0.2, 0),
+			Color3.fromRGB(60, 110, 45)
 		)
+		for i = 0, 4 do
+			local a = i * math.pi * 2 / 5
+			local ball = deco(
+				part,
+				Vector3.one * G * (0.42 + i % 2 * 0.08),
+				part.CFrame
+					* CFrame.new(math.cos(a) * G * 0.27, -G * 0.08 + i % 2 * 0.3, math.sin(a) * G * 0.27),
+				Color3.fromRGB(55 + i * 8, 130 + i * 10, 45),
+				Enum.Material.Grass
+			)
+			ball.Shape = Enum.PartType.Ball
+		end
 	elseif name == "Lamp" then
 		-- Grey post with a glowing lantern on top.
-		part.Color = Color3.fromRGB(120, 125, 135)
+		part.Color = Color3.fromRGB(70, 75, 85)
 		part.Material = Enum.Material.Metal
-		local head = part.CFrame * CFrame.new(0, part.Size.Y / 2 - 0.9, 0)
-		deco(part, Vector3.new(1.4, 1.4, 1.4), head, Color3.fromRGB(255, 200, 110), Enum.Material.Neon)
+		part.Size = Vector3.new(0.5, part.Size.Y - 1.6, 0.5)
+		part.CFrame -= Vector3.new(0, 0.8, 0)
+		local foot = part.CFrame * CFrame.new(0, -part.Size.Y / 2 + 0.2, 0)
+		disc(part, 1.8, 0.4, foot, Color3.fromRGB(70, 75, 85), Enum.Material.Metal)
+		local head = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.8, 0)
+		deco(part, Vector3.new(1.4, 1.6, 1.4), head, Color3.fromRGB(255, 200, 110), Enum.Material.Neon)
+		deco(
+			part,
+			Vector3.new(1.1, 0.3, 1.1),
+			head * CFrame.new(0, -0.95, 0),
+			Color3.fromRGB(70, 75, 85),
+			Enum.Material.Metal
+		)
 		sparkles(part, Color3.fromRGB(255, 210, 120), 2)
 		deco(
 			part,
 			Vector3.new(1.8, 0.3, 1.8),
-			head * CFrame.new(0, 0.85, 0),
-			Color3.fromRGB(90, 95, 105),
+			head * CFrame.new(0, 0.95, 0),
+			Color3.fromRGB(70, 75, 85),
 			Enum.Material.Metal
 		)
 	elseif name == "Flag" then

@@ -62,12 +62,15 @@ local COMPOUND: { [string]: (BasePart) -> () } = {
 	end,
 	Beam = function(root)
 		local size = root.Size
-		child(root, "Beam", Vector3.new(size.X, 1.2, size.Z), CFrame.new(0, size.Y / 2 - 0.6, 0), BLUE)
+		-- Blue plank on a yellow under-rail, like the icon.
+		local plank =
+			child(root, "Beam", Vector3.new(size.X, 1.4, size.Z), CFrame.new(0, size.Y / 2 - 0.7, 0), BLUE)
+		PieceVisuals.skin(plank, PieceVisuals.TEX.platform)
 		child(
 			root,
 			"BeamTrim",
-			Vector3.new(size.X - 0.6, 0.4, size.Z - 0.6),
-			CFrame.new(0, size.Y / 2 - 1.4, 0),
+			Vector3.new(size.X - 0.4, 1, size.Z - 0.2),
+			CFrame.new(0, size.Y / 2 - 1.9, 0),
 			YELLOW
 		)
 	end,
@@ -81,7 +84,7 @@ local COMPOUND: { [string]: (BasePart) -> () } = {
 		w.CFrame = root.CFrame
 		w.Color = ORANGE
 		w.Parent = root
-		PieceVisuals.skin(w, PieceVisuals.TEX.orangewood, { Enum.NormalId.Top, Enum.NormalId.Back })
+		PieceVisuals.skin(w, PieceVisuals.TEX.orangewood, PieceVisuals.WEDGE)
 	end,
 }
 

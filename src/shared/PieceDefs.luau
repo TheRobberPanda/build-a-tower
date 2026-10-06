@@ -29,7 +29,7 @@ local list: { PieceDef } = {
 		id = 6,
 		name = "FakeWall",
 		hint = "Looks solid, but you can walk through it",
-		size = { 1, 2, 1 },
+		size = { 2, 2, 1 },
 		props = {},
 	},
 	{ id = 7, name = "InvisiblePlatform", hint = "Solid but invisible", size = { 1, 1, 1 }, props = {} },
@@ -48,7 +48,7 @@ local list: { PieceDef } = {
 		id = 11,
 		name = "OneWay",
 		hint = "A wall you can only pass from behind",
-		size = { 1, 2, 1 },
+		size = { 2, 2, 1 },
 		props = {},
 	}, -- pass through from the front only
 	{

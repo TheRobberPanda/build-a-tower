@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local PieceFactory = require(game:GetService("ReplicatedStorage").Shared.PieceFactory)
+local PieceVisuals = require(ReplicatedStorage.Shared.PieceVisuals)
 local PlotBuilder = require(script.Parent.PlotBuilder)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -83,6 +84,24 @@ local function pieceKey(piece: Piece): string
 		end
 	end
 	return key
+end
+
+-- Breaks these pieces' parts into falling chunks (call before render removes them).
+function PlotService.shatter(player: Player, pieces: { Piece })
+	local folder = plots[player] and plots[player].model:FindFirstChild("Pieces")
+	if not folder then
+		return
+	end
+	local keys: { [string]: boolean } = {}
+	for _, piece in pieces do
+		keys[pieceKey(piece)] = true
+	end
+	for _, part in folder:GetChildren() do
+		local key = part:GetAttribute("Key")
+		if part:IsA("BasePart") and type(key) == "string" and keys[key] then
+			PieceVisuals.shatter(part)
+		end
+	end
 end
 
 -- Makes the plot show exactly `pieces`. Only changed parts are destroyed or

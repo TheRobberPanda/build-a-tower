@@ -155,6 +155,43 @@ local function hitsCharacter(owner: Player, piece: Types.Piece): boolean
 	) > 0
 end
 
+-- Red (badly supported) pieces crumble a few seconds after an edit. Removing one
+-- can leave others red, so each collapse schedules the next check.
+local collapseToken: { [Player]: {} } = {}
+local function scheduleCollapse(owner: Player)
+	local token = {}
+	collapseToken[owner] = token
+	task.delay(Config.COLLAPSE_DELAY, function()
+		local data = DataService.get(owner)
+		local state = states[owner]
+		if
+			collapseToken[owner] ~= token
+			or owner.Parent == nil
+			or editLocked[owner]
+			or not data
+			or not state
+		then
+			return
+		end
+		local pieces = data.tower.pieces
+		local support = TowerCodec.support(pieces)
+		local fallen = {}
+		for i = #pieces, 1, -1 do
+			if support[i] >= Config.COLLAPSE_HOPS then
+				table.insert(fallen, pieces[i])
+				TowerCodec.remove(state, pieces[i])
+				table.remove(pieces, i)
+			end
+		end
+		if #fallen > 0 then
+			PlotService.shatter(owner, fallen)
+			data.verifiedHash = nil
+			pushTower(owner, data)
+			scheduleCollapse(owner)
+		end
+	end)
+end
+
 local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p: any)
 	local owner, data = editable(player)
 	local state = owner and states[owner]
@@ -189,6 +226,7 @@ local function onPlace(player: Player, t: any, x: any, y: any, z: any, r: any, p
 	data.verifiedHash = nil -- any edit resets verification
 	remember(owner, "place", piece)
 	pushTower(owner, data)
+	scheduleCollapse(owner)
 	Analytics.step(player, "PlacedPiece")
 end
 
@@ -261,6 +299,7 @@ local function onPlaceArea(
 		table.remove(list, 1)
 	end
 	pushTower(owner, data)
+	scheduleCollapse(owner)
 	Analytics.step(player, "PlacedPiece")
 end
 
@@ -288,6 +327,7 @@ local function onRemove(player: Player, x: any, y: any, z: any)
 			data.verifiedHash = nil
 			remember(owner, "remove", piece)
 			pushTower(owner, data)
+			scheduleCollapse(owner)
 			return
 		end
 	end
@@ -596,6 +636,7 @@ local function onSwitchSlot(player: Player, index: any): boolean
 	data.verifiedMs = if target then target.verifiedMs else nil
 	states[player] = TowerCodec.buildState(data.tower, budgetFor(player, data))
 	history[player] = nil -- undo history belongs to the previous slot
+	collapseToken[player] = nil -- a pending check belongs to the old slot
 	pushTower(player, data)
 	ProgressionService.refresh(player)
 	return true
@@ -630,6 +671,7 @@ local function onUndo(player: Player)
 	end
 	data.verifiedHash = nil
 	pushTower(owner, data)
+	scheduleCollapse(owner)
 end
 
 local function canUseMaterial(player: Player, data: PlayerData, key: string): boolean
@@ -754,6 +796,7 @@ function TowerService.init()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		states[player] = nil
+		collapseToken[player] = nil
 		history[player] = nil
 		finished[player] = nil
 		buildTarget[player] = nil

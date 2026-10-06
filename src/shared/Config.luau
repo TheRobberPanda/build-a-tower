@@ -51,6 +51,8 @@ local Config = {
 	CONVEYOR_SPEED = 12, -- studs/s; walk 16 + 12 stays under the AntiCheat horizontal limit
 	CRUMBLE_DELAY = 0.6,
 	CRUMBLE_RESPAWN = 3,
+	COLLAPSE_DELAY = 3, -- red (badly supported) pieces crumble this long after an edit
+	COLLAPSE_HOPS = 4, -- support distance that glows red (PlotService) and collapses
 	DOOR_OPEN_SECONDS = 6,
 	DAY_SECONDS = 300, -- one full day/night cycle (a build phase)
 

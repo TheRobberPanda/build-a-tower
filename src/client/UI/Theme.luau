@@ -13,7 +13,7 @@ return table.freeze({
 	Stroke = Color3.fromRGB(10, 10, 18),
 
 	-- 1024x512 sheet (Roblox caps images at 1024), 8x4 cells of 128px, in PieceDefs id order (assets/ui/piece_icons.png).
-	PieceIconSheet = "rbxassetid://97673503901191", -- decal 109553124117562
+	PieceIconSheet = "rbxassetid://101242921359404", -- decal 132020309496899
 	PieceIconCell = 128,
 	PieceIconColumns = 8,
 

@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
+local PieceVisuals = require(ReplicatedStorage.Shared.PieceVisuals)
 local AntiCheat = require(script.Parent.AntiCheat)
 
 local MechanicsService = {}
@@ -123,7 +124,8 @@ local function onCrumble(part: BasePart)
 			if not part.Parent then
 				return
 			end
-			part.Transparency = 0.85
+			PieceVisuals.shatter(part)
+			part.Transparency = 1
 			part.CanCollide = false
 			Sounds.play("Crumble", part)
 			task.delay(Config.CRUMBLE_RESPAWN, function()
