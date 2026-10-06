@@ -161,6 +161,10 @@ local function onPlayerRemoving(player: Player)
 end
 
 function PlotService.init()
+	local preview = workspace:FindFirstChild("EditorPreview") -- tools/editor_island.luau
+	if preview then
+		preview:Destroy()
+	end
 	PlotBuilder.buildWorld()
 	plotsFolder.Parent = workspace
 	Players.PlayerAdded:Connect(onPlayerAdded)
