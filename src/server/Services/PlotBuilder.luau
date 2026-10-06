@@ -82,12 +82,12 @@ local function noQuery(folder: Instance)
 end
 
 -- A copy of a Creator Store model from ServerStorage.SceneryAssets, scaled and
--- set on the ground at `at`. Returns false when the asset isn't there.
-local function prop(parent: Instance, name: string, at: Vector3, scale: number, rng: Random): boolean
+-- set on the ground at `at`. Returns nil when the asset isn't there.
+local function prop(parent: Instance, name: string, at: Vector3, scale: number, rng: Random): Model?
 	local assets = game:GetService("ServerStorage"):FindFirstChild("SceneryAssets")
 	local template = assets and assets:FindFirstChild(name)
 	if not template or not template:IsA("Model") then
-		return false
+		return nil
 	end
 	local m = template:Clone()
 	for _, d in m:GetDescendants() do
@@ -104,7 +104,7 @@ local function prop(parent: Instance, name: string, at: Vector3, scale: number, 
 	local cf, size = m:GetBoundingBox()
 	m:PivotTo(m:GetPivot() + (at - Vector3.new(cf.X, cf.Y - size.Y / 2, cf.Z)))
 	m.Parent = parent
-	return true
+	return m
 end
 
 local function rock(parent: Instance, at: Vector3, size: number)
@@ -309,35 +309,29 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			rock(scenery, origin + rimSpot(2) + Vector3.new(0, 0.5, 0), rng:NextNumber(1.5, 3.5))
 		end
 	end
-	-- Flower patches: little bright dots in the grass rim.
+	-- Flower patches (Flower1 from SceneryAssets), petals tinted per patch.
 	local petals = {
 		Color3.fromRGB(255, 90, 120),
 		Color3.fromRGB(255, 210, 60),
 		Color3.fromRGB(255, 255, 255),
 		Color3.fromRGB(170, 110, 255),
 	}
-	for _ = 1, 18 do
+	for _ = 1, 14 do
 		local c = origin + rimSpot(2)
 		local color = petals[rng:NextInteger(1, #petals)]
-		for _ = 1, rng:NextInteger(3, 6) do
+		for _ = 1, rng:NextInteger(2, 4) do
 			local at = c + Vector3.new(rng:NextNumber(-1.5, 1.5), 0, rng:NextNumber(-1.5, 1.5))
-			decoPart(
-				scenery,
-				"Stem",
-				Vector3.new(0.15, 0.8, 0.15),
-				CFrame.new(at + Vector3.new(0, 0.4, 0)),
-				Color3.fromRGB(60, 150, 60),
-				Enum.Material.SmoothPlastic
-			)
-			local head = decoPart(
-				scenery,
-				"Flower",
-				Vector3.one * 0.6,
-				CFrame.new(at + Vector3.new(0, 0.9, 0)),
-				color,
-				Enum.Material.SmoothPlastic
-			)
-			head.Shape = Enum.PartType.Ball
+			local flower = prop(scenery, "Flower1", at, rng:NextNumber(0.35, 0.5), rng)
+			if flower then
+				for _, d in flower:GetDescendants() do
+					if d:IsA("BasePart") then
+						d.CanCollide = false
+						if d.Name:find("Mesh35") then
+							d.Color = color
+						end
+					end
+				end
+			end
 		end
 	end
 	-- Start gate at the front of the apron: two posts and a banner.
@@ -438,90 +432,18 @@ function PlotBuilder.lighting()
 	end
 end
 
--- A puffy cartoon cloud: a cluster of white balls with a flat-ish base.
-local function puffCloud(parent: Instance, at: Vector3, scale: number, rng: Random)
-	local white = Color3.fromRGB(255, 255, 255)
-	for i = 1, rng:NextInteger(5, 8) do
-		local r = scale * rng:NextNumber(0.55, 1)
-		local off = Vector3.new(
-			rng:NextNumber(-1.6, 1.6) * scale,
-			rng:NextNumber(0, 0.5) * scale,
-			rng:NextNumber(-0.7, 0.7) * scale
-		)
-		if i == 1 then
-			off = Vector3.zero
-			r = scale * 1.15
+-- Scenery props for the world, with no collision or shadows.
+local function skyProp(parent: Instance, name: string, at: Vector3, scale: number, rng: Random): Model?
+	local m = prop(parent, name, at, scale, rng)
+	if m then
+		for _, d in m:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.CanCollide = false
+				d.CastShadow = false
+			end
 		end
-		local ball = decoPart(
-			parent,
-			"Cloud",
-			Vector3.one * r * 2,
-			CFrame.new(at + off),
-			white,
-			Enum.Material.SmoothPlastic
-		)
-		ball.Shape = Enum.PartType.Ball
-		ball.CastShadow = false
 	end
-	-- Soft grey-blue underside so clouds read as volumes.
-	local base = decoPart(
-		parent,
-		"CloudBase",
-		Vector3.new(scale * 3.6, scale * 0.6, scale * 1.6),
-		CFrame.new(at - Vector3.new(0, scale * 0.45, 0)),
-		Color3.fromRGB(225, 236, 250),
-		Enum.Material.SmoothPlastic
-	)
-	base.CastShadow = false
-end
-
--- A small floating island far away: grass cap, rock cone, a tree or two.
-local function farIsland(parent: Instance, at: Vector3, radius: number, rng: Random)
-	local top = decoPart(
-		parent,
-		"FarIsland",
-		Vector3.new(4, radius * 2, radius * 2),
-		CFrame.new(at) * CFrame.Angles(0, 0, math.rad(90)),
-		Color3.fromRGB(95, 200, 85),
-		Enum.Material.SmoothPlastic
-	)
-	top.Shape = Enum.PartType.Cylinder
-	local y = -2
-	for i, k in { 0.95, 0.75, 0.5, 0.25 } do
-		local layer = decoPart(
-			parent,
-			"FarRock",
-			Vector3.new(radius * 0.5, radius * 2 * k, radius * 2 * k),
-			CFrame.new(at + Vector3.new(0, y - radius * 0.25, 0)) * CFrame.Angles(0, 0, math.rad(90)),
-			Color3.fromRGB(150, 120, 95):Lerp(Color3.fromRGB(90, 75, 70), i / 4),
-			Enum.Material.SmoothPlastic
-		)
-		layer.Shape = Enum.PartType.Cylinder
-		y -= radius * 0.5
-	end
-	for _ = 1, rng:NextInteger(1, 3) do
-		local a = rng:NextNumber(0, math.pi * 2)
-		local d = rng:NextNumber(0, radius * 0.6)
-		local h = radius * rng:NextNumber(0.5, 0.9)
-		local foot = at + Vector3.new(math.cos(a) * d, 2, math.sin(a) * d)
-		decoPart(
-			parent,
-			"FarTrunk",
-			Vector3.new(h * 0.12, h, h * 0.12),
-			CFrame.new(foot + Vector3.new(0, h / 2, 0)),
-			Color3.fromRGB(120, 80, 50),
-			Enum.Material.SmoothPlastic
-		)
-		local crown = decoPart(
-			parent,
-			"FarLeaves",
-			Vector3.one * h * 0.8,
-			CFrame.new(foot + Vector3.new(0, h, 0)),
-			Color3.fromRGB(50, 170, 70),
-			Enum.Material.SmoothPlastic
-		)
-		crown.Shape = Enum.PartType.Ball
-	end
+	return m
 end
 
 -- Shared world bits, once per server: ocean, hills on the horizon, floating
@@ -566,23 +488,38 @@ function PlotBuilder.buildWorld()
 			x += r * rng:NextNumber(1.1, 1.6)
 		end
 	end
-	-- Floating islands between the row and the hills.
+	-- Floating islands (Island1, about 29 studs wide) with a tree or two on top.
 	for _ = 1, 26 do
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		farIsland(
-			world,
-			Vector3.new(rng:NextNumber(X0, X1), rng:NextNumber(-30, 160), side * rng:NextNumber(260, 700)),
-			rng:NextNumber(14, 34),
-			rng
-		)
+		local at =
+			Vector3.new(rng:NextNumber(X0, X1), rng:NextNumber(-60, 130), side * rng:NextNumber(260, 700))
+		local scale = rng:NextNumber(1, 2.4)
+		local island = skyProp(world, "Island1", at, scale, rng)
+		if island then
+			local cf, size = island:GetBoundingBox()
+			local top = cf.Position + Vector3.new(0, size.Y / 2, 0)
+			for _ = 1, rng:NextInteger(1, 2) do
+				local a = rng:NextNumber(0, math.pi * 2)
+				local d = rng:NextNumber(0, size.X * 0.25)
+				local treeName = if rng:NextInteger(1, 2) == 1 then "Tree1" else "Tree2"
+				skyProp(
+					world,
+					treeName,
+					top + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d),
+					scale * 0.6,
+					rng
+				)
+			end
+		end
 	end
-	-- Puffy clouds: some low beside the plots, most high around the towers.
+	-- Low-poly clouds (Cloud1): some low beside the plots, most high around the towers.
 	for _ = 1, 60 do
 		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		puffCloud(
+		skyProp(
 			world,
+			"Cloud1",
 			Vector3.new(rng:NextNumber(X0, X1), rng:NextNumber(40, 320), side * rng:NextNumber(170, 800)),
-			rng:NextNumber(10, 26),
+			rng:NextNumber(1.5, 4),
 			rng
 		)
 	end
