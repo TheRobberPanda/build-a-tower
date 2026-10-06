@@ -674,6 +674,7 @@ step("round: results list a valid tower with coins", function()
 	local ok = waitFor(function()
 		return roundResults ~= nil
 	end, 60)
+	task.wait(12) -- leave the results board up for a screenshot
 	local mine = ok and roundResults[1]
 	return mine ~= nil and mine.valid == true and (mine.coins or 0) > 0,
 		if mine

@@ -296,8 +296,8 @@ local function buildHotbar()
 	-- First-time guidance, top centre; hidden once the tower has a Finish.
 	hintLabel = Kit.label("", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromScale(0.5, 0.02),
-		Size = UDim2.fromScale(0.5, 0.045),
+		Position = UDim2.fromScale(0.5, 0.075), -- below the round clock
+		Size = UDim2.fromScale(0.5, 0.04),
 		Font = Theme.BodyFont,
 		Parent = buildLayer,
 	})
@@ -1197,8 +1197,9 @@ local function render()
 		elseif State.fill then "Fill: tap one corner, then the other"
 		elseif selectedDef and selectedDef.hint then selectedDef.hint
 		else ""
-	budgetLabel.Text = string.format("Pieces %d/%d", count, State.budget)
-	budgetLabel.TextColor3 = if count >= State.budget then Theme.Danger else Theme.Text
+	local budget = if State.inRound then Config.ROUND_BUDGET else State.budget -- rounds: same for everyone
+	budgetLabel.Text = string.format("Pieces %d/%d", count, budget)
+	budgetLabel.TextColor3 = if count >= budget then Theme.Danger else Theme.Text
 	levelLabel.Text = string.format("Lv %d", State.level)
 	bricksLabel.Text = string.format("%d Coins", State.bricks)
 	local span = math.max(State.nextXp - State.levelXp, 1)

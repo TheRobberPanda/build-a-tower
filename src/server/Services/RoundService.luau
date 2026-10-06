@@ -254,6 +254,12 @@ local function finishRound()
 		end
 		local roundTower = TowerService.leaveRound(e.player)
 		TowerService.setEditLocked(e.player, false)
+		-- Back to the spawn so nobody ends up inside their restored tower.
+		local spawn = PlotService.spawnCFrame(e.player)
+		local character = e.player.Character
+		if spawn and character then
+			character:PivotTo(spawn)
+		end
 		-- Good towers are saved: valid, and rated 3+ stars (or nobody was there to rate).
 		local tower = e.tower
 		local qa = RunService:IsStudio() and ServerStorage:GetAttribute("RunQA") ~= nil

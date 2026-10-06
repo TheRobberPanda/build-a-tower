@@ -162,6 +162,7 @@ function RoundController.init()
 	gui = Kit.new("ScreenGui", {
 		Name = "RoundUI",
 		ResetOnSpawn = false,
+		DisplayOrder = 10, -- above the build UI and run result dialog
 		ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
 		Parent = player:WaitForChild("PlayerGui"),
 	})
@@ -173,7 +174,7 @@ function RoundController.init()
 	})
 	banner = Kit.label("", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.28),
+		Position = UDim2.fromScale(0.5, 0.17),
 		Size = UDim2.fromScale(0.8, 0.08),
 		Visible = false,
 		Parent = gui,
