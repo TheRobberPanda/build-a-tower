@@ -8,7 +8,7 @@ Round-based party game for 6 players. The home place is the player's own island
 1. Matchmaking: MemoryStore queue in the home place; 6 players teleport to a reserved server of the round place.
 2. Build + verify, one shared 5:00 clock: build, then climb your own tower. You can go back to building after a failed climb. If the clock runs out before you reach your top, your tower is invalid and you are out of the race (you lose).
 3. Race: valid towers are played in order. All players run the same copy with no collision between players and see each other as ghosts. Time limit 2:30 (Config.RACE_SECONDS, about half the build clock). The first player to reach the top wins. If nobody reaches it, everyone loses and the builder wins.
-4. Replay and vote: the builder's own verify climb from the build phase is replayed (server-recorded path, PathCodec; RunTimerService already saves it on verify), not the race winner's run. So a builder can hide a secret route, but then must verify by another route: climbing through the secret shows it to everyone. The others rate the tower 1-5 stars and can donate coins or gift a Medal to the builder.
+4. Replay and vote: the builder's own verify climb from the build phase is replayed (server-recorded path, PathCodec; RunTimerService already saves it on verify), not the race winner's run. Builders may use their own secrets to verify (no restriction); the replay just shows the secret to everyone, which only hurts them. The others rate the tower 1-5 stars and can donate coins or gift a Medal to the builder.
 5. Save: winning towers are saved automatically and feed "Most popular" (ranked by stars). Invalid towers are discarded.
 
 **Economy**
