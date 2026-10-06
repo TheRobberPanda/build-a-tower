@@ -128,7 +128,7 @@ local function core(model: Model, origin: Vector3)
 	local h = c.height * G
 	local folder = Instance.new("Folder")
 	folder.Name = "Core"
-	local steel = Color3.fromRGB(140, 140, 142) -- neutral grey, like the reference
+	local steel = Color3.fromRGB(168, 170, 176) -- light concrete grey, like the thumbnail
 	local floorColor = Color3.fromRGB(40, 120, 255)
 	local trimColor = Color3.fromRGB(255, 205, 40)
 	for _, x in { c.x0, c.x1 - 1 } do
@@ -136,7 +136,7 @@ local function core(model: Model, origin: Vector3)
 			local p = part(
 				folder,
 				"CorePillar",
-				Vector3.new(G - 1.2, h - 0.02, G - 1.2), -- slimmer than the cell it reserves
+				Vector3.new(G - 0.4, h - 0.02, G - 0.4), -- just inside the cell it reserves
 				CFrame.new(origin + Vector3.new((x + 0.5) * G, h / 2 - 0.01, (z + 0.5) * G)),
 				steel,
 				Enum.Material.SmoothPlastic
@@ -558,7 +558,7 @@ function PlotBuilder.buildWorld()
 				"Hill",
 				Vector3.one * r * 2,
 				CFrame.new(x, -60 - r * 0.7, side * rng:NextNumber(1300, 1500)),
-				Color3.fromRGB(80, 175, 80):Lerp(Color3.fromRGB(60, 140, 90), rng:NextNumber()),
+				Color3.fromRGB(120, 195, 60):Lerp(Color3.fromRGB(90, 170, 60), rng:NextNumber()),
 				Enum.Material.SmoothPlastic
 			)
 			hill.Shape = Enum.PartType.Ball

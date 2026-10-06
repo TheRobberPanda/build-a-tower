@@ -94,9 +94,9 @@ end
 
 -- name = piece type name; y/r = grid row and rotation; channelColor for linked pieces.
 function PieceVisuals.decorate(part: BasePart, name: string, y: number, r: number, channelColor: Color3?)
-	if name == "Block" or name == "FakeWall" or name == "OneWay" then
+	if name == "Block" or name == "FakeWall" or name == "OneWay" or name == "Wall" then
 		part.Color = PieceVisuals.heightColor(y)
-	elseif name == "Platform" then
+	elseif name == "Platform" or name == "BigFloor" then
 		part.Color = PieceVisuals.heightColor(y):Lerp(Color3.new(1, 1, 1), 0.25)
 	elseif name == "Ramp" then
 		part.Color = PieceVisuals.heightColor(y):Lerp(Color3.fromRGB(255, 200, 120), 0.35)
@@ -141,7 +141,18 @@ function PieceVisuals.decorate(part: BasePart, name: string, y: number, r: numbe
 		pane.Transparency = 0.35
 		sparkles(part, color, 8)
 	elseif name == "Finish" then
-		part.Color = Color3.fromRGB(0, 200, 90)
+		-- Glowing green pad with a light beam, like the top of the thumbnail tower.
+		part.Color = Color3.fromRGB(40, 60, 50)
+		part.Material = Enum.Material.SmoothPlastic
+		frame(part, Color3.fromRGB(60, 255, 120))
+		local beam = deco(
+			part,
+			Vector3.new(part.Size.X - 1, 18, part.Size.Z - 1),
+			part.CFrame * CFrame.new(0, part.Size.Y / 2 + 9, 0),
+			Color3.fromRGB(90, 255, 140),
+			Enum.Material.Neon
+		)
+		beam.Transparency = 0.82
 		pole(part, Color3.fromRGB(255, 255, 255))
 		sparkles(part, Color3.fromRGB(120, 255, 160), 8)
 	elseif name == "Checkpoint" then

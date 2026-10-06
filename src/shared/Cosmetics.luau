@@ -109,6 +109,8 @@ end
 local STRUCTURAL = table.freeze({
 	Block = true,
 	Platform = true,
+	BigFloor = true,
+	Wall = true,
 	Ramp = true,
 	FakeWall = true,
 	OneWay = true,

@@ -35,7 +35,10 @@ local SHORT_NAMES: { [string]: string } = {
 	Teleporter = "Teleport",
 	OneWay = "One Way",
 	LongRamp = "Long Ramp",
+	BigFloor = "Big Floor",
 }
+-- Hotbar order: big time-savers next to their small versions.
+local SLOT_ORDER: { [string]: number } = { BigFloor = 25, Wall = 15 }
 
 local SECRET_NAMES: { [string]: string } = {
 	FakeWall = "a fake wall",
@@ -197,7 +200,7 @@ local function buildHotbar()
 	for _, def in PieceDefs.list do
 		local slot: TextButton = Kit.new("TextButton", {
 			Name = def.name,
-			LayoutOrder = def.id,
+			LayoutOrder = SLOT_ORDER[def.name] or def.id * 10,
 			Size = UDim2.fromOffset(60, 60), -- resized to the bar height below
 			BackgroundColor3 = Theme.Panel,
 			AutoButtonColor = true,

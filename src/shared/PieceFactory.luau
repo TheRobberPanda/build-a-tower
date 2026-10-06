@@ -70,7 +70,16 @@ local COMPOUND: { [string]: (BasePart) -> () } = {
 	end,
 }
 
-local INSET = { Block = true, Platform = true, FakeWall = true, OneWay = true, Crumble = true, Door = true }
+local INSET = {
+	Block = true,
+	Platform = true,
+	BigFloor = true,
+	Wall = true,
+	FakeWall = true,
+	OneWay = true,
+	Crumble = true,
+	Door = true,
+}
 
 local COLORS: { [string]: Color3 } = {
 	Block = Color3.fromRGB(163, 162, 165),
@@ -93,6 +102,8 @@ local COLORS: { [string]: Color3 } = {
 	Pumpkin = Color3.fromRGB(255, 130, 20),
 	Stairs = Color3.fromRGB(255, 140, 30),
 	Beam = Color3.fromRGB(40, 120, 255),
+	BigFloor = Color3.fromRGB(110, 153, 202),
+	Wall = Color3.fromRGB(163, 162, 165),
 	LongRamp = Color3.fromRGB(255, 140, 30),
 }
 

@@ -105,6 +105,9 @@ local list: { PieceDef } = {
 	{ id = 19, name = "Stairs", hint = "Walkable stairs, 2 high", size = { 1, 2, 2 }, props = {} },
 	{ id = 20, name = "Beam", hint = "Long plank walkway", size = { 1, 1, 4 }, props = {} },
 	{ id = 21, name = "LongRamp", hint = "Long sloped plank, 2 high", size = { 1, 2, 4 }, props = {} },
+	-- Big pieces: one click covers a lot (still one piece of budget)
+	{ id = 22, name = "BigFloor", hint = "3x3 floor, builds fast", size = { 3, 1, 3 }, props = {} },
+	{ id = 23, name = "Wall", hint = "Wall 2 wide, 2 high; R rotates", size = { 2, 2, 1 }, props = {} },
 }
 
 local byId: { [number]: PieceDef } = {}
