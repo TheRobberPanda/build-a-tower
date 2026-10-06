@@ -535,6 +535,24 @@ step("cannot like or report your own tower", function()
 	return liked == false and reported == false
 end)
 
+step("sun and moon blocks follow the clock", function()
+	clearTower()
+	place(24, 1, 0, 1)
+	place(25, 3, 0, 1)
+	local sun, moon
+	waitFor(function()
+		sun, moon = partAt(1, 0, 1), partAt(3, 0, 1)
+		return sun ~= nil and moon ~= nil
+	end, 5)
+	if not (sun and moon) then
+		return false, "pieces not placed"
+	end
+	local clock = game:GetService("Lighting").ClockTime
+	local day = clock >= 6 and clock < 18
+	return sun.CanCollide == day and moon.CanCollide == not day,
+		string.format("clock=%.1f sun=%s moon=%s", clock, tostring(sun.CanCollide), tostring(moon.CanCollide))
+end)
+
 -- Leave slot 3 empty and go back.
 step("clean up and switch back", function()
 	clearTower()
