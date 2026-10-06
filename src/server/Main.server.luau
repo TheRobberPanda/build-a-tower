@@ -22,6 +22,7 @@ for _, name in
 		"LiveRaceService",
 		"FeaturedService",
 		"ContestService",
+		"DayNightService",
 	}
 do
 	(require(Services:FindFirstChild(name) :: ModuleScript) :: any).init()

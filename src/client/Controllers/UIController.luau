@@ -36,6 +36,8 @@ local SHORT_NAMES: { [string]: string } = {
 	OneWay = "One Way",
 	LongRamp = "Long Ramp",
 	BigFloor = "Big Floor",
+	SunBlock = "Sun Block",
+	MoonBlock = "Moon Block",
 }
 -- Hotbar order: big time-savers next to their small versions.
 local SLOT_ORDER: { [string]: number } = { BigFloor = 25, Wall = 15 }

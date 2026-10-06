@@ -52,6 +52,7 @@ local Config = {
 	CRUMBLE_DELAY = 0.6,
 	CRUMBLE_RESPAWN = 3,
 	DOOR_OPEN_SECONDS = 6,
+	DAY_SECONDS = 300, -- one full day/night cycle (a build phase)
 
 	-- AntiCheat (only checked during runs)
 	AC_SAMPLE_SECONDS = 0.2,

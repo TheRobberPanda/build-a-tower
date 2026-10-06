@@ -79,6 +79,8 @@ local INSET = {
 	OneWay = true,
 	Crumble = true,
 	Door = true,
+	SunBlock = true,
+	MoonBlock = true,
 }
 
 local COLORS: { [string]: Color3 } = {
@@ -105,6 +107,8 @@ local COLORS: { [string]: Color3 } = {
 	BigFloor = Color3.fromRGB(110, 153, 202),
 	Wall = Color3.fromRGB(163, 162, 165),
 	LongRamp = Color3.fromRGB(255, 140, 30),
+	SunBlock = Color3.fromRGB(255, 200, 40),
+	MoonBlock = Color3.fromRGB(90, 110, 230),
 }
 
 local TELEPORTER_COLORS: { Color3 } = {
@@ -167,6 +171,8 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 		part.Material = Enum.Material.Neon
 	elseif def.name == "Door" then
 		part.Material = Enum.Material.WoodPlanks
+	elseif def.name == "SunBlock" or def.name == "MoonBlock" then
+		part.Material = Enum.Material.Glass
 	elseif def.decor then
 		part.CanCollide = false
 		part.CanTouch = false
@@ -229,6 +235,9 @@ function PieceFactory.make(piece: Piece, origin: Vector3): BasePart
 		or def.name == "Conveyor"
 		or def.name == "OneWay"
 		or def.name == "Button"
+		or def.name == "SunBlock"
+		or def.name == "MoonBlock"
+		or def.name == "Lamp"
 	then
 		CollectionService:AddTag(part, def.name) -- MechanicsService / client controller pick these up
 	end

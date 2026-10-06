@@ -108,6 +108,9 @@ local list: { PieceDef } = {
 	-- Big pieces: one click covers a lot (still one piece of budget)
 	{ id = 22, name = "BigFloor", hint = "3x3 floor, builds fast", size = { 3, 1, 3 }, props = {} },
 	{ id = 23, name = "Wall", hint = "Wall 2 wide, 2 high; R rotates", size = { 2, 2, 1 }, props = {} },
+	-- Day/night (DayNightService toggles them)
+	{ id = 24, name = "SunBlock", hint = "Solid by day, a ghost at night", size = { 1, 1, 1 }, props = {} },
+	{ id = 25, name = "MoonBlock", hint = "Solid at night, a ghost by day", size = { 1, 1, 1 }, props = {} },
 }
 
 local byId: { [number]: PieceDef } = {}
