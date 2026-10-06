@@ -33,6 +33,7 @@ Remotes.Events = table.freeze({
 	"RoundReplay", -- server -> client { path, splits, ms } the builder's verify climb
 	"RoundResults", -- server -> all { { name, coins, valid, stars?, wins } }
 	"RoundVote", -- (stars 1-5) for the tower being shown
+	"RoundSitOut", -- (bool) skip rounds and free-build on your island
 	"RoundDonate", -- (amount from Config.DONATE_AMOUNTS) to the tower's builder
 })
 

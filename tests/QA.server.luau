@@ -23,6 +23,7 @@ LogService.MessageOut:Connect(function(message, messageType)
 	end
 end)
 
+ServerStorage:SetAttribute("RoundFast", true) -- play-mode copy only; Edit keeps its value
 local remote = Instance.new("RemoteEvent")
 remote.Name = "QAReport"
 remote.Parent = ReplicatedStorage
@@ -34,7 +35,7 @@ remote.OnServerEvent:Connect(function(_player, data)
 end)
 
 local started = os.clock()
-while not report and os.clock() - started < 240 do
+while not report and os.clock() - started < 420 do
 	task.wait(1)
 end
 

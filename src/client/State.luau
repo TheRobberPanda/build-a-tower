@@ -35,6 +35,7 @@ local State = {
 	slots = 3,
 	trail = nil :: string?,
 	theme = "grass",
+	sitOut = false, -- skipping rounds to free-build
 	inRound = false, -- taking part in the current round (RoundController)
 	buildOwner = 0, -- userId whose plot you are building on; 0 = your own
 	Changed = changed.Event,

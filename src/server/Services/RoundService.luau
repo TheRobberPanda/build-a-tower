@@ -46,6 +46,7 @@ local roundTowers: { [number]: Types.PublishedTower } = {}
 local shown: Entry? = nil -- tower being raced or voted on
 local raceWinner: Player? = nil
 local limiter = RateLimiter.new(4, 1)
+local sitOut: { [Player]: boolean } = {}
 
 local function seconds(s: number): number
 	if RunService:IsStudio() and ServerStorage:GetAttribute("RoundFast") == true then
@@ -102,7 +103,7 @@ end
 local function loadedPlayers(): { Player }
 	local list = {}
 	for _, p in Players:GetPlayers() do
-		if DataService.get(p) and p.Character then
+		if DataService.get(p) and p.Character and not sitOut[p] then
 			table.insert(list, p)
 		end
 	end
@@ -367,11 +368,18 @@ function RoundService.init()
 	end)
 	Remotes.event("RoundVote").OnServerEvent:Connect(onVote)
 	Remotes.event("RoundDonate").OnServerEvent:Connect(onDonate)
+	-- Sitting out takes effect from the next round (the current one keeps you).
+	Remotes.event("RoundSitOut").OnServerEvent:Connect(function(player: Player, on: any)
+		if type(on) == "boolean" and limiter:allow(player) then
+			sitOut[player] = if on then true else nil
+		end
+	end)
 	DataService.Loaded:Connect(function(player: Player)
 		Remotes.event("Round"):FireClient(player, state)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		entryOf[player] = nil
+		sitOut[player] = nil
 		limiter:forget(player)
 	end)
 	task.spawn(loop)

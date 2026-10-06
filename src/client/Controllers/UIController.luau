@@ -534,6 +534,12 @@ local function buildTools()
 	menuItem(4, "Players", Theme.PanelLight, function()
 		SocialController.openPlayers()
 	end)
+	local sitButton: TextButton
+	sitButton = menuItem(5, "Sit out rounds", Theme.PanelLight, function()
+		State.set({ sitOut = not State.sitOut })
+		Remotes.event("RoundSitOut"):FireServer(State.sitOut)
+		sitButton.Text = if State.sitOut then "Join rounds" else "Sit out rounds"
+	end)
 
 	verifiedLabel = Kit.label("", {
 		AnchorPoint = Vector2.new(1, 0),

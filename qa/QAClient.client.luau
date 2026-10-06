@@ -15,9 +15,20 @@ if ReplicatedStorage:GetAttribute("QA") ~= true then
 	ReplicatedStorage:GetAttributeChangedSignal("QA"):Wait()
 end
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local player = Players.LocalPlayer
-local G = 4
+local G = Config.GRID_STUDS
+-- Rounds would swap the tower mid-test: sit out until the round steps at the end.
+Remotes.event("RoundSitOut"):FireServer(true)
+local round: any = { phase = "waiting" }
+local roundResults: any = nil
+Remotes.event("Round").OnClientEvent:Connect(function(s)
+	round = s
+end)
+Remotes.event("RoundResults").OnClientEvent:Connect(function(r)
+	roundResults = r
+end)
 
 local results: { { step: string, ok: boolean, detail: string? } } = {}
 local clientLog: { string } = {}
@@ -571,6 +582,52 @@ step("clean up and switch back", function()
 	local _, switched = invoke("SwitchSlot", originalSlot)
 	return switched == true and count() >= 0,
 		"back on slot " .. originalSlot .. " with " .. count() .. " pieces"
+end)
+
+---------------------------------------------------------------- a solo round
+-- (RoundFast: build phase 30 s.) Join, build a finish, climb it, check the
+-- results and that the parked tower came back.
+local homeCount = count()
+step("round: joining starts a build phase with an empty tower", function()
+	task.wait(1)
+	Remotes.event("RoundSitOut"):FireServer(false)
+	local ok = waitFor(function()
+		return round.phase == "build" and table.find(round.members or {}, player.UserId) ~= nil
+	end, 40)
+	return ok and waitFor(function()
+		return count() == 0
+	end, 3),
+		string.format("phase=%s pieces=%d", tostring(round.phase), count())
+end)
+step("round: publish refused during the round", function()
+	local _, ok, err = invoke("Publish", "QA")
+	return ok == false, tostring(err)
+end)
+step("round: build + climb verifies the round tower", function()
+	place(8, 8, 0, 3)
+	if not startRun() then
+		return false, "RunStarted never arrived"
+	end
+	walkTo(cellCenter(8, 0, 3), 15, 1.5)
+	local r = runResult(10)
+	return r ~= nil and r[1] == true, if r then "ms=" .. tostring(r[2]) else "no result"
+end)
+step("round: results list a valid tower with coins", function()
+	local ok = waitFor(function()
+		return roundResults ~= nil
+	end, 60)
+	local mine = ok and roundResults[1]
+	return mine ~= nil and mine.valid == true and (mine.coins or 0) > 0,
+		if mine
+			then string.format("valid=%s coins=%s", tostring(mine.valid), tostring(mine.coins))
+			else "none"
+end)
+step("round: home tower restored", function()
+	Remotes.event("RoundSitOut"):FireServer(true)
+	return waitFor(function()
+		return count() == homeCount
+	end, 5),
+		string.format("pieces=%d expected=%d", count(), homeCount)
 end)
 
 local passed = 0
