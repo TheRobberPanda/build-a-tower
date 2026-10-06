@@ -194,13 +194,7 @@ function PieceVisuals.decorate(part: BasePart, name: string, _y: number, r: numb
 		part.Color = Color3.fromRGB(110, 115, 128)
 		part.Material = Enum.Material.Metal
 		local plate = part.CFrame * CFrame.new(0, part.Size.Y / 2 + 0.1, 0)
-		deco(
-			part,
-			Vector3.new(part.Size.X - 0.5, 0.2, part.Size.Z - 0.5),
-			plate,
-			Color3.fromRGB(255, 160, 20),
-			Enum.Material.Neon
-		)
+		deco(part, Vector3.new(part.Size.X - 0.5, 0.2, part.Size.Z - 0.5), plate, Color3.fromRGB(235, 95, 0))
 		local arrow = Color3.fromRGB(255, 240, 200)
 		chevron(part, plate * CFrame.new(0, 0.1, -0.9), arrow, 1.2)
 		deco(part, Vector3.new(0.6, 0.15, 2.4), plate * CFrame.new(0, 0.1, 0.6), arrow, Enum.Material.Neon)
