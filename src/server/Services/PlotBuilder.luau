@@ -280,20 +280,37 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	local RIM = 12
 	local front = -apronDepth - RIM
 	local back = sizeZ + RIM
-	local islandX, islandZ = sizeX + RIM * 2, back - front
+	local islandX = sizeX + RIM * 2
 
 	-- Island2 is one big grass-and-cliff mesh with a raised plateau in its +Z
 	-- half. Stretched so its top covers the plot and rim and the plateau ends up
 	-- as a hill behind it. Its top isn't flat, so it is lowered until no point of
 	-- the rim is above the grid, and every prop is dropped onto the surface. The
 	-- template is set to PreciseConvexDecomposition in Studio so players walk on it.
-	local meshSize = Vector3.new(islandX * 1.6, 100, islandZ * 3)
-	local meshCenterZ = back + 15 - meshSize.Z * 0.05
-	local hillAt = origin + Vector3.new(sizeX / 2, 0, meshCenterZ + meshSize.Z * 0.25)
+	local meshSize = Vector3.new(islandX * 1.8, 130, 300)
+	local meshCenterZ = front + meshSize.Z * 0.35
+	local meshCenterX = sizeX / 2 - 18 -- covers the notch in the mesh's front-left corner
+	local hillAt = origin + Vector3.new(meshCenterX, 0, meshCenterZ + meshSize.Z * 0.25)
 	local assets = game:GetService("ServerStorage"):FindFirstChild("SceneryAssets")
 	local template = assets and assets:FindFirstChild("Island2")
-	local surfaceAt: (number, number) -> number? = function()
+	local surfaceAt: (number, number) -> number? = function(_x, _z)
 		return nil
+	end
+	-- `at` dropped onto the island if the ground within `r` studs is level
+	-- enough to stand a prop on (nothing hangs over an edge or a slope).
+	local function spot(at: Vector3, r: number): Vector3?
+		local x, z = at.X - origin.X, at.Z - origin.Z
+		local y = surfaceAt(x, z)
+		if not y then
+			return nil
+		end
+		for _, o in { Vector2.new(r, 0), Vector2.new(-r, 0), Vector2.new(0, r), Vector2.new(0, -r) } do
+			local oy = surfaceAt(x + o.X, z + o.Y)
+			if not oy or math.abs(oy - y) > 1 then
+				return nil
+			end
+		end
+		return Vector3.new(at.X, y, at.Z)
 	end
 	local ground: (Vector3) -> Vector3 = function(at)
 		return at
@@ -304,7 +321,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		m.Name = "Island"
 		local from, size = m:GetBoundingBox()
 		local k = meshSize / size
-		local to = CFrame.new(origin + Vector3.new(sizeX / 2, -meshSize.Y * 0.245, meshCenterZ))
+		local to = CFrame.new(origin + Vector3.new(meshCenterX, -meshSize.Y * 0.245, meshCenterZ))
 		for _, d in m:GetDescendants() do
 			if d:IsA("BasePart") then
 				local rel = from:ToObjectSpace(d.CFrame)
@@ -324,8 +341,8 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			return hit and hit.Position.Y
 		end
 		local top = -math.huge
-		for x = -RIM, sizeX + RIM, 4 do
-			for z = front, back, 4 do
+		for x = 0, sizeX, 4 do
+			for z = -apronDepth, sizeZ, 4 do
 				top = math.max(top, surface(x, z) or -math.huge)
 			end
 		end
@@ -340,38 +357,14 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		islandModel = m
 	end
 
-	-- A waterfall off the right edge into the clouds.
-	local WATER = Color3.fromRGB(70, 170, 255)
-	local fallH = 160
-	local fall = decoPart(
-		scenery,
-		"Waterfall",
-		Vector3.new(1.5, fallH, 8),
-		CFrame.new(origin + Vector3.new(sizeX / 2 + meshSize.X / 2 + 1, -fallH / 2, sizeZ * 0.3)),
-		WATER,
-		Enum.Material.Glass
-	)
-	fall.Transparency = 0.3
-	fall.CastShadow = false
-	local spray = Instance.new("ParticleEmitter")
-	spray.Texture = "rbxasset://textures/particles/smoke_main.dds"
-	spray.Color = ColorSequence.new(Color3.new(1, 1, 1))
-	spray.Size = NumberSequence.new(4, 14)
-	spray.Transparency = NumberSequence.new(0.5, 1)
-	spray.Lifetime = NumberRange.new(2, 3)
-	spray.Rate = 25
-	spray.Speed = NumberRange.new(20, 30)
-	spray.EmissionDirection = Enum.NormalId.Bottom
-	spray.LightInfluence = 0.5
-	spray.Parent = fall
-
 	-- Fence round the rim, open at the front of the apron.
 	local function fenceLine(a: Vector3, b: Vector3)
 		local len = (b - a).Magnitude
 		local n = math.max(1, math.round(len / 11.5))
 		for i = 0, n - 1 do
-			local at = origin + a:Lerp(b, (i + 0.5) / n)
-			local f = prop(scenery, "Fence1", ground(at), len / n / 11.5, rng)
+			local at = ground(origin + a:Lerp(b, (i + 0.5) / n))
+			-- Skip segments that would sit on the hill.
+			local f = if at.Y < origin.Y + 0.5 then prop(scenery, "Fence1", at, len / n / 11.5, rng) else nil
 			if f then
 				f:PivotTo(
 					CFrame.lookAt(f:GetPivot().Position, f:GetPivot().Position + (b - a))
@@ -397,6 +390,12 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		}
 	do
 		prop(scenery, "Lamp1", ground(origin + at), 1, rng)
+	end
+
+	-- A prop on level ground near `at`, or nothing.
+	local function place(name: string, at: Vector3, scale: number): Model?
+		local p = spot(at, if name:find("Tree") then 5 else 1.5)
+		return if p then prop(scenery, name, p, scale, rng) else nil
 	end
 
 	-- Trees, bushes, rocks, mushrooms and grass on the rim (outside the grid).
@@ -430,12 +429,10 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		}
 	do
 		for _ = 1, spec.count do
-			prop(
-				scenery,
+			place(
 				spec.names[rng:NextInteger(1, #spec.names)],
-				ground(origin + rimSpot(spec.margin)),
-				rng:NextNumber(spec.scale[1], spec.scale[2]),
-				rng
+				origin + rimSpot(spec.margin),
+				rng:NextNumber(spec.scale[1], spec.scale[2])
 			)
 		end
 	end
@@ -454,23 +451,21 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		local placed, tries = 0, 0
 		while placed < spec.count and tries < spec.count * 10 do
 			tries += 1
-			local x = rng:NextNumber(sizeX / 2 - halfX, sizeX / 2 + halfX)
+			local x = rng:NextNumber(meshCenterX - halfX, meshCenterX + halfX)
 			local z = rng:NextNumber(meshCenterZ - meshSize.Z / 2, hillAt.Z - origin.Z - 30)
 			local inside = x > -RIM - 2 and x < sizeX + RIM + 2 and z > front - 2 and z < back + 2
 			local y = if inside then nil else surfaceAt(x, z)
-			if y and y > origin.Y - 6 and y < origin.Y + 1 then
-				local at = Vector3.new(origin.X + x, y, origin.Z + z)
-				if
-					prop(
-						scenery,
-						spec.names[rng:NextInteger(1, #spec.names)],
-						at,
-						rng:NextNumber(spec.scale[1], spec.scale[2]),
-						rng
-					)
-				then
-					placed += 1
-				end
+			if
+				y
+				and y > origin.Y - 6
+				and y < origin.Y + 1
+				and place(
+					spec.names[rng:NextInteger(1, #spec.names)],
+					origin + Vector3.new(x, 0, z),
+					rng:NextNumber(spec.scale[1], spec.scale[2])
+				)
+			then
+				placed += 1
 			end
 		end
 	end
@@ -478,12 +473,10 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	for _ = 1, 9 do
 		local a, r = rng:NextNumber(0, math.pi * 2), rng:NextNumber(0, 40)
 		local name = if rng:NextInteger(1, 2) == 1 then "Tree1" else "Tree2"
-		prop(
-			scenery,
+		place(
 			name,
-			ground(hillAt + Vector3.new(math.cos(a) * r * 1.4, 0, math.sin(a) * r * 0.6)),
-			rng:NextNumber(0.6, 1),
-			rng
+			hillAt + Vector3.new(math.cos(a) * r * 1.4, 0, math.sin(a) * r * 0.6),
+			rng:NextNumber(0.6, 1)
 		)
 	end
 	-- Flower patches (Flower1), petals tinted per patch.
@@ -498,7 +491,7 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 		local color = petals[rng:NextInteger(1, #petals)]
 		for _ = 1, rng:NextInteger(2, 4) do
 			local at = c + Vector3.new(rng:NextNumber(-1.5, 1.5), 0, rng:NextNumber(-1.5, 1.5))
-			local flower = prop(scenery, "Flower1", ground(at), rng:NextNumber(0.35, 0.5), rng)
+			local flower = place("Flower1", at, rng:NextNumber(0.35, 0.5))
 			if flower then
 				for _, d in flower:GetDescendants() do
 					if d:IsA("BasePart") and d.Name:find("Mesh35") then
@@ -647,19 +640,32 @@ function PlotBuilder.buildWorld()
 		local island = skyProp(world, "Island1", at, scale, rng)
 		if island then
 			local cf, size = island:GetBoundingBox()
-			local top = cf.Position + Vector3.new(0, size.Y / 2, 0)
+			-- Trees dropped onto the island's top with a raycast (it isn't flat).
+			island.Parent = workspace
+			local parts = {}
+			for _, d in island:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.CanQuery = true
+					table.insert(parts, d)
+				end
+			end
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Include
+			params.FilterDescendantsInstances = { island }
 			for _ = 1, rng:NextInteger(1, 3) do
 				local a = rng:NextNumber(0, math.pi * 2)
-				local d = rng:NextNumber(0, size.X * 0.25)
-				local treeName = if rng:NextInteger(1, 2) == 1 then "Tree1" else "Tree2"
-				skyProp(
-					world,
-					treeName,
-					top + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d),
-					scale * 0.6,
-					rng
-				)
+				local d = rng:NextNumber(0, size.X * 0.15)
+				local from = cf.Position + Vector3.new(math.cos(a) * d, size.Y, math.sin(a) * d)
+				local hit = workspace:Raycast(from, Vector3.new(0, -size.Y * 2, 0), params)
+				if hit and hit.Normal.Y > 0.8 then
+					local treeName = if rng:NextInteger(1, 2) == 1 then "Tree1" else "Tree2"
+					skyProp(world, treeName, hit.Position, scale * 0.6, rng)
+				end
 			end
+			for _, d in parts do
+				d.CanQuery = false
+			end
+			island.Parent = world
 		end
 	end
 	-- A sea of clouds (Cloud1) below the plots, and scattered ones above.
