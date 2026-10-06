@@ -81,8 +81,8 @@ local function onRound(s: any)
 	state = s
 	local members = if type(s.members) == "table" then s.members else {}
 	local inRound = table.find(members, player.UserId) ~= nil
-	if inRound ~= State.inRound then
-		State.set({ inRound = inRound })
+	if inRound ~= State.inRound or s.phase ~= State.roundPhase then
+		State.set({ inRound = inRound, roundPhase = s.phase })
 	end
 	votePanel.Visible = false
 	Sounds.music(
@@ -226,7 +226,7 @@ function RoundController.init()
 		Visible = false,
 		Parent = gui,
 	})
-	Kit.new("UIAspectRatioConstraint", { AspectRatio = 1.4, Parent = resultsPanel })
+	Kit.new("UIAspectRatioConstraint", { AspectRatio = 2, Parent = resultsPanel })
 	Kit.label("Round results", {
 		Size = UDim2.fromScale(1, 0.15),
 		Position = UDim2.fromScale(0, 0.03),

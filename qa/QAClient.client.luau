@@ -670,10 +670,12 @@ step("round: build + climb verifies the round tower", function()
 	local r = runResult(10)
 	return r ~= nil and r[1] == true, if r then "ms=" .. tostring(r[2]) else "no result"
 end)
+local restoredCount = -1
 step("round: results list a valid tower with coins", function()
 	local ok = waitFor(function()
 		return roundResults ~= nil
 	end, 60)
+	restoredCount = count()
 	task.wait(12) -- leave the results board up for a screenshot
 	local mine = ok and roundResults[1]
 	return mine ~= nil and mine.valid == true and (mine.coins or 0) > 0,
@@ -682,10 +684,7 @@ step("round: results list a valid tower with coins", function()
 			else "none"
 end)
 step("round: home tower restored", function()
-	return waitFor(function()
-		return count() == homeCount
-	end, 5),
-		string.format("pieces=%d expected=%d", count(), homeCount)
+	return restoredCount == homeCount, string.format("pieces=%d expected=%d", restoredCount, homeCount)
 end)
 
 local passed = 0

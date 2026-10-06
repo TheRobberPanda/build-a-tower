@@ -1175,7 +1175,7 @@ end
 
 local function render()
 	local isBuild = State.mode == "build"
-	buildLayer.Visible = isBuild
+	buildLayer.Visible = isBuild and not (State.inRound and State.roundPhase ~= "build")
 	runLayer.Visible = not isBuild
 
 	for id, slot in slots do

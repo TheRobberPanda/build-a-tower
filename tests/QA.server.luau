@@ -11,7 +11,32 @@ local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local mode = ServerStorage:GetAttribute("RunQA")
-if not RunService:IsStudio() or (mode ~= true and mode ~= 2) then
+if not RunService:IsStudio() or (mode ~= true and mode ~= 2 and mode ~= "ui") then
+	return
+end
+-- RunQA = "ui": show the round vote panel, then the results board, for screenshots.
+if mode == "ui" then
+	local Remotes = require(ReplicatedStorage.Shared.Remotes)
+	game:GetService("Players").PlayerAdded:Wait()
+	task.wait(8)
+	local now = workspace:GetServerTimeNow()
+	ServerStorage:SetAttribute("RoundFast", nil)
+	Remotes.event("Round"):FireAllClients({
+		phase = "vote",
+		endsAt = now + 20,
+		builder = 1,
+		builderName = "Builderman",
+		winnerName = "Guest",
+		members = {},
+	})
+	task.wait(8)
+	Remotes.event("RoundResults"):FireAllClients({
+		{ name = "Builderman", coins = 95, valid = true, stars = 4.5, wins = 1 },
+		{ name = "Guest", coins = 55, valid = true, stars = 3, wins = 1 },
+		{ name = "Noob", coins = 0, valid = false, wins = 0 },
+	})
+	task.wait(8)
+	game:GetService("StudioTestService"):EndTest("ui")
 	return
 end
 
