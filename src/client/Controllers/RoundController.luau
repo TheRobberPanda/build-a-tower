@@ -85,11 +85,18 @@ local function onRound(s: any)
 		State.set({ inRound = inRound })
 	end
 	votePanel.Visible = false
+	Sounds.music(
+		if not inMine
+			then "Ambient"
+			elseif s.phase == "build" then "BuildMusic"
+			elseif s.phase == "race" then "RaceMusic"
+			else "Ambient"
+	)
 	if s.phase ~= old then
 		if s.phase == "build" then
 			resultsPanel.Visible = false
 			flash("Build a tower, then CLIMB it before time runs out!", Theme.Primary)
-			Sounds.play("LevelUp")
+			Sounds.play("RoundStart")
 		elseif s.phase == "race" then
 			flash(
 				if s.builder == player.UserId then "Watch them try your tower!" else "First to the top wins!",
@@ -144,7 +151,8 @@ local function onResults(list: any)
 	end
 	resultsText.Text = table.concat(lines, "\n")
 	Kit.show(resultsPanel, true)
-	Sounds.play("Finish")
+	Sounds.play("Victory")
+	Sounds.play("Cheer")
 	task.delay(Config.RESULTS_SECONDS, function()
 		resultsPanel.Visible = false
 	end)

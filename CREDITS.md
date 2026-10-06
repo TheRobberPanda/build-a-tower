@@ -29,3 +29,8 @@
 | Low-Poly Lamp Post (Lamp1, 4911018996, Squistic; one of five kept) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot rim |
 | Low Poly Grass Mesh Prop (Grass1, 82531384183890, Manestronomer) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot rim |
 | Low Poly Mushrooms (Mushroom1, 4644085527, CyrilTBFD) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot rim |
+| Build music "playful bouncy funny upbeat" (80191016555521) | Roblox Creator Store, DistrokidOfficial | Roblox licensed music | Sounds.BuildMusic |
+| Race music "Fast Race A" (1843108763) | Roblox Creator Store, APMOfficial | Roblox licensed music | Sounds.RaceMusic |
+| "Time Attack (sting)" (1837769261) | Roblox Creator Store, APMOfficial | Roblox licensed music | Sounds.RoundStart |
+| "Victory Fanfare Sting" (1836473422) | Roblox Creator Store, APMOfficial | Roblox licensed music | Sounds.Victory |
+| "Crowd Cheer And Applause 1" (9112766176) | Roblox Creator Store, ProSoundEffects | Roblox licensed SFX | Sounds.Cheer |

@@ -12,7 +12,7 @@ local SoundController = {}
 local lastCount: number? = nil
 
 function SoundController.start()
-	Sounds.startAmbient()
+	Sounds.music("Ambient")
 	Remotes.event("TowerChanged").OnClientEvent:Connect(function(tower)
 		local count = if type(tower) == "table" and type(tower.pieces) == "table" then #tower.pieces else 0
 		if lastCount then

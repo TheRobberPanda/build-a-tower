@@ -18,6 +18,12 @@ Sounds.Ids = table.freeze({
 	LevelUp = "rbxassetid://132886095093109",
 	Crumble = "rbxassetid://109580080804011",
 	Door = "rbxassetid://131464703611095", -- looped quietly on the client
+	-- Round music and stings (APMOfficial / DistrokidOfficial / ProSoundEffects, licensed for Roblox)
+	BuildMusic = "rbxassetid://80191016555521",
+	RaceMusic = "rbxassetid://1843108763",
+	RoundStart = "rbxassetid://1837769261",
+	Victory = "rbxassetid://1836473422",
+	Cheer = "rbxassetid://9112766176",
 })
 
 local VOLUME: { [string]: number } = {
@@ -32,6 +38,11 @@ local VOLUME: { [string]: number } = {
 	LevelUp = 0.8,
 	Crumble = 0.6,
 	Door = 0.6,
+	BuildMusic = 0.25,
+	RaceMusic = 0.3,
+	RoundStart = 0.7,
+	Victory = 0.7,
+	Cheer = 0.5,
 }
 
 -- Plays a one-shot. With `at`, the sound is positional (heard by everyone nearby);
@@ -56,19 +67,28 @@ function Sounds.play(name: string, at: BasePart?)
 	end
 end
 
--- Starts the looping ambient track; returns nil when no id is set.
-function Sounds.startAmbient(): Sound?
-	if Sounds.Ids.Ambient == "" then
-		return nil
+-- Switches the looping music track (cross-fade free: stop old, start new).
+local current: Sound? = nil
+function Sounds.music(name: string)
+	local id = (Sounds.Ids :: any)[name]
+	if current and current.Name == name then
+		return
+	end
+	if current then
+		current:Destroy()
+		current = nil
+	end
+	if type(id) ~= "string" or id == "" then
+		return
 	end
 	local sound = Instance.new("Sound")
-	sound.Name = "Ambient"
-	sound.SoundId = Sounds.Ids.Ambient
-	sound.Volume = VOLUME.Ambient
+	sound.Name = name
+	sound.SoundId = id
+	sound.Volume = VOLUME[name] or 0.2
 	sound.Looped = true
 	sound.Parent = SoundService
 	sound:Play()
-	return sound
+	current = sound
 end
 
 return Sounds
