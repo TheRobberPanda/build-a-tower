@@ -31,9 +31,10 @@ local PlotBuilder = load(Services.PlotBuilder)
 local PieceFactory = load(game.ReplicatedStorage.Shared.PieceFactory)
 local Config = load(game.ReplicatedStorage.Shared.Config)
 
-local old = workspace:FindFirstChild("Preview")
-if old then
-	old:Destroy()
+for _, old in workspace:GetChildren() do
+	if old.Name == "Preview" then
+		old:Destroy()
+	end
 end
 local origin = Vector3.new(3000, 0, 0)
 local model = Instance.new("Model")
@@ -87,6 +88,9 @@ if ALL then
 		local n = i - 1
 		table.insert(pieces, { t = def.id, x = n % 6 * 4, y = 0, z = 1 + n // 6 * 4, r = 0, p = p })
 	end
+end
+if SHOWPIECES then
+	pieces = SHOWPIECES -- a caller-supplied list
 end
 local folder = Instance.new("Folder")
 folder.Name = "Pieces"

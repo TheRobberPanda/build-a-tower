@@ -709,7 +709,11 @@ function PlotBuilder.lobby(): Model
 	)
 	rim.Shape = Enum.PartType.Cylinder
 	-- The floating rock under it, like the plots' islands.
-	prop(model, "Island1", center - Vector3.new(0, 78, 0), 4.6, rng)
+	local rock = prop(model, "Island1", center - Vector3.new(0, 78, 0), 4.6, rng)
+	if rock then
+		local cf, size = rock:GetBoundingBox() -- its grassy top goes just under the floor
+		rock:PivotTo(rock:GetPivot() + Vector3.new(0, center.Y - 4 - (cf.Y + size.Y / 2), 0))
+	end
 	local function pad(mode: string, text: string, color: Color3, offset: Vector3)
 		local at = center + offset
 		local p = part(
@@ -736,7 +740,6 @@ function PlotBuilder.lobby(): Model
 		-- Floating sign over the pad.
 		local sign = Instance.new("BillboardGui")
 		sign.Size = UDim2.fromScale(22, 6)
-		sign.StudsOffsetWorldSpace = Vector3.new(0, 9, 0)
 		sign.LightInfluence = 0
 		sign.MaxDistance = 300
 		local label = Instance.new("TextLabel")
@@ -751,7 +754,16 @@ function PlotBuilder.lobby(): Model
 		stroke.Color = color:Lerp(Color3.new(0, 0, 0), 0.5)
 		stroke.Parent = label
 		label.Parent = sign
-		sign.Parent = p
+		local anchor = decoPart(
+			model,
+			"LobbySign",
+			Vector3.one,
+			CFrame.new(at + Vector3.new(0, 10, 0)),
+			color,
+			Enum.Material.Neon
+		)
+		anchor.Transparency = 1
+		sign.Parent = anchor
 		sparkleBurst(p, color)
 	end
 	pad("queue", "PLAY ROUNDS", Color3.fromRGB(70, 210, 90), Vector3.new(-26, 0, 30))
