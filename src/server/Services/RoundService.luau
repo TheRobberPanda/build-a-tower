@@ -295,7 +295,7 @@ local function loop()
 				continue
 			end
 			local winner = race(e, i, #valid)
-			if #loadedPlayers() > 1 then
+			if #loadedPlayers() > 1 and present(e) then
 				vote(e, winner)
 			end
 		end
@@ -311,6 +311,7 @@ local function onVote(player: Player, stars: any)
 		phase ~= "vote"
 		or not e
 		or e.player == player
+		or not present(e)
 		or not entryOf[player]
 		or not limiter:allow(player)
 		or type(stars) ~= "number"
