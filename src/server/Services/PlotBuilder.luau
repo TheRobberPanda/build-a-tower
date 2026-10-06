@@ -470,22 +470,14 @@ function PlotBuilder.buildWorld()
 	world.Name = "World"
 	local rng = Random.new(20261006)
 	local X0, X1 = -500, 2100 -- plot row spans about x 0..1600
-	-- Rolling green hills on the far horizon (both sides of the row).
+	-- Grassy mesas on the far horizon (Hill1, about 43 studs wide), half sunk in the sea.
 	for _, side in { -1, 1 } do
 		local x = X0 - 400
 		while x < X1 + 400 do
-			local r = rng:NextNumber(120, 260)
-			local hill = decoPart(
-				world,
-				"Hill",
-				Vector3.one * r * 2,
-				CFrame.new(x, -60 - r * 0.7, side * rng:NextNumber(1300, 1500)),
-				Color3.fromRGB(120, 195, 60):Lerp(Color3.fromRGB(90, 170, 60), rng:NextNumber()),
-				Enum.Material.SmoothPlastic
-			)
-			hill.Shape = Enum.PartType.Ball
-			hill.CastShadow = false
-			x += r * rng:NextNumber(1.1, 1.6)
+			local scale = rng:NextNumber(5, 11)
+			local sink = 22 * scale * rng:NextNumber(0.4, 0.6)
+			skyProp(world, "Hill1", Vector3.new(x, -60 - sink, side * rng:NextNumber(1300, 1500)), scale, rng)
+			x += 43 * scale * rng:NextNumber(0.6, 0.9)
 		end
 	end
 	-- Floating islands (Island1, about 29 studs wide) with a tree or two on top.
