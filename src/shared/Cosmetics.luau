@@ -14,6 +14,7 @@ export type MaterialDef = {
 }
 export type TrailDef = { key: string, name: string, colors: { Color3 }, bricks: number }
 export type ThemeDef = { key: string, name: string, color: Color3, material: Enum.Material }
+export type RunDef = { key: string, name: string, anim: string, bricks: number }
 
 local materials: { MaterialDef } = {
 	{ key = "plastic", name = "Plastic", material = Enum.Material.SmoothPlastic, level = 1, bricks = 0 },
@@ -74,6 +75,20 @@ local trails: { TrailDef } = {
 	},
 }
 
+-- Running animations (Roblox's own animation packs, free to use in any game).
+-- Keys share the unlocked map too, so they are prefixed.
+local runs: { RunDef } = {
+	{ key = "run_toy", name = "Toy", anim = "rbxassetid://782842708", bricks = 150 },
+	{ key = "run_cartoony", name = "Cartoony", anim = "rbxassetid://742638842", bricks = 200 },
+	{ key = "run_zombie", name = "Zombie", anim = "rbxassetid://616163682", bricks = 250 },
+	{ key = "run_robot", name = "Robot", anim = "rbxassetid://616091570", bricks = 300 },
+	{ key = "run_stylish", name = "Stylish", anim = "rbxassetid://616140816", bricks = 400 },
+	{ key = "run_superhero", name = "Superhero", anim = "rbxassetid://616117076", bricks = 500 },
+	{ key = "run_ninja", name = "Ninja", anim = "rbxassetid://656118852", bricks = 600 },
+	{ key = "run_levitation", name = "Levitation", anim = "rbxassetid://616010382", bricks = 800 },
+	{ key = "run_werewolf", name = "Werewolf", anim = "rbxassetid://1083216690", bricks = 1000 },
+}
+
 -- VIP island themes: the whole island's ground, colours and scenery change
 -- (PlotBuilder THEMES). color/material are for the shop swatch.
 local themes: { ThemeDef } = {
@@ -123,6 +138,9 @@ return table.freeze({
 	DEFAULT = "plastic",
 	trails = table.freeze(trails),
 	trailByKey = index(trails),
+	runs = table.freeze(runs),
+	runByKey = index(runs),
+	DEFAULT_RUN = "run_default", -- equip key for the avatar's own run
 	themes = table.freeze(themes),
 	themeByKey = index(themes),
 	DEFAULT_THEME = "grass",

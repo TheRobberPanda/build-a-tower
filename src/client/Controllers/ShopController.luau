@@ -1,5 +1,6 @@
 --!strict
--- Shop: game passes, Bricks packs, trails (Bricks) and VIP plot themes.
+-- Shop: game passes, Bricks packs, trails and running animations (Bricks) and
+-- VIP plot themes.
 -- Items whose Roblox id is still 0 in Config are hidden.
 
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -146,6 +147,36 @@ local function render()
 				else function()
 					local ok, err = call("BuyTrail", def.key)
 					status.Text = if ok then def.name .. " equipped" else tostring(err or "Could not buy")
+				end
+		)
+	end
+
+	header("Running animations", nextOrder())
+	item(
+		nextOrder(),
+		"Your own run",
+		if State.run == nil then "Equipped" else "Use",
+		Theme.Accent,
+		if State.run
+			then function()
+				call("EquipTrail", Cosmetics.DEFAULT_RUN)
+				State.set({ run = nil })
+			end
+			else nil
+	)
+	for _, def in Cosmetics.runs do
+		local owned = State.unlocked[def.key] == true
+		local equipped = State.run == def.key
+		item(
+			nextOrder(),
+			def.name .. " run",
+			if equipped then "Equipped" elseif owned then "Use" else def.bricks .. " Coins",
+			if equipped then Theme.Success elseif owned then Theme.Accent else Theme.Primary,
+			if equipped
+				then nil
+				else function()
+					local ok, err = call("BuyTrail", def.key)
+					status.Text = if ok then def.name .. " run equipped" else tostring(err or "Could not buy")
 				end
 		)
 	end

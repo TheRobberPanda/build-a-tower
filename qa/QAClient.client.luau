@@ -276,11 +276,23 @@ step("profile loaded", function()
 	return ok, string.format("pieces=%d level=%s", count(), tostring(progress and progress.level))
 end)
 
+step("spawned on your own island, wearing the glider wings", function()
+	local plot = workspace:WaitForChild("Plots"):WaitForChild("Plot_" .. player.UserId, 10)
+	local origin = plot and plot:GetAttribute("Origin")
+	local character = player.Character or player.CharacterAdded:Wait()
+	local root = character:WaitForChild("HumanoidRootPart", 10) :: BasePart
+	local wings = waitFor(function()
+		return character:FindFirstChild("Wing") ~= nil
+	end, 10)
+	local d = if typeof(origin) == "Vector3" then (root.Position - origin).Magnitude else math.huge
+	return d < 150 and wings, string.format("distance to island=%.0f wings=%s", d, tostring(wings))
+end)
+
 -- Everything below edits the round tower only: the real tower is parked
 -- (data.roundStash) and comes back when the round ends.
 local inRound = false
 step("round: build phase starts with only the Finish on the roof", function()
-	Remotes.event("SetMode"):FireServer("queue") -- everyone starts in the lobby
+	Remotes.event("SetMode"):FireServer("queue") -- everyone starts undecided
 	inRound = waitFor(function()
 		return round.phase == "build" and table.find(round.members or {}, player.UserId) ~= nil
 	end, 60) and waitFor(function()

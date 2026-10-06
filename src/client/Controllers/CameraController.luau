@@ -1,48 +1,37 @@
 --!strict
--- Build camera, on by default while building: orbits the plot you are building
--- on so your character doesn't block the view. Drag to rotate, scroll / pinch
--- to zoom; the target height follows the tower. Everywhere else (lobby, runs,
--- races, or with the Camera button off) the game is first person.
+-- The normal Roblox camera everywhere: first person by default, scroll / pinch
+-- to zoom out to third person, right drag / swipe to look around. While
+-- building (the Camera button toggles it) it starts zoomed out and zooms much
+-- further. Blocks between you and the camera turn see-through instead of
+-- pushing it in (DevCameraOcclusionMode = Invisicam on StarterPlayer, in the
+-- project file). Walk (or glide) to wherever you want to build.
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
-local Config = require(ReplicatedStorage.Shared.Config)
 local State = require(script.Parent.Parent.State)
 
 local CameraController = {}
 
 local player = Players.LocalPlayer
-local G = Config.GRID_STUDS
+local MIN_ZOOM = 0.5
+local PLAY_MAX = 40
+local BUILD_MAX = 400
+local BUILD_ZOOM = 70
 
 local active = false
 local manualOff = false -- the player turned the build camera off for this build session
-local yaw = math.rad(200)
-local pitch = math.rad(35)
-local distance = 130
-local dragging = false
-local lastPos: Vector2? = nil
-local pinchStart: number? = nil
-local pinchDistance = distance
 
 local changed = Instance.new("BindableEvent")
 CameraController.Changed = changed.Event -- (active)
 
-local function plot(): Model?
-	local plots = workspace:FindFirstChild("Plots")
-	local owner = if State.buildOwner ~= 0 then State.buildOwner else player.UserId
-	local p = plots and plots:FindFirstChild("Plot_" .. owner)
-	return if p and p:IsA("Model") then p else nil
-end
-
-local function towerTop(): number
-	local top = 0
-	for _, piece in if State.tower then State.tower.pieces else {} do
-		top = math.max(top, piece.y + 1)
-	end
-	return top * G
+-- Moves the zoom to `d` (min = max = d for a moment), then frees it again.
+local function zoomTo(d: number, max: number)
+	player.CameraMaxZoomDistance = math.max(d, max)
+	player.CameraMinZoomDistance = d
+	task.delay(0.1, function()
+		player.CameraMinZoomDistance = MIN_ZOOM
+		player.CameraMaxZoomDistance = max
+	end)
 end
 
 function CameraController.isActive(): boolean
@@ -56,25 +45,14 @@ local function building(): boolean
 end
 
 function CameraController.set(on: boolean)
-	-- First person whenever the orbit camera is off.
-	player.CameraMode = if on then Enum.CameraMode.Classic else Enum.CameraMode.LockFirstPerson
 	if on == active then
 		return
 	end
 	active = on
-	local camera = workspace.CurrentCamera
-	if not camera then
-		return
-	end
 	if on then
-		camera.CameraType = Enum.CameraType.Scriptable
+		zoomTo(BUILD_ZOOM, BUILD_MAX)
 	else
-		camera.CameraType = Enum.CameraType.Custom
-		local character = player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			camera.CameraSubject = humanoid
-		end
+		zoomTo(MIN_ZOOM, PLAY_MAX)
 	end
 	changed:Fire(active)
 end
@@ -85,62 +63,9 @@ function CameraController.toggle()
 end
 
 function CameraController.start()
-	UserInputService.InputBegan:Connect(function(input, processed)
-		if not active or processed then
-			return
-		end
-		-- Right mouse or a touch starts a rotate drag (a short tap still places).
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton2
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			dragging = true
-			lastPos = Vector2.new(input.Position.X, input.Position.Y)
-		end
-	end)
-	UserInputService.InputEnded:Connect(function(input)
-		if
-			input.UserInputType == Enum.UserInputType.MouseButton2
-			or input.UserInputType == Enum.UserInputType.Touch
-		then
-			dragging = false
-			lastPos = nil
-		end
-	end)
-	UserInputService.InputChanged:Connect(function(input, processed)
-		if not active then
-			return
-		end
-		if input.UserInputType == Enum.UserInputType.MouseWheel and not processed then
-			distance = math.clamp(distance - input.Position.Z * 10, 40, 320)
-		elseif
-			dragging
-			and lastPos
-			and (
-				input.UserInputType == Enum.UserInputType.MouseMovement
-				or input.UserInputType == Enum.UserInputType.Touch
-			)
-		then
-			local pos = Vector2.new(input.Position.X, input.Position.Y)
-			local delta = pos - lastPos
-			lastPos = pos
-			yaw -= delta.X * 0.008
-			pitch = math.clamp(pitch + delta.Y * 0.006, math.rad(10), math.rad(80))
-		end
-	end)
-	UserInputService.TouchPinch:Connect(function(_positions, scale, _velocity, inputState, processed)
-		if not active or processed then
-			return
-		end
-		if inputState == Enum.UserInputState.Begin then
-			pinchStart = scale
-			pinchDistance = distance
-		elseif pinchStart then
-			distance = math.clamp(pinchDistance / math.max(scale, 0.1), 40, 320)
-		end
-	end)
-
-	-- On while building (unless turned off), first person otherwise.
+	player.CameraMode = Enum.CameraMode.Classic
+	zoomTo(MIN_ZOOM, PLAY_MAX) -- start in first person
+	-- On while building (unless turned off).
 	local wasBuilding = false
 	local function sync()
 		local now = building()
@@ -151,32 +76,7 @@ function CameraController.start()
 		CameraController.set(now and not manualOff)
 	end
 	State.Changed:Connect(sync)
-	player.CharacterAdded:Connect(function()
-		task.defer(function()
-			local camera = workspace.CurrentCamera
-			if active and camera then
-				camera.CameraType = Enum.CameraType.Scriptable -- a respawn resets it
-			end
-		end)
-	end)
 	sync()
-
-	RunService:BindToRenderStep("BuildCamera", Enum.RenderPriority.Camera.Value + 1, function()
-		local camera = workspace.CurrentCamera
-		local p = plot()
-		if not active or not camera or not p then
-			return
-		end
-		local origin = p:GetAttribute("Origin")
-		if typeof(origin) ~= "Vector3" then
-			return
-		end
-		local size = p:GetAttribute("Size")
-		local half = (if type(size) == "number" then size else Config.PLOT_CELLS_X) * G / 2
-		local target = origin + Vector3.new(half, math.min(towerTop() * 0.6, 200), half)
-		local offset = CFrame.Angles(0, yaw, 0) * CFrame.Angles(-pitch, 0, 0) * Vector3.new(0, 0, distance)
-		camera.CFrame = CFrame.lookAt(target + offset, target)
-	end)
 end
 
 return CameraController

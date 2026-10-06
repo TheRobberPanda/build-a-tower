@@ -4,9 +4,9 @@
 -- tower) -> for each valid tower: Race (everyone else, first to the top wins,
 -- builder wins if nobody does) then Vote (replay of the builder's verify climb,
 -- 1-5 stars, donations) -> Results (coins, good towers get published).
--- Everyone starts in the lobby and picks a mode: "queue" (play every round
--- until they leave the queue) or "free" (build on their own island). Rounds only
--- take queued players; queued players wait in the lobby between rounds.
+-- Everyone starts on their own island and picks a mode: "queue" (play every
+-- round until they leave the queue) or "free" (build on their island). Rounds
+-- only take queued players; they wait on their islands between rounds.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -138,7 +138,6 @@ local function addEntry(p: Player)
 	}
 	table.insert(entries, e)
 	entryOf[p] = e
-	PlotService.setHome(p, true)
 	PlotService.sendHome(p) -- to their island
 end
 
@@ -332,10 +331,7 @@ local function finishRound()
 		row.reward = reward(e.player, e.wins > 0, avg)
 		local roundTower = TowerService.leaveRound(e.player)
 		TowerService.setEditLocked(e.player, false)
-		-- Back to the lobby (still queued for the next round), or to their island
-		-- if they switched to free building during the round.
-		PlotService.setHome(e.player, modeOf[e.player] == "free")
-		PlotService.sendHome(e.player)
+		PlotService.sendHome(e.player) -- back to their island, queued or free building
 		-- Good towers are saved: valid, and rated 3+ stars (or nobody was there to rate).
 		local tower = e.tower
 		local qa = RunService:IsStudio() and ServerStorage:GetAttribute("RunQA") ~= nil
@@ -446,9 +442,11 @@ local function setMode(player: Player, mode: Mode)
 	if entryOf[player] then
 		return -- mid-round: takes effect when the round ends
 	end
-	PlotService.setHome(player, mode == "free")
-	if mode ~= "queue" or not tryLateJoin(player) then
-		PlotService.sendHome(player)
+	if mode == "queue" then
+		tryLateJoin(player)
+	else
+		-- Free build: the lobby pad takes you to your island. Lobby (menu): there.
+		PlotService.sendHome(player, mode == "lobby")
 	end
 end
 

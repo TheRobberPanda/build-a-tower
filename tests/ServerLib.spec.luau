@@ -196,6 +196,24 @@ return function()
 			local data = newProfiles(store, "A"):load(1) :: any
 			expect(data.verifiedHash).to.equal(nil)
 		end)
+
+		it("keeps known running animations and drops unknown ones", function()
+			local store = FakeDataStore.new()
+			store.data.u_1 = {
+				v = 1,
+				data = {
+					tower = { v = 1, pieces = {} },
+					run = "run_ninja",
+					unlocked = { run_ninja = true, run_fake = true },
+				},
+			}
+			local data = newProfiles(store, "A"):load(1) :: any
+			expect(data.run).to.equal("run_ninja")
+			expect(data.unlocked.run_ninja).to.equal(true)
+			expect(data.unlocked.run_fake).to.equal(nil)
+			store.data.u_2 = { v = 1, data = { tower = { v = 1, pieces = {} }, run = "run_fake" } }
+			expect((newProfiles(store, "A"):load(2) :: any).run).to.equal(nil)
+		end)
 	end)
 
 	describe("PublishedStore", function()

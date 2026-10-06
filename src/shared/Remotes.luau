@@ -59,9 +59,9 @@ Remotes.Functions = table.freeze({
 	"JoinBuild", -- (ownerId; 0 = back to own plot) -> ok
 	"HostLiveRace", -- (ownerId) -> ok
 	"JoinLiveRace", -- (raceId) -> ok
-	"BuyTrail", -- (key) -> (ok, err); buys with Bricks if needed and equips
+	"BuyTrail", -- (trail or run key) -> (ok, err); buys with Bricks if needed and equips
 	"BuyDecor", -- (typeId) -> (ok, err); a store decoration for your island, for Coins
-	"EquipTrail", -- (key or "") -> ok
+	"EquipTrail", -- (trail or run key, "" = no trail, Cosmetics.DEFAULT_RUN = own run) -> ok
 	"SetTheme", -- (key) -> ok; VIP only
 	"ContestInfo", -- () -> { id, theme, phase, endsIn, votesLeft, entered }?
 	"EnterContest", -- () -> (ok, err)

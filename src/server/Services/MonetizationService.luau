@@ -1,5 +1,6 @@
 --!strict
--- Game passes, Bricks packs (dev products), trails and VIP plot themes.
+-- Game passes, Bricks packs (dev products), trails, running animations and VIP
+-- plot themes. Also puts the glider wings on every character.
 -- Everything sold is cosmetic or convenience; times and leaderboards never are.
 -- Ids live in Config; 0 / missing = not created yet, so nothing is offered.
 
@@ -10,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Cosmetics = require(ReplicatedStorage.Shared.Cosmetics)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Types = require(ReplicatedStorage.Shared.Types)
 local RateLimiter = require(script.Parent.Parent.Lib.RateLimiter)
 local DataService = require(script.Parent.DataService)
 local PlotService = require(script.Parent.PlotService)
@@ -41,6 +43,53 @@ local function refreshPasses(player: Player)
 		passes[player] = owned
 		Remotes.event("Passes"):FireClient(player, owned)
 		changed:Fire(player)
+	end
+end
+
+-- The equipped running animation (the character's Animate script picks up the
+-- change); the avatar's own run when none is equipped.
+local function applyRun(player: Player)
+	local data = DataService.get(player)
+	local character = player.Character
+	local animate = character and character:WaitForChild("Animate", 5)
+	local run = animate and animate:FindFirstChild("run")
+	local anim = run and run:FindFirstChildOfClass("Animation")
+	if not anim then
+		return
+	end
+	if anim:GetAttribute("Own") == nil then
+		anim:SetAttribute("Own", anim.AnimationId)
+	end
+	local def = data and data.run and Cosmetics.runByKey[data.run]
+	anim.AnimationId = if def then def.anim else anim:GetAttribute("Own") :: string
+end
+
+-- Glider wings on the back (MovementController flies with them).
+local function addWings(character: Model)
+	local torso = character:WaitForChild("UpperTorso", 5)
+	if not torso or not torso:IsA("BasePart") or character:FindFirstChild("Wing") then
+		return
+	end
+	for _, side in { -1, 1 } do
+		local wing = Instance.new("WedgePart")
+		wing.Name = "Wing"
+		wing.Size = Vector3.new(0.15, 2.2, 3) -- thin; the triangle spreads sideways
+		wing.Color = Color3.fromRGB(150, 190, 245)
+		wing.Material = Enum.Material.SmoothPlastic
+		wing.CanCollide = false
+		wing.CanQuery = false
+		wing.CanTouch = false
+		wing.Massless = true
+		local weld = Instance.new("Weld")
+		weld.Part0 = torso
+		weld.Part1 = wing
+		-- Straight edge along the top, tapering down towards the spine, tilted back.
+		weld.C0 = CFrame.new(side * 1.75, 0.3, torso.Size.Z / 2 + 0.15)
+			* CFrame.Angles(math.rad(-10), 0, 0)
+			* CFrame.Angles(0, side * math.pi / 2, 0)
+			* CFrame.Angles(math.pi, 0, 0)
+		weld.Parent = wing
+		wing.Parent = character
 	end
 end
 
@@ -90,9 +139,22 @@ local function applyTrail(player: Player)
 	end)
 end
 
+-- Puts on a trail or running animation (nil key = take that kind off).
+local function wear(player: Player, data: Types.PlayerData, isRun: boolean, key: string?)
+	if isRun then
+		data.run = key
+		task.spawn(applyRun, player)
+	else
+		data.trail = key
+		applyTrail(player)
+	end
+	ProgressionService.refresh(player)
+end
+
+-- Trails and running animations, bought with Coins (Bricks) and equipped.
 local function onBuyTrail(player: Player, key: any): (boolean, string?)
 	local data = DataService.get(player)
-	local def = if type(key) == "string" then Cosmetics.trailByKey[key] else nil
+	local def = if type(key) == "string" then Cosmetics.trailByKey[key] or Cosmetics.runByKey[key] else nil
 	if not limiter:allow(player) or not data or not def then
 		return false, "bad request"
 	end
@@ -102,24 +164,24 @@ local function onBuyTrail(player: Player, key: any): (boolean, string?)
 		end
 		data.unlocked[def.key] = true
 	end
-	data.trail = def.key
-	applyTrail(player)
-	ProgressionService.refresh(player)
+	wear(player, data, Cosmetics.runByKey[def.key] ~= nil, def.key)
 	return true, nil
 end
 
--- key "" = no trail.
+-- key "" = no trail, Cosmetics.DEFAULT_RUN = the avatar's own run.
 local function onEquipTrail(player: Player, key: any): boolean
 	local data = DataService.get(player)
 	if not limiter:allow(player) or not data or type(key) ~= "string" then
 		return false
 	end
-	if key ~= "" and not (Cosmetics.trailByKey[key] and data.unlocked[key]) then
+	if key == "" or key == Cosmetics.DEFAULT_RUN then
+		wear(player, data, key ~= "", nil)
+		return true
+	end
+	if not ((Cosmetics.trailByKey[key] or Cosmetics.runByKey[key]) and data.unlocked[key]) then
 		return false
 	end
-	data.trail = if key == "" then nil else key
-	applyTrail(player)
-	ProgressionService.refresh(player)
+	wear(player, data, Cosmetics.runByKey[key] ~= nil, key)
 	return true
 end
 
@@ -194,10 +256,16 @@ function MonetizationService.init()
 			refreshPasses(player)
 			applyTheme(player)
 			applyTrail(player)
+			applyRun(player)
 		end)
-		player.CharacterAdded:Connect(function()
+		player.CharacterAdded:Connect(function(character)
 			task.defer(applyTrail, player)
+			task.spawn(applyRun, player)
+			task.spawn(addWings, character)
 		end)
+		if player.Character then
+			task.spawn(addWings, player.Character)
+		end
 	end)
 	Remotes.func("BuyTrail").OnServerInvoke = onBuyTrail
 	Remotes.func("EquipTrail").OnServerInvoke = onEquipTrail

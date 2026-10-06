@@ -34,6 +34,7 @@ local State = {
 	activeSlot = 1,
 	slots = 3,
 	trail = nil :: string?,
+	run = nil :: string?, -- running animation key
 	theme = "grass",
 	lobbyMode = "lobby", -- "lobby" | "queue" (play rounds) | "free" (free build on your island)
 	inRound = false,
@@ -41,6 +42,7 @@ local State = {
 	buildOwner = 0, -- userId whose plot you are building on; 0 = your own
 	plotSize = 16, -- home island cells per side (grows with expansions)
 	hotbarTab = "blocks", -- "blocks" | "decor"
+	hotbarKeys = {} :: { number }, -- piece id per number key, in visible hotbar order
 	Changed = changed.Event,
 }
 

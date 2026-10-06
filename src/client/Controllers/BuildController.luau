@@ -9,7 +9,6 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local PieceDefs = require(ReplicatedStorage.Shared.PieceDefs)
 local PieceFactory = require(ReplicatedStorage.Shared.PieceFactory)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local TowerCodec = require(ReplicatedStorage.Shared.TowerCodec)
@@ -116,15 +115,24 @@ local function targetAt(screenPos: Vector2, viewport: boolean): Target?
 	local pieces = plot:FindFirstChild("Pieces")
 	local cell: Vector3
 	local removeCell: Vector3? = nil
+	local axis = axisOf(hit.Normal)
 	if pieces and hit.Instance:IsDescendantOf(pieces) then
 		-- Step inwards to the piece's cell, then one whole cell out of the face hit.
 		-- (Stepping out from the hit point landed back inside thin pieces like
 		-- jump pads and buttons, so nothing could go on top of them.)
 		removeCell = toCell(origin, hit.Position - hit.Normal * 0.05)
-		cell = (removeCell :: Vector3) + axisOf(hit.Normal)
+		cell = (removeCell :: Vector3) + axis
 	else
 		cell = toCell(origin, hit.Position + hit.Normal * (G / 2))
 	end
+	-- Pieces grow towards +x/+y/+z from their cell, so on a -x/-y/-z face a wide
+	-- piece starts further out instead of reaching back into what was hit.
+	local sx, sy, sz = TowerCodec.extent(selectedPiece(cell))
+	cell -= Vector3.new(
+		if axis.X < 0 then sx - 1 else 0,
+		if axis.Y < 0 then sy - 1 else 0,
+		if axis.Z < 0 then sz - 1 else 0
+	)
 	return { cell = cell, removeCell = removeCell, valid = canPlace(selectedPiece(cell)) }
 end
 
@@ -299,7 +307,8 @@ local function act(target: Target?)
 	end
 end
 
-local KEY_TO_PIECE: { [Enum.KeyCode]: number } = {
+-- Number keys pick the Nth visible hotbar slot (UIController fills State.hotbarKeys).
+local KEY_TO_SLOT: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.One] = 1,
 	[Enum.KeyCode.Two] = 2,
 	[Enum.KeyCode.Three] = 3,
@@ -372,8 +381,9 @@ function BuildController.start()
 			-- behind the one just removed).
 			act(targetAt(UserInputService:GetMouseLocation(), true))
 		elseif input.UserInputType == Enum.UserInputType.Keyboard and State.mode == "build" then
-			local piece = KEY_TO_PIECE[input.KeyCode]
-			if piece and PieceDefs.byId[piece] then
+			local n = KEY_TO_SLOT[input.KeyCode]
+			local piece = n and State.hotbarKeys[n]
+			if piece and State.canUse(piece) then
 				State.set({ selected = piece, deleting = false })
 			elseif input.KeyCode == Enum.KeyCode.R then
 				State.set({ rotation = (State.rotation + 1) % 4 })

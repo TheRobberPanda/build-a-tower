@@ -45,6 +45,7 @@ local function push(player: Player, data: PlayerData)
 		budget = Progression.budget(level, hasPass(player)),
 		slots = Progression.slots(hasPass(player)),
 		trail = data.trail,
+		run = data.run,
 		theme = data.theme,
 		levelXp = Progression.xpFor(level),
 		nextXp = Progression.xpFor(level + 1),

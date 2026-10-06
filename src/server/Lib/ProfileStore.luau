@@ -165,6 +165,9 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 	if type(raw.trail) == "string" and Cosmetics.trailByKey[raw.trail] then
 		data.trail = raw.trail
 	end
+	if type(raw.run) == "string" and Cosmetics.runByKey[raw.run] then
+		data.run = raw.run
+	end
 	if type(raw.theme) == "string" and Cosmetics.themeByKey[raw.theme] then
 		data.theme = raw.theme
 	end
@@ -220,6 +223,7 @@ local function sanitizeData(raw: any): (PlayerData?, boolean)
 				and (
 					Cosmetics.byKey[key]
 					or Cosmetics.trailByKey[key]
+					or Cosmetics.runByKey[key]
 					or (decorId and PieceDefs.byId[decorId] and PieceDefs.byId[decorId].asset)
 				)
 			then

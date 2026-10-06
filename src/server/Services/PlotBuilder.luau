@@ -59,6 +59,9 @@ local function noQuery(folder: Instance)
 	end
 end
 
+-- Assets that come in much smaller than their neighbours (the crystals are 1 stud).
+local ASSET_SCALE: { [string]: number } = { LavaCrystal1 = 8, SpaceCrystal1 = 8, Lollipop1 = 1.5 }
+
 -- A copy of a Creator Store model from ServerStorage.SceneryAssets, scaled and
 -- set on the ground at `at`. Returns nil when the asset isn't there.
 local function prop(parent: Instance, name: string, at: Vector3, scale: number, rng: Random): Model?
@@ -77,7 +80,14 @@ local function prop(parent: Instance, name: string, at: Vector3, scale: number, 
 			d:Destroy() -- never run scripts from free models
 		end
 	end
-	m:ScaleTo(m:GetScale() * scale)
+	m:ScaleTo(m:GetScale() * scale * (ASSET_SCALE[name] or 1))
+	if name:find("Crystal") then
+		for _, d in m:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Material = Enum.Material.Neon -- crystals glow
+			end
+		end
+	end
 	m:PivotTo(CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0))
 	local cf, size = m:GetBoundingBox()
 	m:PivotTo(m:GetPivot() + (at - Vector3.new(cf.X, cf.Y - size.Y / 2, cf.Z)))
@@ -231,10 +241,12 @@ end
 -- Island themes (Cosmetics.themes keys). Each scenery role lists the asset
 -- names (ServerStorage.SceneryAssets) used for it; missing assets are skipped.
 -- island = recolour of the Island2 mesh (nil keeps its own grass texture).
+-- pool = flat discs on the island top (lava pools, craters...); glow adds light.
 type ThemeLook = {
 	base: Color3,
 	baseMaterial: Enum.Material,
 	island: { color: Color3, material: Enum.Material }?,
+	pool: { color: Color3, material: Enum.Material, glow: boolean }?,
 	roles: { [string]: { string } },
 }
 local THEMES: { [string]: ThemeLook } = {
@@ -256,45 +268,48 @@ local THEMES: { [string]: ThemeLook } = {
 		base = Color3.fromRGB(70, 52, 48),
 		baseMaterial = Enum.Material.Basalt,
 		island = { color = Color3.fromRGB(64, 50, 46), material = Enum.Material.Basalt },
+		pool = { color = Color3.fromRGB(255, 110, 20), material = Enum.Material.Neon, glow = true },
 		roles = {
 			tree = { "LavaTree1", "LavaTree2" },
-			bush = { "LavaRock1" },
-			rock = { "LavaRock1", "LavaRock2", "Rock2" },
+			bush = { "LavaRock2" },
+			rock = { "LavaRock1", "LavaRock2" },
 			small = { "LavaCrystal1" },
-			flower = { "LavaCrystal1" },
+			flower = {},
 			grass = {},
-			fence = { "Fence1" },
-			lamp = { "Lamp1" },
+			fence = { "LavaRock2" },
+			lamp = { "LavaCrystal1" },
 		},
 	},
 	space = {
 		base = Color3.fromRGB(46, 44, 70),
 		baseMaterial = Enum.Material.Slate,
-		island = { color = Color3.fromRGB(120, 118, 140), material = Enum.Material.Slate },
+		island = { color = Color3.fromRGB(78, 80, 102), material = Enum.Material.Slate }, -- moon rock
+		pool = { color = Color3.fromRGB(44, 46, 62), material = Enum.Material.Slate, glow = false }, -- craters
 		roles = {
 			tree = { "SpaceCrystal1", "SpacePlant1" },
 			bush = { "SpacePlant1" },
-			rock = { "SpaceRock1", "Rock1" },
+			rock = { "SpaceRock1" },
 			small = { "SpaceCrystal1" },
-			flower = { "SpacePlant1" },
+			flower = {},
 			grass = {},
-			fence = { "Fence1" },
-			lamp = { "Lamp1" },
+			fence = { "SpaceCrystal1" },
+			lamp = { "SpaceCrystal1" },
 		},
 	},
 	candy = {
 		base = Color3.fromRGB(255, 180, 215),
 		baseMaterial = Enum.Material.SmoothPlastic,
 		island = { color = Color3.fromRGB(255, 170, 205), material = Enum.Material.SmoothPlastic },
+		pool = { color = Color3.fromRGB(110, 60, 30), material = Enum.Material.SmoothPlastic, glow = false }, -- chocolate
 		roles = {
-			tree = { "Lollipop1", "CandyTree1" },
+			tree = { "Lollipop1" }, -- CandyTree1 looked like broken shards
 			bush = { "Gumdrop1" },
 			rock = { "Gumdrop1", "Cupcake1" },
 			small = { "CandyCane1" },
 			flower = { "Lollipop1" },
 			grass = {},
 			fence = { "CandyCane1" },
-			lamp = { "Lamp1" },
+			lamp = { "Lollipop1" },
 		},
 	},
 }
@@ -556,6 +571,39 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number, si
 			end
 		end
 	end
+	-- Pools (lava, craters, chocolate) on level ground outside the fence.
+	local pool = t.pool
+	if pool then
+		local placed, tries = 0, 0
+		while placed < 7 and tries < 80 do
+			tries += 1
+			local r = rng:NextNumber(5, 11)
+			local x = rng:NextNumber(meshCenterX - halfX, meshCenterX + halfX)
+			local z = rng:NextNumber(meshCenterZ - meshSize.Z / 2, hillAt.Z - origin.Z - 30)
+			local inside = x > -RIM - r and x < sizeX + RIM + r and z > front - r and z < back + r
+			local at = if inside then nil else spot(origin + Vector3.new(x, 0, z), r)
+			if at and at.Y > origin.Y - 6 then
+				local disc = decoPart(
+					scenery,
+					"Pool",
+					Vector3.new(0.3, r * 2, r * 2),
+					CFrame.new(at + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.pi / 2),
+					pool.color,
+					pool.material
+				)
+				disc.Shape = Enum.PartType.Cylinder
+				disc.CastShadow = false
+				if pool.glow then
+					local light = Instance.new("PointLight")
+					light.Color = pool.color
+					light.Range = r * 2
+					light.Brightness = 2
+					light.Parent = disc
+				end
+				placed += 1
+			end
+		end
+	end
 	-- A little wood on the hill behind the plot.
 	for _ = 1, 9 do
 		local a, r = rng:NextNumber(0, math.pi * 2), rng:NextNumber(0, 40)
@@ -682,9 +730,9 @@ local function sparkleBurst(p: BasePart, color: Color3)
 	e.Parent = p
 end
 
--- The lobby island, west of the plot row: where everyone spawns. Two pads
--- (tagged LobbyPad, attribute Mode) send you to a round queue or free building.
-PlotBuilder.LOBBY = Vector3.new(-320, PlotBuilder.ALTITUDE, 0)
+-- The lobby island in the middle of the ring of player islands (PlotService).
+-- Two pads (tagged LobbyPad, attribute Mode) send you to a round queue or free building.
+PlotBuilder.LOBBY = Vector3.new(0, PlotBuilder.ALTITUDE, 0)
 function PlotBuilder.lobby(): Model
 	local center = PlotBuilder.LOBBY
 	local model = Instance.new("Model")
@@ -793,15 +841,15 @@ function PlotBuilder.lobbySpawn(): CFrame
 end
 
 -- Shared world bits, once per server: ocean, hills on the horizon, floating
--- islands and puffy clouds all around the plot row (plots run along +X).
+-- islands and puffy clouds all around the lobby and the ring of player islands
+-- (radius about 700, wider rings past six players).
 function PlotBuilder.buildWorld()
 	PlotBuilder.lighting()
 	local ALT = PlotBuilder.ALTITUDE
-	local X0, X1 = -500, 2100 -- plot row spans about x 0..1600
-	local mid = Vector3.new((X0 + X1) / 2, 0, 0)
+	local mid = PlotBuilder.LOBBY * Vector3.new(1, 0, 1)
 	local terrain = workspace.Terrain
 	-- ponytail: one big water slab; split into chunks if FillBlock stalls startup
-	terrain:FillBlock(CFrame.new(mid.X, -64, 0), Vector3.new(7000, 8, 7000), Enum.Material.Water)
+	terrain:FillBlock(CFrame.new(mid.X, -64, mid.Z), Vector3.new(7000, 8, 7000), Enum.Material.Water)
 	terrain.WaterColor = Color3.fromRGB(20, 110, 190)
 	terrain.WaterWaveSize = 0.3
 	terrain.WaterWaveSpeed = 8
@@ -823,7 +871,7 @@ function PlotBuilder.buildWorld()
 	local function around(r0: number, r1: number): Vector3
 		local a = rng:NextNumber(0, math.pi * 2)
 		local r = rng:NextNumber(r0, r1)
-		return mid + Vector3.new(math.cos(a) * r * 1.4, 0, math.sin(a) * r) -- stretched along the plot row
+		return mid + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
 	end
 	-- Mountains rising out of the ocean all around (Hill1, about 43 studs wide).
 	for _ = 1, 40 do
@@ -834,14 +882,10 @@ function PlotBuilder.buildWorld()
 	for _ = 1, 25 do
 		skyProp(world, "Rock2", around(500, 1500) - Vector3.new(0, 66, 0), rng:NextNumber(1, 3), rng)
 	end
-	-- Floating islands (Island1, about 29 studs wide) at plot height, with trees.
+	-- Floating islands (Island1, about 29 studs wide) round the outside of the
+	-- player ring, with trees.
 	for _ = 1, 34 do
-		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		local at = Vector3.new(
-			rng:NextNumber(X0, X1),
-			ALT + rng:NextNumber(-140, 160),
-			side * rng:NextNumber(260, 900)
-		)
+		local at = around(1050, 1700) + Vector3.new(0, ALT + rng:NextNumber(-140, 160), 0)
 		local scale = rng:NextNumber(1.2, 3.5)
 		local island = skyProp(world, "Island1", at, scale, rng)
 		if island then
@@ -876,17 +920,11 @@ function PlotBuilder.buildWorld()
 	end
 	-- A sea of clouds (Cloud1) below the plots, and scattered ones above.
 	for _ = 1, 140 do
-		local at =
-			Vector3.new(rng:NextNumber(X0, X1), ALT - rng:NextNumber(90, 160), rng:NextNumber(-900, 900))
+		local at = around(0, 1300) - Vector3.new(0, rng:NextNumber(90, 160) - ALT, 0)
 		skyProp(world, "Cloud1", at, rng:NextNumber(3, 7), rng)
 	end
 	for _ = 1, 45 do
-		local side = if rng:NextNumber() < 0.5 then -1 else 1
-		local at = Vector3.new(
-			rng:NextNumber(X0, X1),
-			ALT + rng:NextNumber(20, 300),
-			side * rng:NextNumber(170, 800)
-		)
+		local at = around(150, 1300) + Vector3.new(0, ALT + rng:NextNumber(40, 300), 0)
 		skyProp(world, "Cloud1", at, rng:NextNumber(1.5, 4), rng)
 	end
 	world.Parent = workspace

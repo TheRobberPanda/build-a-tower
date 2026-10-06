@@ -17,8 +17,10 @@ type Piece = Types.Piece
 
 local PlotService = {}
 
-local PLOT_SPACING = 200
 local APRON_DEPTH = 16
+-- Islands sit in a ring round the lobby, far apart (glide between them): six
+-- per ring, a wider ring past that.
+local RING_RADIUS = 700
 local plotsFolder = Instance.new("Folder")
 plotsFolder.Name = "Plots"
 
@@ -45,20 +47,14 @@ function PlotService.setRespawn(player: Player, cf: CFrame?)
 	respawnAt[player] = cf
 end
 
--- Home = where you (re)spawn outside runs: the lobby, or your island while free
--- building or playing a round. RoundService decides.
-local atPlot: { [Player]: boolean } = {}
-function PlotService.setHome(player: Player, plot: boolean)
-	atPlot[player] = if plot then true else nil
-end
-
+-- Home = where you (re)spawn outside runs: your own island.
 function PlotService.homeCFrame(player: Player): CFrame?
-	return if atPlot[player] then PlotService.spawnCFrame(player) else PlotBuilder.lobbySpawn()
+	return PlotService.spawnCFrame(player) or PlotBuilder.lobbySpawn()
 end
 
--- Back home now (round over, chose free build...).
-function PlotService.sendHome(player: Player)
-	local cf = PlotService.homeCFrame(player)
+-- Back home now (round over, chose free build...), or to the lobby island.
+function PlotService.sendHome(player: Player, lobby: boolean?)
+	local cf = if lobby then PlotBuilder.lobbySpawn() else PlotService.homeCFrame(player)
 	local character = player.Character
 	if cf and character then
 		AntiCheat.expectTeleport(player, cf.Position)
@@ -319,9 +315,18 @@ function PlotService.render(player: Player, pieces: { Piece }, mat: string?, cor
 	end
 end
 
+local function originFor(slot: number): Vector3
+	local ring = slot // 6
+	local a = (slot % 6 + ring * 0.5) / 6 * math.pi * 2
+	local r = RING_RADIUS + ring * 500
+	local half = Config.PLOT_CELLS_MAX * Config.GRID_STUDS / 2
+	local at = PlotBuilder.LOBBY + Vector3.new(math.cos(a) * r - half, 0, math.sin(a) * r - half)
+	return Vector3.new(math.round(at.X), at.Y, math.round(at.Z))
+end
+
 local function onPlayerAdded(player: Player)
 	local slot = freeSlot()
-	local origin = Vector3.new(slot * PLOT_SPACING, PlotBuilder.ALTITUDE, 0)
+	local origin = originFor(slot)
 	local model = Instance.new("Model")
 	model.Name = "Plot_" .. player.UserId
 	model:SetAttribute("OwnerId", player.UserId)
@@ -355,7 +360,6 @@ end
 
 local function onPlayerRemoving(player: Player)
 	respawnAt[player] = nil
-	atPlot[player] = nil
 	local plot = plots[player]
 	if plot then
 		plot.model:Destroy()
@@ -379,7 +383,8 @@ function PlotService.init()
 
 	-- Fell off an island (or slipped under one): straight back to the checkpoint
 	-- or home instead of a long fall to the sea. Plots and the lobby sit at
-	-- ALTITUDE; island tops dip a few studs below it, so 25 is out of reach.
+	-- ALTITUDE; island tops dip a few studs below it, so 25 is out of reach in
+	-- a run. Outside runs you may glide far below the islands first.
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
@@ -398,7 +403,8 @@ function PlotService.init()
 					and pos.X < plot.origin.X + plot.size * Config.GRID_STUDS
 					and pos.Z > plot.origin.Z
 					and pos.Z < plot.origin.Z + plot.size * Config.GRID_STUDS
-				if pos.Y < PlotBuilder.ALTITUDE - 25 or underGrid then
+				local drop = if respawnAt[player] then 25 else 180
+				if pos.Y < PlotBuilder.ALTITUDE - drop or underGrid then
 					local cf = respawnAt[player] or PlotService.homeCFrame(player)
 					if cf then
 						AntiCheat.expectTeleport(player, cf.Position)

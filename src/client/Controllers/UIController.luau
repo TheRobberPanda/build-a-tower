@@ -249,7 +249,8 @@ local function buildHotbar()
 			Font = Theme.BodyFont,
 			Parent = slot,
 		})
-		Kit.label(if def.id <= 10 then tostring(def.id % 10) else "", { -- number-key shortcut
+		Kit.label("", { -- number-key shortcut, set in render()
+			Name = "Key",
 			Size = UDim2.fromScale(0.25, 0.25),
 			Position = UDim2.fromScale(0.04, 0.03),
 			TextColor3 = Theme.TextDim,
@@ -1325,6 +1326,24 @@ local function render()
 			lock.Visible = not State.canUse(id)
 		end
 	end
+	-- Number keys follow the visible order (1 = leftmost tile of the current tab).
+	local shown = {}
+	for id, slot in slots do
+		if slot.Visible then
+			table.insert(shown, id)
+		end
+	end
+	table.sort(shown, function(a, b)
+		return slots[a].LayoutOrder < slots[b].LayoutOrder
+	end)
+	table.clear(State.hotbarKeys)
+	for i, id in shown do
+		local key = slots[id]:FindFirstChild("Key")
+		if key and key:IsA("TextLabel") then
+			key.Text = if i <= 10 then tostring(i % 10) else ""
+		end
+		State.hotbarKeys[i] = id
+	end
 	for key, button in tabButtons do
 		button.BackgroundColor3 = if State.hotbarTab == key then Theme.Primary else Theme.PanelLight
 	end
@@ -1477,6 +1496,7 @@ function UIController.start()
 				patch.theme = p.theme
 			end
 			State.trail = if type(p.trail) == "string" then p.trail else nil
+			State.run = if type(p.run) == "string" then p.run else nil
 			State.set(patch)
 			if openModalName == "TowerMenu" then
 				renderTowerMenu()
