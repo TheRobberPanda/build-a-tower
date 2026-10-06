@@ -1,7 +1,7 @@
 --!strict
--- Builds the static scenery of a plot: a floating grass island with a rocky
--- underside, the fixed tower core in the middle (Config.CORE), the spawn apron
--- and a few trees and rocks around the edge. Nothing here is part of a tower.
+-- Builds the static scenery of a plot: a floating island (Creator Store mesh),
+-- the fixed tower core in the middle (Config.CORE), the spawn apron
+-- and props around the edge. Nothing here is part of a tower.
 
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 
@@ -14,8 +14,6 @@ local GRID_TEXTURE = "rbxassetid://139861751774533" -- assets/ui/grid_cell.png
 
 local G = Config.GRID_STUDS
 local GRASS = Color3.fromRGB(96, 196, 80)
-local ROCK = Color3.fromRGB(165, 128, 96)
-local STONE_DARK = Color3.fromRGB(112, 108, 104)
 
 local function part(
 	parent: Instance,
@@ -53,29 +51,6 @@ local function decoPart(
 	return p
 end
 
-local function tree(parent: Instance, at: Vector3, scale: number)
-	local trunkH = 7 * scale
-	part(
-		parent,
-		"Trunk",
-		Vector3.new(1.6, trunkH, 1.6) * Vector3.new(scale, 1, scale),
-		CFrame.new(at + Vector3.new(0, trunkH / 2, 0)),
-		Color3.fromRGB(110, 78, 52),
-		Enum.Material.Wood
-	)
-	for i, off in { Vector3.new(0, 0, 0), Vector3.new(1.6, -1, 0.8), Vector3.new(-1.4, -0.8, -1) } do
-		local leaves = decoPart(
-			parent,
-			"Leaves",
-			Vector3.one * (6 - i) * scale,
-			CFrame.new(at + Vector3.new(0, trunkH + 1, 0) + off * scale),
-			Color3.fromRGB(70, 150 + i * 12, 70),
-			Enum.Material.Grass
-		)
-		leaves.Shape = Enum.PartType.Ball
-	end
-end
-
 local function noQuery(folder: Instance)
 	for _, d in folder:GetDescendants() do
 		if d:IsA("BasePart") then
@@ -110,57 +85,131 @@ local function prop(parent: Instance, name: string, at: Vector3, scale: number, 
 	return m
 end
 
-local function rock(parent: Instance, at: Vector3, size: number)
-	local r = decoPart(
-		parent,
-		"Rock",
-		Vector3.new(size, size * 0.7, size * 0.9),
-		CFrame.new(at) * CFrame.Angles(0, math.random() * 6.28, math.rad(10)),
-		STONE_DARK,
-		Enum.Material.Slate
-	)
-	r.CanCollide = true
-	r.CanQuery = false
-end
-
--- The fixed tower frame: four steel corner pillars and a blue floor every
--- level (Config.CORE / TowerCodec.inCore). Pillars sit 0.1 studs inside the
--- footprint so no face is shared with the floors or neighbouring pieces.
+-- The fixed tower frame: four corner pillars and a floor every level
+-- (Config.CORE / TowerCodec.inCore). Every part stays inside the cells the core
+-- reserves, so no face is shared with player pieces. Only the pillar shafts and
+-- floor slabs collide; the rest is trim.
 local function core(model: Model, origin: Vector3)
 	local c = Config.CORE
 	local h = c.height * G
+	local lv = c.level * G
 	local folder = Instance.new("Folder")
 	folder.Name = "Core"
-	local steel = Color3.fromRGB(168, 170, 176) -- light concrete grey, like the thumbnail
+	local concrete = Color3.fromRGB(196, 198, 204)
+	local band = Color3.fromRGB(120, 124, 134)
 	local floorColor = Color3.fromRGB(40, 120, 255)
+	local beamColor = Color3.fromRGB(24, 70, 170)
 	local trimColor = Color3.fromRGB(255, 205, 40)
+	local cx, cz = (c.x0 + c.x1) / 2 * G, (c.z0 + c.z1) / 2 * G
 	for _, x in { c.x0, c.x1 - 1 } do
 		for _, z in { c.z0, c.z1 - 1 } do
+			local at = origin + Vector3.new((x + 0.5) * G, 0, (z + 0.5) * G)
 			local p = part(
 				folder,
 				"CorePillar",
-				Vector3.new(G - 0.4, h - 0.02, G - 0.4), -- just inside the cell it reserves
-				CFrame.new(origin + Vector3.new((x + 0.5) * G, h / 2 - 0.01, (z + 0.5) * G)),
-				steel,
-				Enum.Material.SmoothPlastic
+				Vector3.new(G - 0.8, h - 0.02, G - 0.8),
+				CFrame.new(at + Vector3.new(0, h / 2 - 0.01, 0)),
+				concrete,
+				Enum.Material.Concrete
 			)
 			p:SetAttribute("Core", true)
+			-- Corner ribs running up the shaft.
+			for _, s in
+				{ Vector3.new(1, 0, 1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(-1, 0, -1) }
+			do
+				decoPart(
+					folder,
+					"CoreRib",
+					Vector3.new(0.6, h - 0.2, 0.6),
+					CFrame.new(at + Vector3.new(0, h / 2, 0) + s * (G / 2 - 0.55)),
+					band,
+					Enum.Material.Metal
+				)
+			end
+			for k = 0, c.levels - 1 do
+				local y = k * lv
+				-- Plinth at the foot of each level and a dark band under each floor.
+				decoPart(
+					folder,
+					"CorePlinth",
+					Vector3.new(G - 0.2, 1, G - 0.2),
+					CFrame.new(at + Vector3.new(0, y + 0.5, 0)),
+					band,
+					Enum.Material.Concrete
+				)
+				decoPart(
+					folder,
+					"CoreBand",
+					Vector3.new(G - 0.3, 0.5, G - 0.3),
+					CFrame.new(at + Vector3.new(0, y + lv - 2.4, 0)),
+					trimColor,
+					Enum.Material.SmoothPlastic
+				)
+				-- Level number facing outwards on both open sides.
+				for _, face in
+					{
+						if x == c.x0 then Enum.NormalId.Left else Enum.NormalId.Right,
+						if z == c.z0 then Enum.NormalId.Front else Enum.NormalId.Back,
+					}
+				do
+					local gui = Instance.new("SurfaceGui")
+					gui.Face = face
+					gui.PixelsPerStud = 20
+					gui.LightInfluence = 0.3
+					gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+					local label = Instance.new("TextLabel")
+					label.AnchorPoint = Vector2.new(0.5, 0)
+					label.Position = UDim2.fromScale(0.5, 1 - (y + lv * 0.55) / h)
+					label.Size = UDim2.fromScale(0.8, 2.2 / h)
+					label.BackgroundTransparency = 1
+					label.Font = Enum.Font.FredokaOne
+					label.TextScaled = true
+					label.Text = tostring(k + 1)
+					label.TextColor3 = floorColor
+					label.Parent = gui
+					gui.Parent = p
+				end
+			end
+			decoPart(
+				folder,
+				"CoreCap",
+				Vector3.new(G - 0.2, 0.8, G - 0.2),
+				CFrame.new(at + Vector3.new(0, h - 0.4, 0)),
+				trimColor,
+				Enum.Material.SmoothPlastic
+			)
 		end
 	end
 	local w, d = (c.x1 - c.x0) * G, (c.z1 - c.z0) * G
-	local cx, cz = (c.x0 + c.x1) / 2 * G, (c.z0 + c.z1) / 2 * G
 	for k = 1, c.levels do
-		local top = k * c.level * G
+		local top = k * lv
 		local floor = part(
 			folder,
 			"CoreFloor",
-			Vector3.new(w, 1.4, d),
+			Vector3.new(w - 0.1, 1.4, d - 0.1),
 			CFrame.new(origin + Vector3.new(cx, top - 0.7, cz)),
 			floorColor,
 			Enum.Material.SmoothPlastic
 		)
 		floor:SetAttribute("Core", true)
-		-- Yellow trim around the floor edge (decor, just inside the footprint).
+		local grid = Instance.new("Texture")
+		grid.Texture = GRID_TEXTURE
+		grid.Face = Enum.NormalId.Top
+		grid.StudsPerTileU = G
+		grid.StudsPerTileV = G
+		grid.Transparency = 0.7
+		grid.Parent = floor
+		-- Steel beams under the slab and hazard trim round its edge.
+		for i = 1, c.x1 - c.x0 - 1 do
+			decoPart(
+				folder,
+				"CoreBeam",
+				Vector3.new(0.8, 1, d - 0.4),
+				CFrame.new(origin + Vector3.new(c.x0 * G + i * G, top - 1.9, cz)),
+				beamColor,
+				Enum.Material.Metal
+			)
+		end
 		for _, e in
 			{
 				{ Vector3.new(w - 0.4, 0.6, 0.6), Vector3.new(0, 0, d / 2 - 0.5) },
@@ -175,7 +224,7 @@ local function core(model: Model, origin: Vector3)
 				e[1],
 				CFrame.new(origin + Vector3.new(cx, top - 1.7, cz) + e[2]),
 				trimColor,
-				Enum.Material.SmoothPlastic
+				Enum.Material.DiamondPlate
 			)
 		end
 	end
@@ -216,13 +265,16 @@ end
 
 -- Builds island, core and scenery into `model`. The buildable base (named
 -- "Base") stays exactly the grid size so building/raycasts are unchanged.
+-- All scenery is Creator Store models from ServerStorage.SceneryAssets
+-- (see CREDITS.md); missing ones are simply skipped.
 function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	local sizeX, sizeZ = Config.PLOT_CELLS_X * G, Config.PLOT_CELLS_Z * G
 	local scenery = Instance.new("Folder")
 	scenery.Name = "Scenery"
+	local rng = Random.new(model.Name:len() * 7919)
 
-	-- Island: grass strips around (not under) the base and apron, so no faces
-	-- overlap and nothing z-fights; layered rock cliffs below.
+	-- Invisible walkable rim around the base and apron (the island mesh's own
+	-- collision is too coarse to stand on reliably).
 	local RIM = 12
 	local front = -apronDepth - RIM
 	local back = sizeZ + RIM
@@ -235,88 +287,49 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			GRASS,
 			Enum.Material.SmoothPlastic
 		)
-		p.CanQuery = false
+		p.Transparency = 1
 	end
 	strip("RimLeft", -RIM, 0, front, back)
 	strip("RimRight", sizeX, sizeX + RIM, front, back)
 	strip("RimFront", 0, sizeX, front, -apronDepth)
 	strip("RimBack", 0, sizeX, sizeZ, back)
 	local islandX, islandZ = sizeX + RIM * 2, back - front
-	local islandCenter = origin + Vector3.new(sizeX / 2, 0, (front + back) / 2)
-	-- Underside: a thick dirt layer under the whole island, then the rock cone of
-	-- the Island1 model (its grass disc dropped) hanging below, plus boulders.
-	local DIRT = 8
-	decoPart(
-		scenery,
-		"Dirt",
-		Vector3.new(islandX, DIRT, islandZ),
-		CFrame.new(islandCenter - Vector3.new(0, 1 + DIRT / 2, 0)),
-		Color3.fromRGB(126, 88, 58),
-		Enum.Material.Ground
-	)
+
+	-- Island2 is one big grass-and-cliff mesh: flat top at 74.5% of its height,
+	-- with a raised plateau in its +Z half. Stretched so the flat part covers the
+	-- plot and the plateau ends up as a hill behind it.
+	local TOP, HILL = 0.745, 0.255
+	local meshSize = Vector3.new(islandX * 1.35, 90, islandZ * 2)
+	local meshCenterZ = back - islandZ * 0.1
+	local hillAt = origin + Vector3.new(sizeX / 2, meshSize.Y * HILL - 0.3, meshCenterZ + meshSize.Z * 0.25)
 	local assets = game:GetService("ServerStorage"):FindFirstChild("SceneryAssets")
-	local template = assets and assets:FindFirstChild("Island1")
-	if template and template:IsA("Model") then
-		local under = template:Clone()
-		under.Name = "Underside"
-		local from, size = under:GetBoundingBox()
-		local target = Vector3.new(islandX * 1.05, 100, islandZ * 1.05)
-		local k = target / size
-		local to = CFrame.new(islandCenter + Vector3.new(0, -1 - DIRT + 2 - target.Y / 2, 0))
-		for _, d in under:GetDescendants() do
+	local island = assets and assets:FindFirstChild("Island2")
+	if island and island:IsA("Model") then
+		local m = island:Clone()
+		m.Name = "Island"
+		local from, size = m:GetBoundingBox()
+		local k = meshSize / size
+		local to = CFrame.new(origin + Vector3.new(sizeX / 2, -0.3 - meshSize.Y * (TOP - 0.5), meshCenterZ))
+		for _, d in m:GetDescendants() do
 			if d:IsA("BasePart") then
-				if d.Size.Y < 5 then
-					d:Destroy() -- the grass disc stuck out past the rim as a tilted oval
-					continue
-				end
 				local rel = from:ToObjectSpace(d.CFrame)
 				d.Size *= k
 				d.CFrame = to * CFrame.new(rel.Position * k) * rel.Rotation
 				d.Anchored = true
-				d.CanCollide = false
 				d.CanTouch = false
-				d.Color = ROCK
-				d.Material = Enum.Material.Rock
-			elseif d:IsA("LuaSourceContainer") then
-				d:Destroy()
 			end
 		end
-		under.Parent = scenery
+		m.Parent = scenery
 	end
-	-- Chunky boulders hanging off the dirt edge so the outline isn't a clean box.
-	local brng = Random.new(42)
-	for i = 1, 18 do
-		local a = i / 18 * math.pi * 2
-		local s = brng:NextNumber(10, 18)
-		local at = islandCenter
-			+ Vector3.new(math.cos(a) * islandX * 0.47, -DIRT - s * 0.4, math.sin(a) * islandZ * 0.47)
-		decoPart(
-			scenery,
-			"Boulder",
-			Vector3.new(s, s * 1.3, s),
-			CFrame.new(at) * CFrame.Angles(brng:NextNumber(-0.4, 0.4), a, brng:NextNumber(-0.4, 0.4)),
-			if i % 3 == 0 then STONE_DARK else Color3.fromRGB(128, 98, 74),
-			Enum.Material.Rock
-		)
-	end
-	-- A stream on the back rim pouring off the edge into the clouds below.
+
+	-- A waterfall off the right edge into the clouds.
 	local WATER = Color3.fromRGB(70, 170, 255)
-	local wx = sizeX * 0.7
-	local pond = decoPart(
-		scenery,
-		"Stream",
-		Vector3.new(6, 0.3, RIM),
-		CFrame.new(origin + Vector3.new(wx, -0.1, sizeZ + RIM / 2)),
-		WATER,
-		Enum.Material.Glass
-	)
-	pond.Transparency = 0.2
 	local fallH = 160
 	local fall = decoPart(
 		scenery,
 		"Waterfall",
-		Vector3.new(6, fallH, 1.5),
-		CFrame.new(origin + Vector3.new(wx, -fallH / 2, back + 0.8)),
+		Vector3.new(1.5, fallH, 8),
+		CFrame.new(origin + Vector3.new(sizeX / 2 + meshSize.X / 2 + 1, -fallH / 2, sizeZ * 0.3)),
 		WATER,
 		Enum.Material.Glass
 	)
@@ -333,10 +346,42 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 	spray.EmissionDirection = Enum.NormalId.Bottom
 	spray.LightInfluence = 0.5
 	spray.Parent = fall
-	-- Trees, bushes and rocks on the rim, outside the buildable grid. Uses the free
-	-- Creator Store models in ServerStorage.SceneryAssets (see CREDITS.md) and
-	-- falls back to simple part-built ones when they are missing.
-	local rng = Random.new(model.Name:len() * 7919)
+
+	-- Fence round the rim, open at the front of the apron.
+	local function fenceLine(a: Vector3, b: Vector3)
+		local len = (b - a).Magnitude
+		local n = math.max(1, math.round(len / 11.5))
+		for i = 0, n - 1 do
+			local at = origin + a:Lerp(b, (i + 0.5) / n)
+			local f = prop(scenery, "Fence1", at, len / n / 11.5, rng)
+			if f then
+				f:PivotTo(
+					CFrame.lookAt(f:GetPivot().Position, f:GetPivot().Position + (b - a))
+						* CFrame.Angles(0, math.pi / 2, 0)
+				)
+			end
+		end
+	end
+	local e = RIM - 1.5
+	fenceLine(Vector3.new(-e, 0, front + 1.5), Vector3.new(-e, 0, back - 1.5))
+	fenceLine(Vector3.new(sizeX + e, 0, front + 1.5), Vector3.new(sizeX + e, 0, back - 1.5))
+	fenceLine(Vector3.new(-e, 0, back - 1.5), Vector3.new(sizeX + e, 0, back - 1.5))
+
+	-- Lamps at the start line and the plot corners.
+	for _, at in
+		{
+			Vector3.new(-2, 0, -apronDepth),
+			Vector3.new(sizeX + 2, 0, -apronDepth),
+			Vector3.new(-2, 0, sizeZ + 2),
+			Vector3.new(sizeX + 2, 0, sizeZ + 2),
+			Vector3.new(-2, 0, sizeZ / 2),
+			Vector3.new(sizeX + 2, 0, sizeZ / 2),
+		}
+	do
+		prop(scenery, "Lamp1", origin + at, 1, rng)
+	end
+
+	-- Trees, bushes, rocks, mushrooms and grass on the rim (outside the grid).
 	local function rimSpot(margin: number): Vector3
 		local side = rng:NextInteger(1, 4)
 		return if side == 1
@@ -357,45 +402,45 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			)
 			else Vector3.new(rng:NextNumber(0, sizeX), 0, front + rng:NextNumber(margin, RIM - margin))
 	end
-	local placed = 0
 	for _, spec in
 		{
-			{ names = { "Tree1", "Tree2" }, count = 8, scale = { 0.45, 0.7 }, margin = 4 },
-			{ names = { "Bush1", "Bush2" }, count = 10, scale = { 0.6, 0.9 }, margin = 2 },
-			{ names = { "Rock1", "Rock2" }, count = 6, scale = { 0.25, 0.5 }, margin = 2 },
+			{ names = { "Tree1", "Tree2" }, count = 6, scale = { 0.45, 0.7 }, margin = 4 },
+			{ names = { "Bush1", "Bush2" }, count = 12, scale = { 0.6, 0.9 }, margin = 2 },
+			{ names = { "Rock1", "Rock2" }, count = 8, scale = { 0.25, 0.5 }, margin = 2 },
+			{ names = { "Mushroom1" }, count = 8, scale = { 0.3, 0.5 }, margin = 2 },
+			{ names = { "Grass1" }, count = 60, scale = { 0.8, 1.4 }, margin = 1 },
 		}
 	do
 		for _ = 1, spec.count do
-			local name = spec.names[rng:NextInteger(1, #spec.names)]
-			if
-				prop(
-					scenery,
-					name,
-					origin + rimSpot(spec.margin),
-					rng:NextNumber(spec.scale[1], spec.scale[2]),
-					rng
-				)
-			then
-				placed += 1
-			end
+			prop(
+				scenery,
+				spec.names[rng:NextInteger(1, #spec.names)],
+				origin + rimSpot(spec.margin),
+				rng:NextNumber(spec.scale[1], spec.scale[2]),
+				rng
+			)
 		end
 	end
-	if placed == 0 then
-		for _ = 1, 7 do
-			tree(scenery, origin + rimSpot(3), rng:NextNumber(0.8, 1.3))
-		end
-		for _ = 1, 6 do
-			rock(scenery, origin + rimSpot(2) + Vector3.new(0, 0.5, 0), rng:NextNumber(1.5, 3.5))
-		end
+	-- A little wood on the hill behind the plot.
+	for _ = 1, 9 do
+		local a, r = rng:NextNumber(0, math.pi * 2), rng:NextNumber(0, 40)
+		local name = if rng:NextInteger(1, 2) == 1 then "Tree1" else "Tree2"
+		prop(
+			scenery,
+			name,
+			hillAt + Vector3.new(math.cos(a) * r * 1.4, 0, math.sin(a) * r * 0.6),
+			rng:NextNumber(0.6, 1),
+			rng
+		)
 	end
-	-- Flower patches (Flower1 from SceneryAssets), petals tinted per patch.
+	-- Flower patches (Flower1), petals tinted per patch.
 	local petals = {
 		Color3.fromRGB(255, 90, 120),
 		Color3.fromRGB(255, 210, 60),
 		Color3.fromRGB(255, 255, 255),
 		Color3.fromRGB(170, 110, 255),
 	}
-	for _ = 1, 14 do
+	for _ = 1, 16 do
 		local c = origin + rimSpot(2)
 		local color = petals[rng:NextInteger(1, #petals)]
 		for _ = 1, rng:NextInteger(2, 4) do
@@ -403,63 +448,30 @@ function PlotBuilder.build(model: Model, origin: Vector3, apronDepth: number)
 			local flower = prop(scenery, "Flower1", at, rng:NextNumber(0.35, 0.5), rng)
 			if flower then
 				for _, d in flower:GetDescendants() do
-					if d:IsA("BasePart") then
-						d.CanCollide = false
-						if d.Name:find("Mesh35") then
-							d.Color = color
-						end
+					if d:IsA("BasePart") and d.Name:find("Mesh35") then
+						d.Color = color
 					end
 				end
 			end
 		end
 	end
-	-- Start gate at the front of the apron: two posts and a banner.
-	local gateZ = -apronDepth + 1
-	for _, x in { 2, sizeX - 2 } do
-		part(
-			scenery,
-			"GatePost",
-			Vector3.new(2, 14, 2),
-			CFrame.new(origin + Vector3.new(x, 7, gateZ)),
-			Color3.fromRGB(255, 140, 30),
-			Enum.Material.SmoothPlastic
-		)
-		local cap = decoPart(
-			scenery,
-			"GateCap",
-			Vector3.new(2.6, 1, 2.6),
-			CFrame.new(origin + Vector3.new(x, 14.5, gateZ)),
-			Color3.fromRGB(255, 205, 40),
-			Enum.Material.Neon
-		)
-		cap.CastShadow = false
-	end
-	local banner = decoPart(
-		scenery,
-		"GateBanner",
-		Vector3.new(sizeX - 2, 3.4, 0.6),
-		CFrame.new(origin + Vector3.new(sizeX / 2, 13, gateZ)),
-		Color3.fromRGB(40, 120, 255),
-		Enum.Material.SmoothPlastic
-	)
-	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = face
-		gui.PixelsPerStud = 20
-		gui.LightInfluence = 0
-		gui.Parent = banner
-		local text = Instance.new("TextLabel")
-		text.Size = UDim2.fromScale(1, 1)
-		text.BackgroundTransparency = 1
-		text.Font = Enum.Font.FredokaOne
-		text.TextScaled = true
-		text.Text = "BUILD A TOWER"
-		text.TextColor3 = Color3.new(1, 1, 1)
-		local stroke = Instance.new("UIStroke")
-		stroke.Thickness = 3
-		stroke.Color = Color3.fromRGB(20, 50, 130)
-		stroke.Parent = text
-		text.Parent = gui
+	-- Props are walk-through except tree trunks, rocks and fences.
+	for _, m in scenery:GetChildren() do
+		if
+			m:IsA("Model")
+			and not (
+				m.Name:find("Tree")
+				or m.Name:find("Rock")
+				or m.Name:find("Fence")
+				or m.Name:find("Lamp")
+			)
+		then
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.CanCollide = false
+				end
+			end
+		end
 	end
 	noQuery(scenery)
 	scenery.Parent = model

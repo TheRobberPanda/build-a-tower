@@ -24,3 +24,8 @@
 | Low Poly Count Cloud Mesh 4 (Cloud1, 4862433614, FaVmIkE) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, sky clouds |
 | Low Poly Flower (Flower1, 16071638063, Dashon907AK) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot flowers |
 | Low-Poly Mountain (Hill1, 15610270923, crazeejakob) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, horizon mesas |
+| Low Poly Floating Island Base (Island2, 135113645221575, FelinG0re) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, main island |
+| Low-Poly Fence (Fence1, 4845879207, Catherine858) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot rim |
+| Low-Poly Lamp Post (Lamp1, 4911018996, Squistic; one of five kept) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot rim |
+| Low Poly Grass Mesh Prop (Grass1, 82531384183890, Manestronomer) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot rim |
+| Low Poly Mushrooms (Mushroom1, 4644085527, CyrilTBFD) | Creator Store, free, verified creator | Roblox free model | ServerStorage.SceneryAssets, plot rim |
