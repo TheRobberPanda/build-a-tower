@@ -65,6 +65,8 @@ local deleteButton: TextButton
 local fillButton: TextButton
 local settingButton: TextButton
 local publishButton: TextButton
+local browseButton: TextButton
+local towersButton: TextButton
 local testButton: TextButton
 local timerLabel: TextLabel
 local runNameLabel: TextLabel
@@ -522,10 +524,10 @@ local function buildTools()
 	publishButton = menuItem(1, "Publish", Theme.Primary, function()
 		openModal("Publish")
 	end)
-	menuItem(2, "Browse", Theme.Accent, function()
+	browseButton = menuItem(2, "Browse", Theme.Accent, function()
 		UIController.openBrowse()
 	end)
-	menuItem(3, "My Towers", Theme.PanelLight, function()
+	towersButton = menuItem(3, "My Towers", Theme.PanelLight, function()
 		openModal("TowerMenu")
 		renderTowerMenu()
 	end)
@@ -1205,6 +1207,10 @@ local function render()
 		then Theme.Primary
 		else Theme.PanelLight
 	Kit.setEnabled(publishButton, State.verified, Theme.Primary)
+	-- Round towers are saved automatically; other towers wait until the round ends.
+	publishButton.Visible = not State.inRound
+	browseButton.Visible = not State.inRound
+	towersButton.Visible = not State.inRound
 	Kit.setEnabled(publishConfirm, State.verified, Theme.Primary)
 	local hasFinish = false
 	for _, piece in if State.tower then State.tower.pieces else {} do

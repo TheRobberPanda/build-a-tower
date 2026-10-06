@@ -98,7 +98,7 @@ local function onBuyTrail(player: Player, key: any): (boolean, string?)
 	end
 	if not data.unlocked[def.key] then
 		if not ProgressionService.spend(player, def.bricks) then
-			return false, "not enough Bricks"
+			return false, "not enough Coins"
 		end
 		data.unlocked[def.key] = true
 	end

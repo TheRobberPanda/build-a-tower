@@ -60,6 +60,11 @@ local function broadcast(newPhase: string, duration: number, extra: { [string]: 
 	state.phase = newPhase
 	state.endsAt = workspace:GetServerTimeNow() + duration
 	state.players = #entries
+	local members = {}
+	for _, e in entries do
+		table.insert(members, e.player.UserId)
+	end
+	state.members = members
 	Remotes.event("Round"):FireAllClients(state)
 end
 

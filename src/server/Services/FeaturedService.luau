@@ -85,7 +85,7 @@ local function settle(w: number)
 			SocialService.notify(
 				racer,
 				string.format(
-					"You placed #%d on featured tower %s! +%d Bricks",
+					"You placed #%d on featured tower %s! +%d Coins",
 					place,
 					tower.name,
 					Config.FEATURED_PODIUM_BRICKS

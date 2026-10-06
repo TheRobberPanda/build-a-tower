@@ -148,7 +148,7 @@ local function settle()
 					SocialService.notify(
 						ownerId,
 						string.format(
-							"Your tower placed #%d in the %s contest! +%d Bricks",
+							"Your tower placed #%d in the %s contest! +%d Coins",
 							place,
 							contest.theme,
 							Config.CONTEST_PRIZE_BRICKS

@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Sounds = require(ReplicatedStorage.Shared.Sounds)
+local State = require(script.Parent.Parent.State)
 local GhostController = require(script.Parent.GhostController)
 local Kit = require(script.Parent.Parent.UI.Kit)
 local Theme = require(script.Parent.Parent.UI.Theme)
@@ -78,6 +79,11 @@ local function onRound(s: any)
 	end
 	local old = state.phase
 	state = s
+	local members = if type(s.members) == "table" then s.members else {}
+	local inRound = table.find(members, player.UserId) ~= nil
+	if inRound ~= State.inRound then
+		State.set({ inRound = inRound })
+	end
 	votePanel.Visible = false
 	if s.phase ~= old then
 		if s.phase == "build" then
@@ -212,15 +218,12 @@ function RoundController.init()
 		Parent = gui,
 	})
 	Kit.new("UIAspectRatioConstraint", { AspectRatio = 1.4, Parent = resultsPanel })
-	Kit.label(
-		"Round results",
-		{
-			Size = UDim2.fromScale(1, 0.15),
-			Position = UDim2.fromScale(0, 0.03),
-			TextColor3 = Theme.Primary,
-			Parent = resultsPanel,
-		}
-	)
+	Kit.label("Round results", {
+		Size = UDim2.fromScale(1, 0.15),
+		Position = UDim2.fromScale(0, 0.03),
+		TextColor3 = Theme.Primary,
+		Parent = resultsPanel,
+	})
 	resultsText = Kit.label("", {
 		Size = UDim2.fromScale(0.9, 0.75),
 		Position = UDim2.fromScale(0.05, 0.2),

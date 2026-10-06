@@ -805,7 +805,7 @@ local function onBuyMaterial(player: Player, key: any): (boolean, string?)
 		return false, "level " .. def.level
 	end
 	if not ProgressionService.spend(player, def.bricks) then
-		return false, "not enough Bricks"
+		return false, "not enough Coins"
 	end
 	data.unlocked[def.key] = true
 	return onSetMaterial(player, def.key)
